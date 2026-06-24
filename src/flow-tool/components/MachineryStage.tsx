@@ -45,7 +45,8 @@ function buildTimeline(layout: FlowLayout, config: FlowConfig, byId: Map<string,
   const D = (c: Currency) => displayCurrency(c, config);
   const phases: Phase[] = [];
   let x: number | null = null;
-  const dur = (d: number) => Math.max(1000, d * 6.5);
+  // travel speed (slower = more deliberate on the under-the-hood view)
+  const dur = (d: number) => Math.max(1700, d * 11.5);
 
   for (const L of seq) {
     const n0 = byId.get(reverse ? L.to : L.from)!;
@@ -56,17 +57,17 @@ function buildTimeline(layout: FlowLayout, config: FlowConfig, byId: Map<string,
       const pre = D(reverse ? L.convertsTo : L.carries);
       const post = D(reverse ? L.carries : L.convertsTo);
       phases.push({ kind: "go", x0: x, x1: hubX, cur: pre, dur: dur(Math.abs(hubX - x)), s: 0 });
-      phases.push({ kind: "conv", x0: hubX, x1: hubX, cur: post, preCur: pre, hub: L.index, dur: 1350, s: 0 });
+      phases.push({ kind: "conv", x0: hubX, x1: hubX, cur: post, preCur: pre, hub: L.index, dur: 1700, s: 0 });
       phases.push({ kind: "go", x0: hubX, x1: n1.cx, cur: post, dur: dur(Math.abs(n1.cx - hubX)), s: 0 });
       x = n1.cx;
     } else {
       const cur = D(L.carries);
       phases.push({ kind: "go", x0: x, x1: n1.cx, cur, dur: dur(Math.abs(n1.cx - x)), s: 0 });
       x = n1.cx;
-      phases.push({ kind: "pause", x0: x, x1: x, cur, dur: 420, s: 0 });
+      phases.push({ kind: "pause", x0: x, x1: x, cur, dur: 650, s: 0 });
     }
   }
-  if (phases.length) phases[phases.length - 1].dur = 900;
+  if (phases.length) phases[phases.length - 1].dur = 1300;
   let t = 0;
   for (const ph of phases) {
     ph.s = t;
@@ -148,18 +149,25 @@ export function MachineryStage({
         activeHub = p.hub!;
         cur = lp >= 0.5 ? p.cur : p.preCur ?? p.cur;
       }
-      // shrink into / pop out of the hub: the token scales to ~0 at a hub
-      // center (absorbed, so the spin shows) and grows back as it clears, so a
-      // wide pill (e.g. USD/EUR) pops out in front rather than sliding out
-      // half-hidden behind the mark.
+      // hub choreography: the token goes fully IN and DISAPPEARS near the hub
+      // (opacity 0 within R_HIDE, so even a wide pill never shows its edges
+      // beside the plinth/logo), then the converted token is RELEASED from the
+      // other side once it clears the plinth (fades + scales back in). Pure
+      // distance-driven, so it works for every flow regardless of token width.
       let dmin = Infinity;
       for (const hb of hubs) {
         const d = Math.abs(x - hb.x);
         if (d < dmin) dmin = d;
       }
-      const t = hubs.length ? Math.max(0, Math.min(1, dmin / 58)) : 1;
-      const ts = t * t * (3 - 2 * t); // smoothstep pop
-      if (tokenRef.current) tokenRef.current.setAttribute("transform", `translate(${x.toFixed(1)},${railY}) scale(${ts.toFixed(3)})`);
+      const R_HIDE = 34; // within this of a hub center → fully hidden
+      const R_SHOW = 72; // beyond this → fully visible (clear of the plinth)
+      const s = hubs.length ? Math.max(0, Math.min(1, dmin / R_SHOW)) : 1;
+      const ts = s * s * (3 - 2 * s); // smoothstep scale pop
+      const op = hubs.length ? Math.max(0, Math.min(1, (dmin - R_HIDE) / (R_SHOW - R_HIDE))) : 1;
+      if (tokenRef.current) {
+        tokenRef.current.setAttribute("transform", `translate(${x.toFixed(1)},${railY}) scale(${ts.toFixed(3)})`);
+        tokenRef.current.style.opacity = op.toFixed(3);
+      }
       currencies.forEach((c) => {
         const el = curRefs.current[c];
         if (el) el.style.opacity = c === cur ? "1" : "0";
