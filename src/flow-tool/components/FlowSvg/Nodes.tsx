@@ -95,7 +95,7 @@ export function FlowNodeShape({
     const slotStroke = green ? C.green : C.clientSlot;
     // an uploaded logo fills nearly the whole node; otherwise dashed slot + name
     if (clientLogoUrl) {
-      const pad = 9;
+      const pad = 6;
       return (
         <g>
           {rect}
