@@ -149,7 +149,6 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
   const hubW = 34;
   const hubH = hubW / TRACE_LOGO_AR;
   const accent = accentFor(dir);
-  const flip = dir === "disbursement";
 
   return (
     <svg viewBox={VIEWBOX} preserveAspectRatio="xMidYMid meet" style={{ display: "block", width: "100%", maxHeight: "44vh", fontFamily: "Inter, system-ui, sans-serif" }} role="img" aria-label={`What ${config.clientName} wants`}>
@@ -162,9 +161,10 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
       <rect x={488} y={441} width={172} height={32} rx={11} fill={tubeTint(dir)} stroke={accent} strokeOpacity={0.42} />
       <rect x={700} y={441} width={172} height={32} rx={11} fill={tubeTint(dir)} stroke={accent} strokeOpacity={0.42} />
 
-      {/* directional indicators — the Trace arrow motif at the flow's start & end */}
-      <TraceArrow cx={530} cy={Y} size={20} color={accent} flip={flip} />
-      <TraceArrow cx={830} cy={Y} size={20} color={accent} flip={flip} />
+      {/* directional indicators — the actual Trace mark-half, one at the start of
+          each rail segment (one per tube), pointing in the flow direction */}
+      <TraceArrow cx={524} cy={Y} size={26} direction={dir} />
+      <TraceArrow cx={736} cy={Y} size={26} direction={dir} />
 
       {/* client station */}
       <ElevatedNode x={196} w={300} green>

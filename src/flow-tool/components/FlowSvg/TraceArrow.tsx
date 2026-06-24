@@ -1,33 +1,32 @@
-// The Trace directional indicator — echoes the logo's arrow motif (two tilted
-// rounded bars, with a gap at the tip so it reads as the mark, not a generic
-// chevron). Recolored by direction (green = pay-in / right, cyan = pay-out /
-// left) and mirrored for pay-out.
+import { ASSETS, TRACE_ARROW_AR } from "../tokens";
+
+// The Trace directional indicator IS the actual half of the mark — the green
+// right-group for pay-in, the cyan left-group for pay-out — provided as PNG
+// assets (never a drawn/generic chevron). One sits at the start of each rail
+// segment, pointing in the flow direction.
 export function TraceArrow({
   cx,
   cy,
   size = 20,
-  color,
-  flip = false,
+  direction,
 }: {
   cx: number;
   cy: number;
+  /** rendered height of the arrow */
   size?: number;
-  color: string;
-  flip?: boolean;
+  direction: "collection" | "disbursement";
 }) {
-  const s = size;
-  const sw = s * 0.3;
-  return (
-    <g transform={`translate(${cx},${cy})${flip ? " scale(-1,1)" : ""}`}>
-      <line x1={-s * 0.5} y1={-s * 0.55} x2={s * 0.42} y2={-s * 0.06} stroke={color} strokeWidth={sw} strokeLinecap="round" />
-      <line x1={-s * 0.5} y1={s * 0.55} x2={s * 0.42} y2={s * 0.06} stroke={color} strokeWidth={sw} strokeLinecap="round" />
-    </g>
-  );
+  const right = direction === "collection";
+  const href = right ? ASSETS.arrowRight : ASSETS.arrowLeft;
+  const ar = right ? TRACE_ARROW_AR.right : TRACE_ARROW_AR.left;
+  const h = size;
+  const w = h * ar;
+  return <image href={href} x={cx - w / 2} y={cy - h / 2} width={w} height={h} />;
 }
 
 /** Small static monochrome monogram for operational Trace nodes (Pix Inc, etc.).
  *  The full colored mark is reserved for the conversion hub. */
 export function TraceMonogram({ cx, cy, w, href }: { cx: number; cy: number; w: number; href: string }) {
   const h = w / 1.576;
-  return <image href={href} x={cx - w / 2} y={cy - h / 2} width={w} height={h} filter="url(#tf-mono)" opacity={0.5} />;
+  return <image href={href} x={cx - w / 2} y={cy - h / 2} width={w} height={h} filter="url(#tf-mono)" opacity={0.7} />;
 }

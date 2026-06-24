@@ -75,14 +75,25 @@ export const ASSETS = {
   traceLogo: "/assets/trace_logo.png",
   usdc: "/assets/usdc.png",
   usdt: "/assets/usdt.png",
+  // the directional arrows = the actual halves of the Trace mark (provided as
+  // assets, not drawn chevrons): green right-group for pay-in, cyan left-group
+  // for pay-out.
+  arrowRight: "/assets/trace_arrow_right.png",
+  arrowLeft: "/assets/trace_arrow_left.png",
 } as const;
 
 export const TRACE_LOGO_AR = 1.576; // width / height of the extracted mark
+// the arrow-half PNGs (green right 294×406, cyan left 288×400)
+export const TRACE_ARROW_AR = { right: 294 / 406, left: 288 / 400 } as const;
 
 // Direction drives the brand color (echoing the logo's two arrows): pay-in is
 // Trace green + right-facing; pay-out is Trace cyan + left-facing.
 export function accentFor(direction: "collection" | "disbursement"): string {
   return direction === "collection" ? C.green : C.traceCyan;
+}
+/** The matching arrow-half asset for a direction. */
+export function arrowAssetFor(direction: "collection" | "disbursement"): string {
+  return direction === "collection" ? ASSETS.arrowRight : ASSETS.arrowLeft;
 }
 /** Faint direction-tinted tube fill. */
 export function tubeTint(direction: "collection" | "disbursement"): string {
