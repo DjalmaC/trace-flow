@@ -49,6 +49,28 @@ export function FlowNodeShape({
     </g>
   );
 
+  if (node.kind === "engine") {
+    // the folded "Trace engine": a wide green-rimmed station; the spinning
+    // conversion hub is drawn on top (by MachineryStage) at its center.
+    return (
+      <g>
+        <g filter="url(#tf-shadow)">
+          <rect x={x} y={y} width={w} height={h} rx={14} fill={C.surface} stroke={C.green} strokeOpacity={0.34} />
+          <line x1={x + 16} y1={y + 1.3} x2={x + w - 16} y2={y + 1.3} stroke="#ffffff" strokeOpacity={0.1} strokeWidth={1} />
+        </g>
+        <text x={cx} y={y + 18} fontSize={11} fontWeight={600} fill={C.green} textAnchor="middle" opacity={0.85}>
+          Trace engine
+        </text>
+        <text x={cx} y={y + h - 20} fontSize={10} fill={C.subtitle} textAnchor="middle">
+          cross-border &amp; conversion
+        </text>
+        <text x={cx} y={y + h - 7} fontSize={9} fill={C.muted} textAnchor="middle">
+          {node.engineCount ? `+${node.engineCount} steps · tap to expand` : "tap to expand"}
+        </text>
+      </g>
+    );
+  }
+
   if (node.kind === "trace") {
     // Operational Trace node: small monochrome monogram above the label. The
     // full colored mark is reserved for the conversion hub (no logo repetition).
