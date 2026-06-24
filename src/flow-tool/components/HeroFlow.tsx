@@ -176,11 +176,12 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
         {config.clientLogoUrl ? (
           config.clientLogoPlate === "light" ? (
             <>
-              <rect x={206} y={406} width={288} height={104} rx={12} fill="#ffffff" />
-              <image href={config.clientLogoUrl} x={222} y={420} width={256} height={76} preserveAspectRatio="xMidYMid meet" />
+              {/* card + logo centered on the node (cx 346, cy 457) */}
+              <rect x={202} y={405} width={288} height={104} rx={12} fill="#ffffff" />
+              <image href={config.clientLogoUrl} x={218} y={421} width={256} height={72} preserveAspectRatio="xMidYMid meet" />
             </>
           ) : (
-            <image href={config.clientLogoUrl} x={206} y={406} width={288} height={104} preserveAspectRatio="xMidYMid meet" />
+            <image href={config.clientLogoUrl} x={202} y={405} width={288} height={104} preserveAspectRatio="xMidYMid meet" />
           )
         ) : (
           <>
