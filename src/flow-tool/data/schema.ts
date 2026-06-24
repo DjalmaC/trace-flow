@@ -82,6 +82,24 @@ export interface Flow {
   sameActor: SameActor[]; // projector links between stages
 }
 
+/**
+ * Pricing seam (build brief §10). The flow data is deliberately amount/fee/rate
+ * agnostic, so the proposal carries its commercials here. These types are
+ * generic on purpose: a future pricing template maps onto `lineItems` without
+ * the proposal document changing. No fee model is baked in.
+ */
+export interface ProposalLineItem {
+  label: string;
+  value: string;
+  note?: string;
+}
+export interface ProposalPricing {
+  amountIn?: { currency: Currency; amount: number };
+  fxRate?: number;
+  lineItems: ProposalLineItem[]; // fees / spreads — filled by the template
+  amountOut?: { currency: Currency; amount: number };
+}
+
 /** Produced by intake OR the manual picker; drives <FlowExperience>. */
 export interface FlowConfig {
   flowId: string;
@@ -90,6 +108,8 @@ export interface FlowConfig {
   collected: Currency; // default 'BRL'
   delivered: Currency; // default 'USD/EUR'
   direction: Direction; // default 'collection'
+  /** Optional commercials for the proposal export (build brief §10). */
+  pricing?: ProposalPricing;
 }
 
 // ── Computed-field rules (spec §2.1), kept here so they're auditable ──────────

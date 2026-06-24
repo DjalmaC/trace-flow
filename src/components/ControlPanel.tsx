@@ -14,10 +14,12 @@ export function ControlPanel({
   config,
   onConfigChange,
   onPresent,
+  onGenerateProposal,
 }: {
   config: FlowConfig;
   onConfigChange: (next: FlowConfig) => void;
   onPresent: () => void;
+  onGenerateProposal: () => void;
 }) {
   const [open, setOpen] = useState(true);
   const [mode, setMode] = useState<Mode>("intake");
@@ -129,13 +131,13 @@ export function ControlPanel({
             Present ▶
           </button>
 
-          {/* TODO(v2): pricing inputs + "Generate Proposal" export (build brief §10). */}
+          {/* Generate Proposal — print-to-PDF document for the configured flow
+              (build brief §10). Pricing lands later via FlowConfig.pricing. */}
           <button
-            disabled
-            title="Coming in v2"
-            className="mt-2 w-full cursor-not-allowed rounded-lg border border-node-stroke px-3 py-2 text-sm text-muted"
+            onClick={onGenerateProposal}
+            className="mt-2 w-full rounded-lg border border-node-stroke px-3 py-2 text-sm font-medium text-subtitle transition hover:border-green-accent hover:text-title"
           >
-            Generate Proposal (v2)
+            Generate Proposal ⎙
           </button>
         </div>
       )}
