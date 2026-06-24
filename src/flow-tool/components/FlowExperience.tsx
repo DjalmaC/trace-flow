@@ -29,6 +29,7 @@ export function FlowExperience({
   presentation = false,
   only,
   onDirectionChange,
+  forceStatic = false,
 }: {
   config: FlowConfig;
   presentation?: boolean;
@@ -36,6 +37,8 @@ export function FlowExperience({
   only?: "surface" | "depth";
   /** Wires the always-visible on-canvas Pay-in / Pay-out toggle. */
   onDirectionChange?: (d: Direction) => void;
+  /** Force the stacked, non-dive layout (used for print / PDF export). */
+  forceStatic?: boolean;
 }) {
   const flow = getFlow(config.flowId);
   const reduced = useReducedMotion();
@@ -167,8 +170,8 @@ export function FlowExperience({
     );
   }
 
-  // ── reduced motion: stack the two sections, no dive ──────────────────────
-  if (reduced) {
+  // ── reduced motion / print: stack the two sections, no dive ──────────────
+  if (reduced || forceStatic) {
     return (
       <div className="w-full" style={{ background: C.base }}>
         <div className="absolute left-0 top-0 z-10 h-[3px] w-full" style={{ background: C.rule }} />
@@ -195,8 +198,10 @@ export function FlowExperience({
         {onDirectionChange && (
           <DirectionToggle direction={config.direction} onChange={onDirectionChange} />
         )}
-        {/* flow tag, bottom-left */}
-        <div className="absolute bottom-5 left-6 z-30 text-xs text-muted">{flowTag} · client view</div>
+        {/* flow tag, bottom-left — internal only; hidden in presentation/client views */}
+        {!presentation && (
+          <div className="absolute bottom-5 left-6 z-30 text-xs text-muted">{flowTag} · client view</div>
+        )}
 
         {/* DEPTH — behind */}
         <motion.div

@@ -17,3 +17,11 @@ body {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* Print / PDF: drop interactive chrome, keep the dark deck colors. */
+@media print {
+  .no-print { display: none !important; }
+  html, body { background: #07090b !important; }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  @page { margin: 12mm; }
+}

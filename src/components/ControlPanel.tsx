@@ -4,6 +4,7 @@ import type { Currency, Direction, FlowConfig, Stablecoin } from "@/flow-tool/da
 import { FLOWS, getFlow } from "@/flow-tool/data";
 import { QUESTIONS, type IntakeAnswers } from "@/flow-tool/intake/questions";
 import { resolve, NO_MATCH_MESSAGE } from "@/flow-tool/intake/resolver";
+import { createShareLink, isShareConfigured } from "@/flow-tool/lib/share";
 
 type Mode = "intake" | "manual";
 
@@ -33,6 +34,7 @@ export function ControlPanel({
   const [open, setOpen] = useState(true);
   const [mode, setMode] = useState<Mode>("intake");
   const [answers, setAnswers] = useState<IntakeAnswers>({});
+  const [share, setShare] = useState<{ status: "idle" | "loading" | "done" | "error"; url?: string; msg?: string; copied?: boolean }>({ status: "idle" });
 
   const resolution = useMemo(() => resolve(answers, config.clientName), [answers, config.clientName]);
 
@@ -52,7 +54,30 @@ export function ControlPanel({
 
   function onLogo(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (file) patch({ clientLogoUrl: URL.createObjectURL(file) });
+    if (!file) return;
+    // read as a data URI so the logo travels with the shared link (a blob: URL
+    // from createObjectURL would not survive being stored/sent)
+    const reader = new FileReader();
+    reader.onload = () => patch({ clientLogoUrl: String(reader.result) });
+    reader.readAsDataURL(file);
+  }
+
+  async function generateLink() {
+    setShare({ status: "loading" });
+    try {
+      const { code } = await createShareLink(config);
+      const url = `${window.location.origin}/f/${code}`;
+      setShare({ status: "done", url });
+    } catch (err) {
+      setShare({ status: "error", msg: err instanceof Error ? err.message : "Something went wrong." });
+    }
+  }
+
+  async function copyLink() {
+    if (!share.url) return;
+    await navigator.clipboard.writeText(share.url);
+    setShare((s) => ({ ...s, copied: true }));
+    setTimeout(() => setShare((s) => ({ ...s, copied: false })), 1600);
   }
 
   return (
@@ -95,6 +120,15 @@ export function ControlPanel({
                 value={config.clientName}
                 onChange={(e) => patch({ clientName: e.target.value })}
                 className="w-full rounded-md border border-node-stroke bg-node-fill px-2 py-1.5 text-sm text-title outline-none focus:border-green-accent"
+              />
+            </Field>
+
+            <Field label="Client representative">
+              <input
+                value={config.clientRep ?? ""}
+                onChange={(e) => patch({ clientRep: e.target.value })}
+                placeholder="e.g. Maria Silva, Head of Finance"
+                className="w-full rounded-md border border-node-stroke bg-node-fill px-2 py-1.5 text-sm text-title outline-none placeholder:text-muted focus:border-green-accent"
               />
             </Field>
 
@@ -158,14 +192,49 @@ export function ControlPanel({
             Present ▶
           </button>
 
-          {/* TODO(v2): pricing inputs + "Generate Proposal" export (build brief §10). */}
-          <button
-            disabled
-            title="Coming in v2"
-            className="mt-2 w-full cursor-not-allowed rounded-lg border border-node-stroke px-3 py-2 text-sm text-muted"
-          >
-            Generate Proposal (v2)
-          </button>
+          {/* Share: a locked, view-only link for the client (just this flow). */}
+          <div className="mt-4 border-t border-node-stroke pt-4">
+            <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted">Send to client</div>
+            {isShareConfigured() ? (
+              <>
+                <button
+                  onClick={generateLink}
+                  disabled={share.status === "loading"}
+                  className="w-full rounded-lg border border-green-accent/50 px-3 py-2 text-sm font-medium text-green-accent transition hover:bg-green-fill disabled:opacity-60"
+                >
+                  {share.status === "loading" ? "Generating…" : "Generate client link 🔗"}
+                </button>
+                {share.status === "done" && share.url && (
+                  <div className="mt-2 space-y-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        readOnly
+                        value={share.url}
+                        onFocus={(e) => e.target.select()}
+                        className="w-full rounded-md border border-node-stroke bg-node-fill px-2 py-1.5 text-[11px] text-subtitle outline-none"
+                      />
+                      <button
+                        onClick={copyLink}
+                        className="shrink-0 rounded-md bg-green-accent px-2.5 py-1.5 text-xs font-semibold text-[#06120c] transition hover:brightness-110"
+                      >
+                        {share.copied ? "✓" : "Copy"}
+                      </button>
+                    </div>
+                    <p className="text-[10px] leading-snug text-muted">
+                      View-only. Opens just this flow for {config.clientName}, with no access to the rest of the tool.
+                    </p>
+                  </div>
+                )}
+                {share.status === "error" && (
+                  <p className="mt-2 text-[11px] text-[#e6b566]">⚑ {share.msg}</p>
+                )}
+              </>
+            ) : (
+              <p className="text-[11px] leading-snug text-muted">
+                Sharing isn’t configured yet — add <code className="text-subtitle">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> to enable client links.
+              </p>
+            )}
+          </div>
         </div>
       )}
     </div>

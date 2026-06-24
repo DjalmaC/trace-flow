@@ -89,6 +89,8 @@ export interface Flow {
 export interface FlowConfig {
   flowId: string;
   clientName: string;
+  /** Optional point of contact at the client (shown on the shared client view). */
+  clientRep?: string;
   clientLogoUrl?: string;
   collected: Currency; // default 'BRL'
   delivered: Currency; // default 'USD/EUR'
