@@ -23,9 +23,26 @@ import {
 
 const EASE = "cubic-bezier(.4,0,.2,1)";
 const HUB_R = 22;
-function easeInOut(t: number) {
-  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+// ── motion-design constants ──────────────────────────────────────────────────
+const MS_PER_PX = 10; // CONSTANT travel speed across every leg (no clamp → even pace)
+const MIN_GO = 460; // floor so a short half-leg into/out of a hub isn't a blink
+const PAUSE_MS = 200; // a brief breath as value rests behind each station
+const SPIN_MS = 1180; // the FX-engine conversion moment
+const END_REST_MS = 700;
+const R_HIDE = 40; // token fully hidden within this of a hub centre (absorbed)
+const R_SHOW = 78; // token fully shown beyond this (clear of the plinth)
+
+// easings
+const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
+function easeOutBack(t: number) {
+  const c1 = 1.70158;
+  const c3 = c1 + 1;
+  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
 }
+const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
+const smoothstep = (t: number) => t * t * (3 - 2 * t);
 
 type Phase = {
   kind: "go" | "conv" | "pause";
@@ -45,8 +62,9 @@ function buildTimeline(layout: FlowLayout, config: FlowConfig, byId: Map<string,
   const D = (c: Currency) => displayCurrency(c, config);
   const phases: Phase[] = [];
   let x: number | null = null;
-  // travel speed (slower = more deliberate on the under-the-hood view)
-  const dur = (d: number) => Math.max(1700, d * 11.5);
+  // duration ∝ distance → the token holds one steady speed on every leg, and
+  // long legs simply cruise longer (no apparent speeding up / slowing down).
+  const dur = (d: number) => Math.max(MIN_GO, d * MS_PER_PX);
 
   for (const L of seq) {
     const n0 = byId.get(reverse ? L.to : L.from)!;
@@ -57,17 +75,17 @@ function buildTimeline(layout: FlowLayout, config: FlowConfig, byId: Map<string,
       const pre = D(reverse ? L.convertsTo : L.carries);
       const post = D(reverse ? L.carries : L.convertsTo);
       phases.push({ kind: "go", x0: x, x1: hubX, cur: pre, dur: dur(Math.abs(hubX - x)), s: 0 });
-      phases.push({ kind: "conv", x0: hubX, x1: hubX, cur: post, preCur: pre, hub: L.index, dur: 1700, s: 0 });
+      phases.push({ kind: "conv", x0: hubX, x1: hubX, cur: post, preCur: pre, hub: L.index, dur: SPIN_MS, s: 0 });
       phases.push({ kind: "go", x0: hubX, x1: n1.cx, cur: post, dur: dur(Math.abs(n1.cx - hubX)), s: 0 });
       x = n1.cx;
     } else {
       const cur = D(L.carries);
       phases.push({ kind: "go", x0: x, x1: n1.cx, cur, dur: dur(Math.abs(n1.cx - x)), s: 0 });
       x = n1.cx;
-      phases.push({ kind: "pause", x0: x, x1: x, cur, dur: 650, s: 0 });
+      phases.push({ kind: "pause", x0: x, x1: x, cur, dur: PAUSE_MS, s: 0 });
     }
   }
-  if (phases.length) phases[phases.length - 1].dur = 1300;
+  if (phases.length) phases[phases.length - 1].dur = END_REST_MS;
   let t = 0;
   for (const ph of phases) {
     ph.s = t;
@@ -113,14 +131,19 @@ export function MachineryStage({
   const hubMarkRefs = useRef<Record<number, SVGGElement | null>>({});
   const pulseRefs = useRef<Record<number, SVGCircleElement | null>>({});
 
+  // QA hook: ?frame=<ms> freezes the relay at a fixed point in the cycle so a
+  // deterministic frame can be captured (the loop is rAF-driven otherwise).
+  const freezeMs = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    const v = new URLSearchParams(window.location.search).get("frame");
+    return v == null ? null : Number(v);
+  }, []);
+
   useEffect(() => {
     if (!run || !timeline.phases.length) return;
     const reverse = config.direction === "disbursement";
     const total = timeline.total;
-    let raf = 0;
-    const start = performance.now();
-    const tick = (now: number) => {
-      const e = (now - start) % total;
+    const render = (e: number) => {
       let p = timeline.phases[0];
       let lp = 0;
       for (const ph of timeline.phases) {
@@ -133,37 +156,43 @@ export function MachineryStage({
       let x = p.x0;
       let cur: Currency = p.cur;
       let ang = 0;
-      let sc = 1;
+      let hubScale = 1;
       let pulse = 0;
+      let pulseR = HUB_R;
       let activeHub = -1;
       if (p.kind === "go") {
         x = p.x0 + (p.x1 - p.x0) * easeInOut(lp);
       } else if (p.kind === "pause") {
         x = p.x0;
       } else {
+        // the FX engine doing work: receive (contract) → process (spin) →
+        // deliver (release, with a slight pop). The token is absorbed before
+        // this and emitted after — the mark spins alone.
         x = p.x0;
-        const a = Math.sin(lp * Math.PI);
-        ang = (reverse ? -1 : 1) * 360 * easeInOut(lp);
-        sc = 1 - 0.45 * a;
-        pulse = a;
         activeHub = p.hub!;
-        cur = lp >= 0.5 ? p.cur : p.preCur ?? p.cur;
+        const a = lp;
+        ang = (reverse ? -1 : 1) * 360 * easeInOut(a);
+        if (a < 0.28) hubScale = 1 - 0.4 * easeOut(a / 0.28); // 1 → 0.6, receive
+        else if (a < 0.68) hubScale = 0.6; // hold contracted while spinning
+        else hubScale = 0.6 + 0.4 * easeOutBack(clamp01((a - 0.68) / 0.32)); // → 1 (+overshoot), deliver
+        if (a < 0.5) {
+          const u = a / 0.5; // one impact ring rippling out on receive
+          pulse = 0.5 * (1 - u);
+          pulseR = HUB_R + 18 * easeOut(u);
+        }
+        cur = a >= 0.5 ? p.cur : p.preCur ?? p.cur;
       }
-      // hub choreography: the token goes fully IN and DISAPPEARS near the hub
-      // (opacity 0 within R_HIDE, so even a wide pill never shows its edges
-      // beside the plinth/logo), then the converted token is RELEASED from the
-      // other side once it clears the plinth (fades + scales back in). Pure
-      // distance-driven, so it works for every flow regardless of token width.
+
+      // absorb / emit: the token fully disappears within R_HIDE of a hub (so a
+      // wide pill never flashes its edges beside the plinth) and only fades +
+      // scales back in once it has cleared the plinth on the far side.
       let dmin = Infinity;
       for (const hb of hubs) {
         const d = Math.abs(x - hb.x);
         if (d < dmin) dmin = d;
       }
-      const R_HIDE = 34; // within this of a hub center → fully hidden
-      const R_SHOW = 72; // beyond this → fully visible (clear of the plinth)
-      const s = hubs.length ? Math.max(0, Math.min(1, dmin / R_SHOW)) : 1;
-      const ts = s * s * (3 - 2 * s); // smoothstep scale pop
-      const op = hubs.length ? Math.max(0, Math.min(1, (dmin - R_HIDE) / (R_SHOW - R_HIDE))) : 1;
+      const ts = hubs.length ? smoothstep(clamp01(dmin / R_SHOW)) : 1;
+      const op = hubs.length ? clamp01((dmin - R_HIDE) / (R_SHOW - R_HIDE)) : 1;
       if (tokenRef.current) {
         tokenRef.current.setAttribute("transform", `translate(${x.toFixed(1)},${railY}) scale(${ts.toFixed(3)})`);
         tokenRef.current.style.opacity = op.toFixed(3);
@@ -176,17 +205,27 @@ export function MachineryStage({
         const m = hubMarkRefs.current[hb.key];
         const pc = pulseRefs.current[hb.key];
         const on = hb.key === activeHub;
-        if (m) m.setAttribute("transform", on ? `rotate(${ang.toFixed(1)}) scale(${sc.toFixed(3)})` : "rotate(0) scale(1)");
+        if (m) m.setAttribute("transform", on ? `rotate(${ang.toFixed(1)}) scale(${hubScale.toFixed(3)})` : "rotate(0) scale(1)");
         if (pc) {
-          pc.setAttribute("r", (HUB_R + 12 * (on ? pulse : 0)).toFixed(1));
-          pc.style.opacity = on ? (0.4 * pulse).toFixed(2) : "0";
+          pc.setAttribute("r", (on ? pulseR : HUB_R).toFixed(1));
+          pc.style.opacity = on ? pulse.toFixed(2) : "0";
         }
       });
+    };
+
+    if (freezeMs != null) {
+      render(((freezeMs % total) + total) % total);
+      return;
+    }
+    let raf = 0;
+    const start = performance.now();
+    const tick = (now: number) => {
+      render((now - start) % total);
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [run, timeline, railY, config.direction, currencies, hubs]);
+  }, [run, timeline, railY, config.direction, currencies, hubs, freezeMs]);
 
   const x0 = nodes[0]?.cx ?? 0;
   const xN = nodes[nodes.length - 1]?.cx ?? 0;
@@ -214,10 +253,10 @@ export function MachineryStage({
 
       {/* the relay token (behind the boxes → visible only in the gaps) */}
       {run ? (
-        <g ref={tokenRef} transform={`translate(${timeline.startX},${railY})`}>
+        <g ref={tokenRef} transform={`translate(${timeline.startX},${railY})`} style={{ willChange: "transform, opacity" }}>
           {currencies.map((c) => (
             <g key={c} ref={(el) => { curRefs.current[c] = el; }} style={{ opacity: 0 }}>
-              <CurrencyToken currency={c} coin={config.stablecoin} />
+              <CurrencyToken currency={c} coin={config.stablecoin} accent={accent} />
             </g>
           ))}
         </g>
@@ -249,7 +288,7 @@ export function MachineryStage({
           <circle cx={hb.x} cy={railY} r={HUB_R} fill="#0b110d" stroke={C.green} strokeOpacity={0.3} />
           <circle ref={(el) => { pulseRefs.current[hb.key] = el; }} cx={hb.x} cy={railY} r={HUB_R} fill="none" stroke={C.green} strokeWidth={2} opacity={0} />
           <g transform={`translate(${hb.x},${railY})`}>
-            <g ref={(el) => { hubMarkRefs.current[hb.key] = el; }}>
+            <g ref={(el) => { hubMarkRefs.current[hb.key] = el; }} style={{ willChange: "transform" }}>
               <image href={ASSETS.traceLogo} x={-markW / 2} y={-markH / 2} width={markW} height={markH} />
             </g>
           </g>

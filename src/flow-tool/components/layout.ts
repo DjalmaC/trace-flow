@@ -15,7 +15,7 @@ const NODE_W = 168;
 const NODE_H = 58;
 const PAD_X = 56;
 const GAP_PLAIN = 92;
-const GAP_CONVERT = 208;
+const GAP_CONVERT = 284; // wide enough that the converted token has room to emerge from the hub before the next box
 
 const BAND_Y = 412; // machinery node vertical center
 const HEAD_Y = 64; // headline node top

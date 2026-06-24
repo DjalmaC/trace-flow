@@ -22,12 +22,24 @@ export function tokenWidth(c: Currency, coin: Stablecoin = "both"): number {
   return Math.max(38, c.length * 7 + 16);
 }
 
-function Pill({ text }: { text: string }) {
+function Pill({ text, accent }: { text: string; accent?: string }) {
   const w = Math.max(38, text.length * 7 + 16);
+  // accent variant (moving value): brighter fill + direction-tinted border, so
+  // the value reads clearly as it travels the rail (matches the Stage-1 token).
   return (
     <>
-      <rect x={-w / 2} y={-11} width={w} height={22} rx={11} fill={C.pillFill} stroke={C.pillStroke} />
-      <text x={0} y={4} fontSize={11} fontWeight={600} fill={C.pillText} textAnchor="middle">
+      <rect
+        x={-w / 2}
+        y={-11}
+        width={w}
+        height={22}
+        rx={11}
+        fill={accent ? C.tokenFill : C.pillFill}
+        stroke={accent ?? C.pillStroke}
+        strokeOpacity={accent ? 0.9 : 1}
+        strokeWidth={accent ? 1.4 : 1}
+      />
+      <text x={0} y={4} fontSize={11} fontWeight={600} fill={accent ? "#eaf6ef" : C.pillText} textAnchor="middle">
         {text}
       </text>
     </>
@@ -45,9 +57,10 @@ function Coins({ coin }: { coin: Stablecoin }) {
   );
 }
 
-/** A single currency token (pill or coin), centered at origin. */
-export function CurrencyToken({ currency, coin = "both" }: { currency: Currency; coin?: Stablecoin }) {
-  return currency === "USDC/USDT" ? <Coins coin={coin} /> : <Pill text={currency} />;
+/** A single currency token (pill or coin), centered at origin. `accent` lifts a
+ *  pill to the brighter direction-tinted "moving value" style. */
+export function CurrencyToken({ currency, coin = "both", accent }: { currency: Currency; coin?: Stablecoin; accent?: string }) {
+  return currency === "USDC/USDT" ? <Coins coin={coin} /> : <Pill text={currency} accent={accent} />;
 }
 
 /** A conversion capsule: leftToken ⇄ rightToken, centered at origin. */
