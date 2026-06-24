@@ -8,3 +8,11 @@ next-env.d.ts
 .vercel
 .env*.local
 .claude/settings.local.json
+
+# Unpacked reference package (kept locally; runtime assets live in public/flows + public/fonts)
+/svg/
+/pdf/
+/reference-mocks/
+/assets/
+/build-docs/
+/MANIFEST.txt

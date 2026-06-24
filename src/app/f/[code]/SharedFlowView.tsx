@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { FlowExperience } from "@/flow-tool/components/FlowExperience";
 import { ASSETS, C, TRACE_LOGO_AR } from "@/flow-tool/components/tokens";
 import { loadSharedFlow } from "@/flow-tool/lib/share";
+import { downloadFlowPdf } from "@/flow-tool/lib/pdf";
 import type { Direction, FlowConfig } from "@/flow-tool/data/schema";
 
 type State =
@@ -23,7 +24,22 @@ export function SharedFlowView({ code }: { code: string }) {
   const [state, setState] = useState<State>({ status: "loading" });
   const [intro, setIntro] = useState<Intro>("loading");
   const [direction, setDirection] = useState<Direction>("collection");
-  const [printing, setPrinting] = useState(false);
+  const [pdf, setPdf] = useState<"idle" | "working" | "error">("idle");
+
+  const config = state.status === "ready" ? state.config : null;
+  const repName = config?.clientRep?.split(",")[0]?.trim();
+
+  async function onDownload() {
+    if (!config) return;
+    setPdf("working");
+    try {
+      await downloadFlowPdf({ ...config, direction });
+      setPdf("idle");
+    } catch {
+      setPdf("error");
+      setTimeout(() => setPdf("idle"), 2500);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -64,19 +80,6 @@ export function SharedFlowView({ code }: { code: string }) {
     };
   }, [state.status]);
 
-  // print → PDF: render the static stacked layout, print, then restore
-  useEffect(() => {
-    if (!printing) return;
-    const id = requestAnimationFrame(() => {
-      window.print();
-      setPrinting(false);
-    });
-    return () => cancelAnimationFrame(id);
-  }, [printing]);
-
-  const config = state.status === "ready" ? state.config : null;
-  const repName = config?.clientRep?.split(",")[0]?.trim();
-
   return (
     <main className="relative bg-[#07090b]">
       {/* the flow (revealed as the intro overlay fades out) */}
@@ -94,13 +97,14 @@ export function SharedFlowView({ code }: { code: string }) {
               </div>
             </div>
             <button
-              onClick={() => setPrinting(true)}
-              className="rounded-lg border border-white/10 bg-[#0e1410]/70 px-3 py-1.5 text-[12.5px] font-medium text-[#bfe8d4] backdrop-blur transition hover:border-green-accent/40"
+              onClick={onDownload}
+              disabled={pdf === "working"}
+              className="rounded-lg border border-white/10 bg-[#0e1410]/70 px-3 py-1.5 text-[12.5px] font-medium text-[#bfe8d4] backdrop-blur transition hover:border-green-accent/40 disabled:opacity-60"
             >
-              Download PDF ↓
+              {pdf === "working" ? "Preparing…" : pdf === "error" ? "Try again" : "Download PDF ↓"}
             </button>
           </header>
-          <FlowExperience config={{ ...config, direction }} presentation onDirectionChange={setDirection} forceStatic={printing} />
+          <FlowExperience config={{ ...config, direction }} presentation onDirectionChange={setDirection} />
         </>
       )}
 
