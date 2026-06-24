@@ -123,6 +123,7 @@ export function SharedFlowView({ code }: { code: string }) {
         >
           {state.status === "ready" ? (
             <div key="welcome" className="tf-rise flex flex-col items-center gap-5">
+              <Brandmark size="lg" />
               {config!.clientLogoUrl ? (
                 config!.clientLogoPlate === "light" ? (
                   <span className="flex items-center justify-center rounded-2xl bg-white px-6 py-4">
@@ -154,25 +155,19 @@ export function SharedFlowView({ code }: { code: string }) {
               </p>
             </div>
           )}
-
-          {/* Trace lockup pinned at the bottom of the welcome screen */}
-          {state.status === "ready" && (
-            <div className="absolute bottom-8 opacity-70">
-              <Brandmark />
-            </div>
-          )}
         </div>
       )}
     </main>
   );
 }
 
-function Brandmark() {
+function Brandmark({ size = "sm" }: { size?: "sm" | "lg" }) {
+  const h = size === "lg" ? 32 : 22;
   return (
-    <div className="flex items-center gap-2">
+    <div className={`flex items-center ${size === "lg" ? "gap-3" : "gap-2"}`}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={ASSETS.traceLogo} alt="" style={{ height: 22, width: 22 * TRACE_LOGO_AR }} />
-      <span className="text-[15px] font-semibold" style={{ color: C.title }}>
+      <img src={ASSETS.traceLogo} alt="" style={{ height: h, width: h * TRACE_LOGO_AR }} />
+      <span className={`font-semibold ${size === "lg" ? "text-[24px]" : "text-[15px]"}`} style={{ color: C.title }}>
         Trace Finance
       </span>
     </div>
