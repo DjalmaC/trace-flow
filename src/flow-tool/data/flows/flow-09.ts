@@ -1,0 +1,35 @@
+import type { Flow } from "../schema";
+
+// Flow 9 — VA trade, Local Liquidity Provider, virtual-asset delivery. Twin of #9.1.
+// Coordinate: VA · rail=VA-delivery → role=VASP.
+export const flow09: Flow = {
+  id: "flow-9",
+  displayId: "9",
+  title: "VA — Pix Inc / Finance LTDA account with Local Liquidity Provider, Virtual Asset settlement abroad",
+  blurb: "Local customer buys a virtual asset; local LP sources BRL; the asset is delivered abroad.",
+  dials: { model: "VA", rail: "VA-delivery", nraOwnership: "none", pixRole: "settler", localLp: true },
+  traceRole: ["VASP"],
+  directions: ["collection", "disbursement"],
+  narrative:
+    "The Local Customer pays BRL to Pix Inc / Finance LTDA to buy virtual assets; Pix Inc " +
+    "sources liquidity from a Local Liquidity Provider in reais and converts BRL to USDC/T; " +
+    "once abroad, Pix Inc settles the USDC/T to the Local Customer's Foreign Wallet.",
+  headline: { partyA: "localcust", partyB: "foreignwallet", carries: "BRL", convertsTo: "USDC/T" },
+  nodes: [
+    { id: "localcust", label: "Local Customer", kind: "client", lane: "brazil" },
+    { id: "pix", label: "Pix Inc / Finance LTDA", kind: "trace", lane: "brazil" },
+    { id: "locallp", label: "Local Liquidity Provider", kind: "operational", lane: "brazil" },
+    { id: "pixwallet", label: "Pix Inc / Finance LTDA Wallet", kind: "trace", lane: "abroad" },
+    { id: "foreignwallet", label: "Local Customer's Foreign Wallet", kind: "merchant", lane: "abroad" },
+  ],
+  legs: [
+    { from: "localcust", to: "pix", carries: "BRL" },
+    { from: "pix", to: "locallp", carries: "BRL" },
+    { from: "locallp", to: "pixwallet", carries: "BRL", convertsTo: "USDC/T", crosses: true },
+    { from: "pixwallet", to: "foreignwallet", carries: "USDC/T" },
+  ],
+  sameActor: [
+    { headlineNode: "localcust", machineryNode: "localcust" },
+    { headlineNode: "foreignwallet", machineryNode: "foreignwallet" },
+  ],
+};

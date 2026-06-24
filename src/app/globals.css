@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  background: #08090b;
+  color: #eef1ee;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Respect reduced-motion at the CSS layer too (framer-motion handles the JS). */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
