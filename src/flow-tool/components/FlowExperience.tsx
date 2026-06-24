@@ -12,9 +12,10 @@ import { getFlow } from "../data";
 import { computeLayout, CONT_Y, CONT_H } from "./layout";
 import { useLoop } from "../animation/sequence";
 import { Defs } from "./FlowSvg";
-import { HeadlineStage } from "./HeadlineStage";
+import { HeroFlow } from "./HeroFlow";
 import { MachineryStage } from "./MachineryStage";
 import { ASSETS, C, TRACE_LOGO_AR } from "./tokens";
+import type { Direction } from "../data/schema";
 
 // Public surface of the flow-tool module (build brief §8).
 //
@@ -28,11 +29,14 @@ export function FlowExperience({
   config,
   presentation = false,
   only,
+  onDirectionChange,
 }: {
   config: FlowConfig;
   presentation?: boolean;
   /** Render a single section statically (QA / the future two-page option). */
   only?: "surface" | "depth";
+  /** Wires the always-visible on-canvas Pay-in / Pay-out toggle. */
+  onDirectionChange?: (d: Direction) => void;
 }) {
   const flow = getFlow(config.flowId);
   const reduced = useReducedMotion();
@@ -60,7 +64,6 @@ export function FlowExperience({
   const veilOpacity = useTransform(p, [0, 0.4, 0.85], [0, 0.65, 0.12]);
   const hintOpacity = useTransform(p, [0, 0.08], [1, 0]);
 
-  const headlineLoop = useLoop(3400);
   const machineryLoop = useLoop(flow ? flow.legs.length * 1250 + 900 : 4000);
 
   if (!flow) {
@@ -69,12 +72,6 @@ export function FlowExperience({
 
   const layout = computeLayout(flow, config);
   const flowTag = `Flow ${flow.displayId} · ${flow.dials.model}`;
-
-  // viewBoxes that frame each layer out of the shared geometry.
-  const hl = layout.headline;
-  const sMinX = Math.max(0, hl.a.x - 96);
-  const sMaxX = Math.min(layout.width, hl.b.x + hl.b.w + 96);
-  const surfaceVB = `${sMinX} 22 ${sMaxX - sMinX} 168`;
   const machineryVB = `0 ${CONT_Y - 12} ${layout.width} ${CONT_H + 30}`;
 
   const svgStyle = {
@@ -83,12 +80,7 @@ export function FlowExperience({
     fontFamily: "Inter, system-ui, Arial, sans-serif",
   } as const;
 
-  const SurfaceSvg = (
-    <svg viewBox={surfaceVB} preserveAspectRatio="xMidYMid meet" style={{ ...svgStyle, maxHeight: "46vh" }} aria-label={`What the client wants — ${flow.title}`}>
-      <Defs />
-      <HeadlineStage layout={layout} config={config} flowTag={flowTag} loop={headlineLoop} animate={animate} showChrome={false} />
-    </svg>
-  );
+  const SurfaceSvg = <HeroFlow flow={flow} config={config} />;
 
   const MachinerySvg = (
     <svg viewBox={machineryVB} preserveAspectRatio="xMidYMid meet" style={{ ...svgStyle, maxHeight: "64vh" }} aria-label={`How Trace makes it happen — ${flow.title}`}>
@@ -97,16 +89,25 @@ export function FlowExperience({
     </svg>
   );
 
-  const deckGlow = `radial-gradient(90% 80% at 50% 122%, ${C.glow1} 0%, ${C.glow2} 55%, ${C.base} 100%)`;
+  // ambient: a single soft radial light + vignette over the near-black page.
+  const deckGlow =
+    `radial-gradient(62% 62% at 50% 46%, ${C.ambientGlow1} 0%, ${C.ambientGlow2} 58%, rgba(7,9,11,0) 100%),` +
+    `radial-gradient(72% 72% at 50% 50%, rgba(7,9,11,0) 58%, ${C.vignette} 100%)`;
+
+  const support =
+    config.direction === "collection"
+      ? "Collect in Brazil, settle to their merchant abroad, in one move."
+      : "Fund from abroad, pay out into Brazil, in one move.";
 
   const SurfaceHeading = (
     <div className="mb-5 text-center">
-      <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.32em] text-client">
+      <div className="mb-2 text-[13px] font-medium uppercase tracking-[0.34em] text-[#6f8a7f]">
         The desired transaction
       </div>
-      <h1 className="text-3xl font-semibold tracking-tight text-title md:text-4xl">
-        What <span className="text-green-accent">{config.clientName}</span> wants
+      <h1 className="text-4xl font-bold tracking-tight text-[#f2f5f3] md:text-5xl">
+        What <span className="text-[#5fd3a0]">{config.clientName}</span> wants
       </h1>
+      <p className="mt-3 text-base font-normal text-[#8b948f]">{support}</p>
     </div>
   );
 
@@ -159,8 +160,12 @@ export function FlowExperience({
         <div className="absolute inset-0" style={{ background: deckGlow }} />
         <div className="absolute left-0 top-0 z-30 h-[3px] w-full" style={{ background: C.rule }} />
 
-        {/* flow tag, top-right */}
-        <div className="absolute right-5 top-5 z-30 text-xs text-muted">{flowTag} · client view</div>
+        {/* always-visible Pay-in / Pay-out toggle (build brief §5) */}
+        {onDirectionChange && (
+          <DirectionToggle direction={config.direction} onChange={onDirectionChange} />
+        )}
+        {/* flow tag, bottom-left */}
+        <div className="absolute bottom-5 left-6 z-30 text-xs text-muted">{flowTag} · client view</div>
 
         {/* DEPTH — behind */}
         <motion.div
@@ -212,6 +217,30 @@ function Lockup() {
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={ASSETS.traceLogo} alt="" style={{ height: 22, width: 22 * TRACE_LOGO_AR }} />
       <span className="text-[15px] font-semibold text-title">Trace Finance</span>
+    </div>
+  );
+}
+
+function DirectionToggle({
+  direction,
+  onChange,
+}: {
+  direction: Direction;
+  onChange: (d: Direction) => void;
+}) {
+  return (
+    <div className="absolute right-5 top-5 z-40 flex gap-0.5 rounded-[11px] border border-white/10 bg-[#0e1410]/70 p-[3px] backdrop-blur">
+      {(["collection", "disbursement"] as Direction[]).map((d) => (
+        <button
+          key={d}
+          onClick={() => onChange(d)}
+          className={`rounded-lg px-[15px] py-[6px] text-[12.5px] font-medium tracking-[0.2px] transition ${
+            direction === d ? "bg-[#46d39a24] text-[#bfe8d4]" : "text-[#8b948f] hover:text-[#bfe8d4]"
+          }`}
+        >
+          {d === "collection" ? "Pay-in" : "Pay-out"}
+        </button>
+      ))}
     </div>
   );
 }

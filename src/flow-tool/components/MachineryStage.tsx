@@ -38,16 +38,20 @@ function MachineryLeg({
   const progress = useLegProgress(loop, index, layout.legs.length);
   const opacity = useLegOpacity(loop, index, layout.legs.length);
 
+  // tube/conduit: flat recessed channel with a hairline rim + top rim-light
+  const ty = leg.y1;
+  const tx0 = Math.min(leg.x1, leg.x2);
+  const tw = Math.abs(leg.x2 - leg.x1);
+  const arrowX = reverse ? tx0 + 2 : tx0 + tw - 2;
+  const arrow = reverse
+    ? `M${arrowX + 9} ${ty - 6} L${arrowX} ${ty} L${arrowX + 9} ${ty + 6}`
+    : `M${arrowX - 9} ${ty - 6} L${arrowX} ${ty} L${arrowX - 9} ${ty + 6}`;
+
   return (
     <g>
-      <path
-        d={leg.d}
-        fill="none"
-        stroke={C.leg}
-        strokeWidth={4}
-        markerEnd={reverse ? undefined : "url(#tf-leg)"}
-        markerStart={reverse ? "url(#tf-leg)" : undefined}
-      />
+      <rect x={tx0} y={ty - 15} width={tw} height={30} rx={15} fill={C.surfaceTube} stroke="#ffffff" strokeOpacity={0.07} />
+      <line x1={tx0 + 14} y1={ty - 13.6} x2={tx0 + tw - 14} y2={ty - 13.6} stroke="#ffffff" strokeOpacity={0.05} strokeWidth={1} />
+      <path d={arrow} fill="none" stroke={C.green} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" opacity={0.85} />
       {/* conversion capsule sits statically at the crossing */}
       {convertsTo && (
         <g transform={`translate(${leg.mid.x},${leg.mid.y})`}>

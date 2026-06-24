@@ -36,10 +36,17 @@ export function FlowNodeShape({
   clientLogoUrl?: string;
 }) {
   const { x, y, w, h, cx } = node;
-  const fill = green ? C.greenFill : C.nodeFill;
-  const stroke = green ? C.green : C.nodeStroke;
+  // Elevated material: flat surface fill + hairline border + top rim-light +
+  // soft drop shadow. Foreground (client / headline) gets a restrained green
+  // border; operational/trace get a neutral hairline.
+  const isFg = green || node.kind === "client";
   const txt = green ? C.greenText : C.nodeText;
-  const rect = <rect x={x} y={y} width={w} height={h} rx={9} fill={fill} stroke={stroke} />;
+  const rect = (
+    <g filter="url(#tf-shadow)">
+      <rect x={x} y={y} width={w} height={h} rx={12} fill={C.surface} stroke={isFg ? C.green : "#ffffff"} strokeOpacity={isFg ? 0.22 : 0.1} />
+      <line x1={x + 16} y1={y + 1.3} x2={x + w - 16} y2={y + 1.3} stroke="#ffffff" strokeOpacity={0.1} strokeWidth={1} />
+    </g>
+  );
 
   if (node.kind === "trace") {
     const twoLine = node.lines.length > 1;

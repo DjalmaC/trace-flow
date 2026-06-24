@@ -40,15 +40,17 @@ export default function Page() {
     );
   }
 
+  const setDirection = (direction: typeof config.direction) => setConfig((c) => ({ ...c, direction }));
+
   if (present) {
     return (
       <main className="relative">
-        <FlowExperience config={config} presentation />
+        <FlowExperience config={config} presentation onDirectionChange={setDirection} />
         <button
           onClick={() => setPresent(false)}
-          className="fixed right-4 top-4 z-50 rounded-lg border border-node-stroke bg-[#0c110f]/90 px-3 py-1.5 text-sm text-subtitle backdrop-blur transition hover:text-title"
+          className="fixed left-4 top-4 z-50 rounded-lg border border-node-stroke bg-[#0c110f]/90 px-3 py-1.5 text-sm text-subtitle backdrop-blur transition hover:text-title"
         >
-          Exit present ✕
+          ✕ Exit present
         </button>
       </main>
     );
@@ -57,7 +59,7 @@ export default function Page() {
   return (
     <main className="relative">
       <ControlPanel config={config} onConfigChange={setConfig} onPresent={() => setPresent(true)} />
-      <FlowExperience config={config} />
+      <FlowExperience config={config} onDirectionChange={setDirection} />
     </main>
   );
 }

@@ -53,6 +53,21 @@ export const C = {
   // stablecoins
   usdc: "#2775CA",
   usdt: "#26A17B",
+
+  // ── elevated material (trace_hero_mock.html) ──────────────────────────────
+  // Flat solid surfaces + hairline border + 1px top rim-light + soft neutral
+  // drop shadow. NO fill gradients (they read cheap), no neon glow.
+  page: "#07090b", // page base, a hair below the elevated plane
+  surface: "#0f1411", // elevated node/plane fill (flat)
+  surfaceTube: "#0a110d", // tube/conduit channel fill (flat, recessed)
+  rim: "rgba(255,255,255,0.10)", // 1px top rim-light just inside the top edge
+  hairline: "rgba(255,255,255,0.10)", // neutral hairline border (operational)
+  borderGreen: "rgba(70,211,154,0.22)", // restrained green border (foreground/client)
+  borderGreenStrong: "rgba(70,211,154,0.35)", // hub / emphasis green rim
+  tokenFill: "#0c160f", // moving currency token fill
+  ambientGlow1: "rgba(22,35,29,0.55)", // soft radial light core
+  ambientGlow2: "rgba(13,22,17,0.18)",
+  vignette: "rgba(0,0,0,0.45)",
 } as const;
 
 // asset paths (served from /public)
