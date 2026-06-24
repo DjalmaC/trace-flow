@@ -5,6 +5,9 @@ import { FLOWS, getFlow } from "@/flow-tool/data";
 import { QUESTIONS, type IntakeAnswers } from "@/flow-tool/intake/questions";
 import { resolve, NO_MATCH_MESSAGE } from "@/flow-tool/intake/resolver";
 import { createShareLink, isShareConfigured } from "@/flow-tool/lib/share";
+import { detectLogoPlate } from "@/flow-tool/lib/logo";
+
+type PlateMode = "auto" | "light" | "none";
 
 type Mode = "intake" | "manual";
 
@@ -35,6 +38,7 @@ export function ControlPanel({
   const [mode, setMode] = useState<Mode>("intake");
   const [answers, setAnswers] = useState<IntakeAnswers>({});
   const [share, setShare] = useState<{ status: "idle" | "loading" | "done" | "error"; url?: string; msg?: string; copied?: boolean }>({ status: "idle" });
+  const [plateMode, setPlateMode] = useState<PlateMode>("auto");
 
   const resolution = useMemo(() => resolve(answers, config.clientName), [answers, config.clientName]);
 
@@ -58,8 +62,20 @@ export function ControlPanel({
     // read as a data URI so the logo travels with the shared link (a blob: URL
     // from createObjectURL would not survive being stored/sent)
     const reader = new FileReader();
-    reader.onload = () => patch({ clientLogoUrl: String(reader.result) });
+    reader.onload = async () => {
+      const url = String(reader.result);
+      const plate = plateMode === "auto" ? await detectLogoPlate(url) : plateMode === "light" ? "light" : "none";
+      patch({ clientLogoUrl: url, clientLogoPlate: plate });
+    };
     reader.readAsDataURL(file);
+  }
+
+  // re-resolve the logo backing when the override changes
+  async function setBackdrop(mode: PlateMode) {
+    setPlateMode(mode);
+    if (!config.clientLogoUrl) return;
+    const plate = mode === "auto" ? await detectLogoPlate(config.clientLogoUrl) : mode === "light" ? "light" : "none";
+    patch({ clientLogoPlate: plate });
   }
 
   async function generateLink() {
@@ -140,6 +156,27 @@ export function ControlPanel({
                 className="w-full text-xs text-subtitle file:mr-2 file:rounded file:border-0 file:bg-node-fill file:px-2 file:py-1 file:text-subtitle"
               />
             </Field>
+
+            {config.clientLogoUrl && (
+              <Field label="Logo backdrop">
+                <div className="grid grid-cols-3 gap-1 rounded-lg bg-node-fill p-1">
+                  {(["auto", "light", "none"] as PlateMode[]).map((m) => (
+                    <button
+                      key={m}
+                      onClick={() => setBackdrop(m)}
+                      className={`rounded-md px-2 py-1.5 text-xs font-medium capitalize transition ${
+                        plateMode === m ? "bg-green-accent text-[#06120c]" : "text-subtitle hover:text-title"
+                      }`}
+                    >
+                      {m}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-1 text-[10px] leading-snug text-muted">
+                  Dark logos sit on a light card for legibility. Auto detects it; override if needed.
+                </p>
+              </Field>
+            )}
 
             <div className="grid grid-cols-2 gap-3">
               <Field label="Collected">

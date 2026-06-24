@@ -95,6 +95,9 @@ export interface FlowConfig {
   /** Optional point of contact at the client (shown on the shared client view). */
   clientRep?: string;
   clientLogoUrl?: string;
+  /** Backing for the logo on the dark deck: "light" = sit it on a white card
+   *  (for dark logos), "none" = on the dark deck as-is. Resolved at upload. */
+  clientLogoPlate?: "light" | "none";
   collected: Currency; // default 'BRL'
   delivered: Currency; // default 'USD/EUR'
   direction: Direction; // default 'collection'

@@ -30,13 +30,35 @@ function injectClient(doc: Document, config: FlowConfig) {
   const labels = Array.from(doc.querySelectorAll(".client-logo-label"));
 
   if (config.clientLogoUrl) {
+    const plate = config.clientLogoPlate === "light";
     for (const rect of slots) {
+      const x = +(rect.getAttribute("x") ?? 0);
+      const y = +(rect.getAttribute("y") ?? 0);
+      const w = +(rect.getAttribute("width") ?? 0);
+      const h = +(rect.getAttribute("height") ?? 0);
+      const parent = rect.parentNode;
+      let after: Node = rect;
+      if (plate) {
+        const card = doc.createElementNS(SVG_NS, "rect");
+        card.setAttribute("x", String(x));
+        card.setAttribute("y", String(y));
+        card.setAttribute("width", String(w));
+        card.setAttribute("height", String(h));
+        card.setAttribute("rx", "6");
+        card.setAttribute("fill", "#ffffff");
+        parent?.insertBefore(card, after.nextSibling);
+        after = card;
+      }
+      const inset = plate ? Math.min(8, w * 0.08) : 0;
       const img = doc.createElementNS(SVG_NS, "image");
-      for (const a of ["x", "y", "width", "height"]) img.setAttribute(a, rect.getAttribute(a) ?? "0");
+      img.setAttribute("x", String(x + inset));
+      img.setAttribute("y", String(y + inset));
+      img.setAttribute("width", String(w - 2 * inset));
+      img.setAttribute("height", String(h - 2 * inset));
       img.setAttribute("preserveAspectRatio", "xMidYMid meet");
       img.setAttribute("href", config.clientLogoUrl);
       img.setAttributeNS(XLINK, "xlink:href", config.clientLogoUrl);
-      rect.parentNode?.insertBefore(img, rect.nextSibling);
+      parent?.insertBefore(img, after.nextSibling);
       rect.remove();
     }
     labels.forEach((t) => t.remove());

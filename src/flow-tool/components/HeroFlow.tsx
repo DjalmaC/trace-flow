@@ -174,7 +174,14 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
           block (the client's identity); otherwise show an initial + name + role */}
       <ElevatedNode x={196} w={300} green>
         {config.clientLogoUrl ? (
-          <image href={config.clientLogoUrl} x={206} y={406} width={288} height={104} preserveAspectRatio="xMidYMid meet" />
+          config.clientLogoPlate === "light" ? (
+            <>
+              <rect x={206} y={406} width={288} height={104} rx={12} fill="#ffffff" />
+              <image href={config.clientLogoUrl} x={222} y={420} width={256} height={76} preserveAspectRatio="xMidYMid meet" />
+            </>
+          ) : (
+            <image href={config.clientLogoUrl} x={206} y={406} width={288} height={104} preserveAspectRatio="xMidYMid meet" />
+          )
         ) : (
           <>
             <circle cx={346} cy={436} r={19} fill="#0f1814" stroke={C.green} strokeOpacity={0.35} />

@@ -279,6 +279,7 @@ export function MachineryStage({
           isPrimaryClient={node.id === layout.primaryClientId}
           clientName={config.clientName}
           clientLogoUrl={config.clientLogoUrl}
+          clientLogoPlate={config.clientLogoPlate}
         />
       ))}
 

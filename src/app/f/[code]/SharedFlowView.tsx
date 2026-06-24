@@ -88,8 +88,15 @@ export function SharedFlowView({ code }: { code: string }) {
           <header className="no-print absolute left-0 right-0 top-0 z-40 flex items-center justify-between px-6 py-4">
             <div className="flex items-center gap-3">
               {config.clientLogoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={config.clientLogoUrl} alt={config.clientName} className="h-7 max-w-[120px] object-contain" />
+                config.clientLogoPlate === "light" ? (
+                  <span className="flex items-center rounded-md bg-white px-1.5 py-1">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={config.clientLogoUrl} alt={config.clientName} className="h-6 max-w-[110px] object-contain" />
+                  </span>
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={config.clientLogoUrl} alt={config.clientName} className="h-7 max-w-[120px] object-contain" />
+                )
               ) : null}
               <div className="leading-tight">
                 <div className="text-sm font-semibold text-title">{config.clientName}</div>
@@ -117,8 +124,15 @@ export function SharedFlowView({ code }: { code: string }) {
           {state.status === "ready" ? (
             <div key="welcome" className="tf-rise flex flex-col items-center gap-5">
               {config!.clientLogoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={config!.clientLogoUrl} alt={config!.clientName} className="h-16 max-w-[280px] object-contain" />
+                config!.clientLogoPlate === "light" ? (
+                  <span className="flex items-center justify-center rounded-2xl bg-white px-6 py-4">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={config!.clientLogoUrl} alt={config!.clientName} className="h-14 max-w-[260px] object-contain" />
+                  </span>
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={config!.clientLogoUrl} alt={config!.clientName} className="h-16 max-w-[280px] object-contain" />
+                )
               ) : (
                 <div className="text-2xl font-semibold text-title">{config!.clientName}</div>
               )}

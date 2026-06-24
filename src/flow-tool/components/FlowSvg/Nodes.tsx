@@ -28,6 +28,7 @@ export function FlowNodeShape({
   isPrimaryClient = false,
   clientName,
   clientLogoUrl,
+  clientLogoPlate,
 }: {
   node: NodeLayout;
   green?: boolean;
@@ -35,6 +36,7 @@ export function FlowNodeShape({
   isPrimaryClient?: boolean;
   clientName?: string;
   clientLogoUrl?: string;
+  clientLogoPlate?: "light" | "none";
 }) {
   const { x, y, w, h, cx } = node;
   // Elevated material: flat surface fill + hairline border + top rim-light +
@@ -95,10 +97,12 @@ export function FlowNodeShape({
     const slotStroke = green ? C.green : C.clientSlot;
     // an uploaded logo fills nearly the whole node; otherwise dashed slot + name
     if (clientLogoUrl) {
-      const pad = 6;
+      const lightPlate = clientLogoPlate === "light";
+      const pad = lightPlate ? 12 : 6;
       return (
         <g>
           {rect}
+          {lightPlate && <rect x={x + 6} y={y + 6} width={w - 12} height={h - 12} rx={7} fill="#ffffff" />}
           <image href={clientLogoUrl} x={x + pad} y={y + pad} width={w - pad * 2} height={h - pad * 2} preserveAspectRatio="xMidYMid meet" />
         </g>
       );
