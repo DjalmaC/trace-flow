@@ -1,12 +1,10 @@
 "use client";
-import { type MotionValue } from "framer-motion";
-import type { FlowConfig } from "../data/schema";
-import { accentFor, tubeTint } from "./tokens";
-import type { FlowLayout } from "./layout";
-import { useLegOpacity, useLegProgress } from "../animation/sequence";
+import { useEffect, useMemo, useRef } from "react";
+import { useReducedMotion } from "framer-motion";
+import type { Currency, FlowConfig } from "../data/schema";
+import { ASSETS, C, TRACE_LOGO_AR, accentFor, tubeTint } from "./tokens";
+import type { FlowLayout, NodeLayout } from "./layout";
 import {
-  AnimatedToken,
-  ConversionHub,
   CurrencyToken,
   FlowNodeShape,
   MachineryContainer,
@@ -14,97 +12,209 @@ import {
   displayCurrency,
 } from "./FlowSvg";
 
-// Stage 2 — "how Trace makes it happen" (build brief §4). The operational
-// machinery: lane-partitioned nodes, elbow legs, conversion at the border, and
-// value flowing leg-by-leg. "same actor" projectors tie back to the headline.
+// Stage 2 — "how Trace makes it happen". The machinery reads as ONE continuous
+// rail running behind every station box (the boxes cover its ends flush, so it
+// never protrudes and shows no caps between nodes); the conversion hub is the
+// only interruption. Value relays purely by z-order: a single token travels the
+// whole rail, hidden behind the boxes/hub and visible only in the gaps, so it
+// appears absorbed into each node and re-emerging from the next. At a hub the
+// token is absorbed (behind the plinth), the mark spins 360°, and the converted
+// currency emerges. Draw order: rail → token → boxes → hubs → arrows.
 
-function MachineryLeg({
-  layout,
-  config,
-  index,
-  loop,
-  animate,
-}: {
-  layout: FlowLayout;
-  config: FlowConfig;
-  index: number;
-  loop: MotionValue<number>;
-  animate: boolean;
-}) {
-  const leg = layout.legs[index];
-  const carries = displayCurrency(leg.carries, config);
-  const convertsTo = leg.convertsTo ? displayCurrency(leg.convertsTo, config) : undefined;
-  const reverse = layout.reverse;
+const EASE = "cubic-bezier(.4,0,.2,1)";
+const HUB_R = 22;
+function easeInOut(t: number) {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
 
-  const progress = useLegProgress(loop, index, layout.legs.length);
-  const opacity = useLegOpacity(loop, index, layout.legs.length);
+type Phase = {
+  kind: "go" | "conv" | "pause";
+  x0: number;
+  x1: number;
+  cur: Currency;
+  preCur?: Currency;
+  hub?: number;
+  dur: number;
+  s: number;
+};
 
-  // tube/conduit: flat channel tinted by direction, running behind the nodes
-  const ty = leg.y1;
-  const tx0 = Math.min(leg.x1, leg.x2);
-  const tw = Math.abs(leg.x2 - leg.x1);
-  const accent = accentFor(config.direction);
+/** Build the relay timeline from the legs, oriented for the configured direction. */
+function buildTimeline(layout: FlowLayout, config: FlowConfig, byId: Map<string, NodeLayout>) {
+  const reverse = config.direction === "disbursement";
+  const seq = reverse ? layout.legs.slice().reverse() : layout.legs;
+  const D = (c: Currency) => displayCurrency(c, config);
+  const phases: Phase[] = [];
+  let x: number | null = null;
+  const dur = (d: number) => Math.max(1000, d * 6.5);
 
-  return (
-    <g>
-      <rect x={tx0} y={ty - 15} width={tw} height={30} rx={11} fill={tubeTint(config.direction)} stroke={accent} strokeOpacity={0.42} />
-      {/* directional indicator: the actual Trace mark-half at the start of this
-          rail segment (one per tube), pointing in the flow direction */}
-      <TraceArrow cx={tx0 + 28} cy={ty} size={22} direction={config.direction} />
-      {/* the Trace-mark conversion hub sits at every crossing/conversion */}
-      {convertsTo && (
-        <ConversionHub cx={leg.mid.x} cy={leg.mid.y} progress={animate ? progress : undefined} />
-      )}
-      {/* faint static token anchors a plain leg for legibility */}
-      {!convertsTo && !animate && (
-        <g transform={`translate(${leg.mid.x},${leg.mid.y})`}>
-          <CurrencyToken currency={carries} coin={config.stablecoin} />
-        </g>
-      )}
-      {/* the traveling value */}
-      {animate && (
-        <AnimatedToken
-          d={leg.d}
-          progress={progress}
-          opacity={opacity}
-          reverse={reverse}
-          carries={carries}
-          convertsTo={convertsTo}
-          coin={config.stablecoin}
-        />
-      )}
-    </g>
-  );
+  for (const L of seq) {
+    const n0 = byId.get(reverse ? L.to : L.from)!;
+    const n1 = byId.get(reverse ? L.from : L.to)!;
+    if (x === null) x = n0.cx;
+    if (L.convertsTo) {
+      const hubX = L.mid.x;
+      const pre = D(reverse ? L.convertsTo : L.carries);
+      const post = D(reverse ? L.carries : L.convertsTo);
+      phases.push({ kind: "go", x0: x, x1: hubX, cur: pre, dur: dur(Math.abs(hubX - x)), s: 0 });
+      phases.push({ kind: "conv", x0: hubX, x1: hubX, cur: post, preCur: pre, hub: L.index, dur: 1350, s: 0 });
+      phases.push({ kind: "go", x0: hubX, x1: n1.cx, cur: post, dur: dur(Math.abs(n1.cx - hubX)), s: 0 });
+      x = n1.cx;
+    } else {
+      const cur = D(L.carries);
+      phases.push({ kind: "go", x0: x, x1: n1.cx, cur, dur: dur(Math.abs(n1.cx - x)), s: 0 });
+      x = n1.cx;
+      phases.push({ kind: "pause", x0: x, x1: x, cur, dur: 420, s: 0 });
+    }
+  }
+  if (phases.length) phases[phases.length - 1].dur = 900;
+  let t = 0;
+  for (const ph of phases) {
+    ph.s = t;
+    t += ph.dur;
+  }
+  return { phases, total: t, startX: phases[0]?.x0 ?? 0 };
 }
 
 export function MachineryStage({
   layout,
   config,
-  loop,
   animate,
   showHeading = true,
 }: {
   layout: FlowLayout;
   config: FlowConfig;
-  loop: MotionValue<number>;
   animate: boolean;
   showHeading?: boolean;
 }) {
+  const reduced = useReducedMotion();
+  const run = animate && !reduced;
+  const nodes = layout.nodes;
+  const railY = nodes[0]?.cy ?? 412;
+  const accent = accentFor(config.direction);
+
+  const byId = useMemo(() => new Map(nodes.map((n) => [n.id, n] as const)), [nodes]);
+  const hubs = useMemo(
+    () => layout.legs.filter((l) => l.convertsTo).map((l) => ({ x: l.mid.x, key: l.index })),
+    [layout.legs],
+  );
+  const currencies = useMemo(() => {
+    const s = new Set<Currency>();
+    layout.legs.forEach((l) => {
+      s.add(displayCurrency(l.carries, config));
+      if (l.convertsTo) s.add(displayCurrency(l.convertsTo, config));
+    });
+    return [...s];
+  }, [layout.legs, config]);
+  const timeline = useMemo(() => buildTimeline(layout, config, byId), [layout, config, byId]);
+
+  const tokenRef = useRef<SVGGElement>(null);
+  const curRefs = useRef<Record<string, SVGGElement | null>>({});
+  const hubMarkRefs = useRef<Record<number, SVGGElement | null>>({});
+  const pulseRefs = useRef<Record<number, SVGCircleElement | null>>({});
+
+  useEffect(() => {
+    if (!run || !timeline.phases.length) return;
+    const reverse = config.direction === "disbursement";
+    const total = timeline.total;
+    let raf = 0;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const e = (now - start) % total;
+      let p = timeline.phases[0];
+      let lp = 0;
+      for (const ph of timeline.phases) {
+        if (e >= ph.s && e < ph.s + ph.dur) {
+          p = ph;
+          lp = (e - ph.s) / ph.dur;
+          break;
+        }
+      }
+      let x = p.x0;
+      let cur: Currency = p.cur;
+      let ang = 0;
+      let sc = 1;
+      let pulse = 0;
+      let activeHub = -1;
+      if (p.kind === "go") {
+        x = p.x0 + (p.x1 - p.x0) * easeInOut(lp);
+      } else if (p.kind === "pause") {
+        x = p.x0;
+      } else {
+        x = p.x0;
+        const a = Math.sin(lp * Math.PI);
+        ang = (reverse ? -1 : 1) * 360 * easeInOut(lp);
+        sc = 1 - 0.45 * a;
+        pulse = a;
+        activeHub = p.hub!;
+        cur = lp >= 0.5 ? p.cur : p.preCur ?? p.cur;
+      }
+      if (tokenRef.current) tokenRef.current.setAttribute("transform", `translate(${x.toFixed(1)},${railY})`);
+      currencies.forEach((c) => {
+        const el = curRefs.current[c];
+        if (el) el.style.opacity = c === cur ? "1" : "0";
+      });
+      hubs.forEach((hb) => {
+        const m = hubMarkRefs.current[hb.key];
+        const pc = pulseRefs.current[hb.key];
+        const on = hb.key === activeHub;
+        if (m) m.setAttribute("transform", on ? `rotate(${ang.toFixed(1)}) scale(${sc.toFixed(3)})` : "rotate(0) scale(1)");
+        if (pc) {
+          pc.setAttribute("r", (HUB_R + 12 * (on ? pulse : 0)).toFixed(1));
+          pc.style.opacity = on ? (0.4 * pulse).toFixed(2) : "0";
+        }
+      });
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [run, timeline, railY, config.direction, currencies, hubs]);
+
+  const x0 = nodes[0]?.cx ?? 0;
+  const xN = nodes[nodes.length - 1]?.cx ?? 0;
+  const railTransition = reduced ? undefined : `fill .55s ${EASE}, stroke .55s ${EASE}`;
+  const markW = HUB_R;
+  const markH = markW / TRACE_LOGO_AR;
+
   return (
     <g>
       <MachineryContainer layout={layout} showHeading={showHeading} />
 
-      {/* No "same actor" projector lines: those dashed connectors are a PDF-only
-          device. The scroll reveal already ties the headline to the machinery,
-          so the web build omits them (sameActor stays in the data). */}
+      {/* ONE continuous rail behind all boxes — interrupted only by the hub.
+          Ends are tucked under the first/last box centers so it never protrudes. */}
+      <rect
+        x={x0}
+        y={railY - 15}
+        width={Math.max(0, xN - x0)}
+        height={30}
+        rx={15}
+        fill={tubeTint(config.direction)}
+        stroke={accent}
+        strokeOpacity={0.42}
+        style={{ transition: railTransition }}
+      />
 
-      {/* legs (drawn under nodes) */}
-      {layout.legs.map((_, i) => (
-        <MachineryLeg key={i} layout={layout} config={config} index={i} loop={loop} animate={animate} />
-      ))}
+      {/* the relay token (behind the boxes → visible only in the gaps) */}
+      {run ? (
+        <g ref={tokenRef} transform={`translate(${timeline.startX},${railY})`}>
+          {currencies.map((c) => (
+            <g key={c} ref={(el) => { curRefs.current[c] = el; }} style={{ opacity: 0 }}>
+              <CurrencyToken currency={c} coin={config.stablecoin} />
+            </g>
+          ))}
+        </g>
+      ) : (
+        // reduced motion: static value resting in each plain gap
+        layout.legs
+          .filter((l) => !l.convertsTo)
+          .map((l) => (
+            <g key={l.index} transform={`translate(${l.mid.x},${railY})`}>
+              <CurrencyToken currency={displayCurrency(l.carries, config)} coin={config.stablecoin} />
+            </g>
+          ))
+      )}
 
-      {/* nodes */}
-      {layout.nodes.map((node) => (
+      {/* station boxes — cover the rail's ends + the resting token */}
+      {nodes.map((node) => (
         <FlowNodeShape
           key={node.id}
           node={node}
@@ -112,6 +222,24 @@ export function MachineryStage({
           clientName={config.clientName}
           clientLogoUrl={config.clientLogoUrl}
         />
+      ))}
+
+      {/* conversion hubs — sit ON the line, drawn over the boxes */}
+      {hubs.map((hb) => (
+        <g key={hb.key}>
+          <circle cx={hb.x} cy={railY} r={HUB_R} fill="#0b110d" stroke={C.green} strokeOpacity={0.3} />
+          <circle ref={(el) => { pulseRefs.current[hb.key] = el; }} cx={hb.x} cy={railY} r={HUB_R} fill="none" stroke={C.green} strokeWidth={2} opacity={0} />
+          <g transform={`translate(${hb.x},${railY})`}>
+            <g ref={(el) => { hubMarkRefs.current[hb.key] = el; }}>
+              <image href={ASSETS.traceLogo} x={-markW / 2} y={-markH / 2} width={markW} height={markH} />
+            </g>
+          </g>
+        </g>
+      ))}
+
+      {/* directional indicators — one per rail segment, in the flow direction */}
+      {layout.legs.map((l) => (
+        <TraceArrow key={l.index} cx={Math.min(l.x1, l.x2) + 22} cy={railY} size={22} direction={config.direction} />
       ))}
     </g>
   );

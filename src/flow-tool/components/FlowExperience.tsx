@@ -10,7 +10,6 @@ import {
 import type { FlowConfig } from "../data/schema";
 import { getFlow } from "../data";
 import { computeLayout, CONT_Y, CONT_H } from "./layout";
-import { useLoop } from "../animation/sequence";
 import { Defs } from "./FlowSvg";
 import { HeroFlow } from "./HeroFlow";
 import { MachineryStage } from "./MachineryStage";
@@ -64,8 +63,6 @@ export function FlowExperience({
   const veilOpacity = useTransform(p, [0, 0.4, 0.85], [0, 0.65, 0.12]);
   const hintOpacity = useTransform(p, [0, 0.08], [1, 0]);
 
-  const machineryLoop = useLoop(flow ? flow.legs.length * 1250 + 900 : 4000);
-
   if (!flow) {
     return <div className="p-8 text-node-text">Unknown flow: {config.flowId}</div>;
   }
@@ -85,7 +82,7 @@ export function FlowExperience({
   const MachinerySvg = (
     <svg viewBox={machineryVB} preserveAspectRatio="xMidYMid meet" style={{ ...svgStyle, maxHeight: "64vh" }} aria-label={`How Trace makes it happen — ${flow.title}`}>
       <Defs />
-      <MachineryStage layout={layout} config={config} loop={machineryLoop} animate={animate} showHeading={false} />
+      <MachineryStage layout={layout} config={config} animate={animate} showHeading={false} />
     </svg>
   );
 

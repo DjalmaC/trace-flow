@@ -43,7 +43,7 @@ function TokenContent({ currency, coin, accent }: { currency: Currency; coin: Fl
   const w = Math.max(54, currency.length * 8 + 22);
   return (
     <>
-      <rect x={-w / 2} y={-12} width={w} height={24} rx={12} fill={C.tokenFill} stroke={accent} strokeOpacity={0.8} />
+      <rect x={-w / 2} y={-12} width={w} height={24} rx={12} fill={C.tokenFill} stroke={accent} strokeOpacity={0.8} style={{ transition: "stroke .55s cubic-bezier(.4,0,.2,1)" }} />
       <text textAnchor="middle" y={4} fontSize={11} fontWeight={500} fill="#dfeee7">
         {currency}
       </text>
@@ -149,6 +149,10 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
   const hubW = 34;
   const hubH = hubW / TRACE_LOGO_AR;
   const accent = accentFor(dir);
+  // tube tint + token accent tween green↔cyan in sync with the arrow (Option A)
+  const tubeTransition = reduced
+    ? undefined
+    : { transition: "fill .55s cubic-bezier(.4,0,.2,1), stroke .55s cubic-bezier(.4,0,.2,1)" };
 
   return (
     <svg viewBox={VIEWBOX} preserveAspectRatio="xMidYMid meet" style={{ display: "block", width: "100%", maxHeight: "44vh", fontFamily: "Inter, system-ui, sans-serif" }} role="img" aria-label={`What ${config.clientName} wants`}>
@@ -158,8 +162,8 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
         <rect x={488} y={441} width={172} height={32} rx={11} />
         <rect x={700} y={441} width={172} height={32} rx={11} />
       </clipPath>
-      <rect x={488} y={441} width={172} height={32} rx={11} fill={tubeTint(dir)} stroke={accent} strokeOpacity={0.42} />
-      <rect x={700} y={441} width={172} height={32} rx={11} fill={tubeTint(dir)} stroke={accent} strokeOpacity={0.42} />
+      <rect x={488} y={441} width={172} height={32} rx={11} fill={tubeTint(dir)} stroke={accent} strokeOpacity={0.42} style={tubeTransition} />
+      <rect x={700} y={441} width={172} height={32} rx={11} fill={tubeTint(dir)} stroke={accent} strokeOpacity={0.42} style={tubeTransition} />
 
       {/* directional indicators — the actual Trace mark-half, one at the start of
           each rail segment (one per tube), pointing in the flow direction */}

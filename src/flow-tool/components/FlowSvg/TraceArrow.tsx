@@ -1,30 +1,24 @@
+"use client";
+import { useReducedMotion } from "framer-motion";
 import { C } from "../tokens";
 
-// The directional arrow IS half of the Trace mark, drawn as two rounded bars
-// (crisp vector, recolored by direction — never a generic chevron):
-//   pay-in  (collection)  = green, right-facing  (the logo's green right group)
-//   pay-out (disbursement) = cyan,  left-facing  (the logo's cyan left group)
-// One sits at the start of each rail segment, pointing in the flow direction.
+// The directional arrow IS half of the Trace mark (the green right-group),
+// drawn once as two rounded bars. Direction is conveyed by ROTATION, not by a
+// different shape: pay-in rests at 0° (green, right-facing); pay-out rotates
+// 180° (cyan, left-facing). On toggle the rotation + fill tween together over
+// ~0.55s (Option A) — never a hard cut. Reduced motion snaps to the end state.
 type Dir = "collection" | "disbursement";
 
-const SHAPES: Record<Dir, { vw: number; vh: number; rects: React.SVGProps<SVGRectElement>[] }> = {
-  collection: {
-    vw: 303,
-    vh: 417,
-    rects: [
-      { x: 10.3, y: 86.2, width: 282.9, height: 130.2, rx: 26.0, transform: "rotate(45.03 151.7 151.3)" },
-      { x: 29.4, y: 261.6, width: 130.2, height: 122.4, rx: 24.5, transform: "rotate(134.95 94.5 322.8)" },
-    ],
-  },
-  disbursement: {
-    vw: 297,
-    vh: 405,
-    rects: [
-      { x: 6.6, y: 195.6, width: 283.7, height: 121.9, rx: 24.4, transform: "rotate(45.05 148.4 256.6)" },
-      { x: 141.9, y: 31.3, width: 121.7, height: 114.0, rx: 22.8, transform: "rotate(45.06 202.7 88.2)" },
-    ],
-  },
+const SHAPE = {
+  vw: 303,
+  vh: 417,
+  rects: [
+    { x: 10.3, y: 86.2, width: 282.9, height: 130.2, rx: 26.0, transform: "rotate(45.03 151.7 151.3)" },
+    { x: 29.4, y: 261.6, width: 130.2, height: 122.4, rx: 24.5, transform: "rotate(134.95 94.5 322.8)" },
+  ] as React.SVGProps<SVGRectElement>[],
 };
+
+const EASE = "cubic-bezier(.4,0,.2,1)";
 
 export function TraceArrow({
   cx,
@@ -40,17 +34,28 @@ export function TraceArrow({
   direction: Dir;
   color?: string;
 }) {
-  const { vw, vh, rects } = SHAPES[direction];
+  const reduced = useReducedMotion();
   const fill = color ?? (direction === "collection" ? C.green : C.traceCyan);
+  const deg = direction === "collection" ? 0 : 180;
   const h = size;
-  const w = h * (vw / vh);
-  // nested <svg> lets the mark keep its own viewBox while we position it at the
+  const w = h * (SHAPE.vw / SHAPE.vh);
+  // nested <svg> keeps the mark's own viewBox while we position it at the
   // segment start inside the parent flow <svg>
   return (
-    <svg x={cx - w / 2} y={cy - h / 2} width={w} height={h} viewBox={`0 0 ${vw} ${vh}`} fill={fill} overflow="visible">
-      {rects.map((r, i) => (
-        <rect key={i} {...r} />
-      ))}
+    <svg x={cx - w / 2} y={cy - h / 2} width={w} height={h} viewBox={`0 0 ${SHAPE.vw} ${SHAPE.vh}`} overflow="visible">
+      <g
+        style={{
+          fill,
+          transform: `rotate(${deg}deg)`,
+          transformBox: "fill-box",
+          transformOrigin: "center",
+          transition: reduced ? undefined : `transform .55s ${EASE}, fill .55s ${EASE}`,
+        }}
+      >
+        {SHAPE.rects.map((r, i) => (
+          <rect key={i} {...r} />
+        ))}
+      </g>
     </svg>
   );
 }
