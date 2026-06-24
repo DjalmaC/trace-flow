@@ -17,3 +17,20 @@ body {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* Proposal export: the proposal view renders alone, so printing just needs a
+   white page and exact colors. On-screen chrome uses `print:hidden`. */
+@media print {
+  html,
+  body {
+    background: #fff;
+    color: #000;
+  }
+  @page {
+    margin: 16mm;
+  }
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

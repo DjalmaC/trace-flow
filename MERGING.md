@@ -13,6 +13,7 @@ src/flow-tool/
   data/        schema.ts (THE CONTRACT) · flows/flow-01..10 + flow-09-1 · index.ts (registry)
   intake/      questions.ts · resolver.ts   (intake → dials → flow)
   components/  FlowExperience.tsx · HeadlineStage · MachineryStage · FlowSvg/* · layout.ts · tokens.ts
+  proposal/    ProposalDocument.tsx · buildProposal.ts   (FlowConfig → print-to-PDF proposal)
   animation/   useTokenAlongPath.ts · sequence.ts
   assets/      (served from /public/assets — trace_logo, usdc, usdt)
 ```
@@ -23,6 +24,7 @@ src/flow-tool/
 - `<FlowExperience config={FlowConfig} presentation />` — full-bleed, no scroll.
 - `FLOWS` / `getFlow(id)` — the flow registry.
 - `resolve(answers): Resolution` — intake → `FlowConfig | no-match`.
+- `<ProposalDocument config={FlowConfig} />` — the print-to-PDF client proposal.
 
 The control panel (`src/components/ControlPanel.tsx`) and the future
 Router-driven caller are just **producers of `FlowConfig`** — the engine doesn't
@@ -48,6 +50,10 @@ and can be used to validate any new flow before it's persisted.
 
 ## TODO(v2) seams
 
-- Pricing inputs + **"Generate Proposal"** export (stubbed in the control panel).
+- **"Generate Proposal"** export — *done*: a print-to-PDF proposal document
+  (`src/flow-tool/proposal/`, opened from the control panel). It's structural
+  today; commercials plug in via the optional `FlowConfig.pricing`
+  (`ProposalPricing` in `data/schema.ts`) — supply a pricing template and the
+  document renders the breakdown with no further changes.
 - Corridors beyond Brazil (more flows + dials; the lane model parameterizes by country).
 - Wiring intake to the Router's routing / compliance catalog.
