@@ -7,7 +7,10 @@
 
 // 'USDC/USDT' is the semantic stablecoin token; which coin actually shows is a
 // client choice carried on FlowConfig.stablecoin and resolved at render time.
-export type Currency = "BRL" | "USD/EUR" | "USDC/USDT";
+// "USD/EUR" is the semantic delivered-fiat token used in flow DATA; the
+// client-facing display can resolve it to the combined label or a specific
+// "USD" / "EUR" via FlowConfig.delivered.
+export type Currency = "BRL" | "USD" | "EUR" | "USD/EUR" | "USDC/USDT";
 export type Stablecoin = "USDC" | "USDT" | "both";
 export type Lane = "brazil" | "abroad";
 export type NodeKind = "client" | "trace" | "operational" | "merchant";

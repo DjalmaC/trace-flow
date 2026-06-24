@@ -23,6 +23,8 @@ export default function Page() {
     if (coin === "USDC" || coin === "USDT" || coin === "both") setConfig((c) => ({ ...c, stablecoin: coin }));
     const d = params.get("dir");
     if (d === "collection" || d === "disbursement") setConfig((c) => ({ ...c, direction: d }));
+    const dv = params.get("delivered");
+    if (dv === "USD/EUR" || dv === "USD" || dv === "EUR") setConfig((c) => ({ ...c, delivered: dv }));
     // QA hook: ?y=0.4 jumps to that fraction of the dive scroll (for previews).
     const y = params.get("y");
     if (y) {

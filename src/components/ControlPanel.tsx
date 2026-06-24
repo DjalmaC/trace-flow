@@ -9,7 +9,7 @@ import { createShareLink, isShareConfigured } from "@/flow-tool/lib/share";
 type Mode = "intake" | "manual";
 
 const COLLECTED: Currency[] = ["BRL"];
-const DELIVERED: Currency[] = ["USD/EUR"];
+const DELIVERED: Currency[] = ["USD/EUR", "USD", "EUR"];
 const STABLECOINS: { value: Stablecoin; label: string }[] = [
   { value: "both", label: "Both" },
   { value: "USDC", label: "USDC" },
