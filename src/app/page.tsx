@@ -21,6 +21,8 @@ export default function Page() {
     if (stage === "surface" || stage === "depth") setOnly(stage);
     const coin = params.get("coin");
     if (coin === "USDC" || coin === "USDT" || coin === "both") setConfig((c) => ({ ...c, stablecoin: coin }));
+    const d = params.get("dir");
+    if (d === "collection" || d === "disbursement") setConfig((c) => ({ ...c, direction: d }));
     // QA hook: ?y=0.4 jumps to that fraction of the dive scroll (for previews).
     const y = params.get("y");
     if (y) {

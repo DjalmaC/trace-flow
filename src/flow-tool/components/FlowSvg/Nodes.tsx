@@ -1,6 +1,7 @@
 import type { NodeLayout } from "../layout";
 import { ASSETS, C } from "../tokens";
 import { TraceMark } from "./Tokens";
+import { TraceMonogram } from "./TraceArrow";
 
 // Node renderers, ported from flowrender_dark.py:
 //   operational / merchant → gray rounded rect (gnode)
@@ -49,11 +50,13 @@ export function FlowNodeShape({
   );
 
   if (node.kind === "trace") {
+    // Operational Trace node: small monochrome monogram above the label. The
+    // full colored mark is reserved for the conversion hub (no logo repetition).
     const twoLine = node.lines.length > 1;
     return (
       <g>
         {rect}
-        <TraceMark cx={cx} cy={y + 16} w={32} />
+        <TraceMonogram cx={cx} cy={y + 16} w={24} href={ASSETS.traceLogo} />
         {twoLine && (
           <text x={cx} y={y + h - 22} fontSize={10.5} fill={txt} textAnchor="middle">
             {node.lines[0]}

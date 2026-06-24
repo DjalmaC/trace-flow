@@ -2,8 +2,9 @@
 import { useEffect, useRef } from "react";
 import { useReducedMotion } from "framer-motion";
 import type { Currency, Flow, FlowConfig } from "../data/schema";
-import { ASSETS, C, TRACE_LOGO_AR } from "./tokens";
+import { ASSETS, C, TRACE_LOGO_AR, accentFor, tubeTint } from "./tokens";
 import { displayCurrency } from "./FlowSvg/Tokens";
+import { TraceArrow } from "./FlowSvg/TraceArrow";
 
 // Stage 1 hero — the elevated "desired transaction", ported from
 // trace_hero_mock.html. A horizontal rail: client → tube → the Trace-mark
@@ -28,7 +29,7 @@ function sentenceCase(label: string): string {
   return words.join(" ");
 }
 
-function TokenContent({ currency, coin }: { currency: Currency; coin: FlowConfig["stablecoin"] }) {
+function TokenContent({ currency, coin, accent }: { currency: Currency; coin: FlowConfig["stablecoin"]; accent: string }) {
   if (currency === "USDC/USDT") {
     if (coin === "USDC") return <image href={ASSETS.usdc} x={-12} y={-12} width={24} height={24} />;
     if (coin === "USDT") return <image href={ASSETS.usdt} x={-12} y={-12} width={24} height={24} />;
@@ -42,8 +43,8 @@ function TokenContent({ currency, coin }: { currency: Currency; coin: FlowConfig
   const w = Math.max(54, currency.length * 8 + 22);
   return (
     <>
-      <rect x={-w / 2} y={-12} width={w} height={24} rx={12} fill={C.tokenFill} stroke={C.green} strokeOpacity={0.75} />
-      <text textAnchor="middle" y={4} fontSize={11} fontWeight={500} fill="#bfe8d4">
+      <rect x={-w / 2} y={-12} width={w} height={24} rx={12} fill={C.tokenFill} stroke={accent} strokeOpacity={0.8} />
+      <text textAnchor="middle" y={4} fontSize={11} fontWeight={500} fill="#dfeee7">
         {currency}
       </text>
     </>
@@ -96,8 +97,8 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
     // disbursement: B (delivered) merchant→hub, convert, A (carries) hub→client
     const legs =
       dir === "collection"
-        ? [{ x0: 486, x1: 652, which: a }, { x0: 708, x1: 874, which: b }]
-        : [{ x0: 874, x1: 708, which: b }, { x0: 652, x1: 486, which: a }];
+        ? [{ x0: 490, x1: 658, which: a }, { x0: 702, x1: 870, which: b }]
+        : [{ x0: 870, x1: 702, which: b }, { x0: 658, x1: 490, which: a }];
 
     const LEG = 1650, GAP = 700, CYC = 2 * (LEG + GAP);
 
@@ -147,24 +148,23 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
 
   const hubW = 34;
   const hubH = hubW / TRACE_LOGO_AR;
+  const accent = accentFor(dir);
+  const flip = dir === "disbursement";
 
   return (
     <svg viewBox={VIEWBOX} preserveAspectRatio="xMidYMid meet" style={{ display: "block", width: "100%", maxHeight: "44vh", fontFamily: "Inter, system-ui, sans-serif" }} role="img" aria-label={`What ${config.clientName} wants`}>
-      {/* tubes / conduits — flat recessed channels with hairline rim + top rim-light */}
+      {/* tubes / conduits — flat channels tinted by direction, running BEHIND the
+          station boxes (boxes are drawn after, covering the tube ends flush) */}
       <clipPath id="tf-tube">
-        <rect x={488} y={440} width={158} height={34} rx={17} />
-        <rect x={714} y={440} width={158} height={34} rx={17} />
+        <rect x={488} y={441} width={172} height={32} rx={11} />
+        <rect x={700} y={441} width={172} height={32} rx={11} />
       </clipPath>
-      <rect x={488} y={440} width={158} height={34} rx={17} fill={C.surfaceTube} stroke="#ffffff" strokeOpacity={0.07} />
-      <line x1={506} y1={441.4} x2={630} y2={441.4} stroke="#ffffff" strokeOpacity={0.05} />
-      <rect x={714} y={440} width={158} height={34} rx={17} fill={C.surfaceTube} stroke="#ffffff" strokeOpacity={0.07} />
-      <line x1={730} y1={441.4} x2={856} y2={441.4} stroke="#ffffff" strokeOpacity={0.05} />
-      {/* direction arrowhead on the tube */}
-      {dir === "collection" ? (
-        <path d="M850 451 L861 457 L850 463" fill="none" stroke={C.green} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" opacity={0.9} />
-      ) : (
-        <path d="M510 451 L499 457 L510 463" fill="none" stroke={C.green} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" opacity={0.9} />
-      )}
+      <rect x={488} y={441} width={172} height={32} rx={11} fill={tubeTint(dir)} stroke={accent} strokeOpacity={0.42} />
+      <rect x={700} y={441} width={172} height={32} rx={11} fill={tubeTint(dir)} stroke={accent} strokeOpacity={0.42} />
+
+      {/* directional indicators — the Trace arrow motif at the flow's start & end */}
+      <TraceArrow cx={530} cy={Y} size={20} color={accent} flip={flip} />
+      <TraceArrow cx={830} cy={Y} size={20} color={accent} flip={flip} />
 
       {/* client station */}
       <ElevatedNode x={196} w={300} green>
@@ -207,11 +207,11 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
 
       {/* the two relay tokens, clipped to the tubes */}
       <g clipPath="url(#tf-tube)">
-        <g ref={aRef} opacity={0} transform={`translate(486,${Y})`}>
-          <TokenContent currency={carries} coin={config.stablecoin} />
+        <g ref={aRef} opacity={0} transform={`translate(490,${Y})`}>
+          <TokenContent currency={carries} coin={config.stablecoin} accent={accent} />
         </g>
-        <g ref={bRef} opacity={0} transform={`translate(708,${Y})`}>
-          <TokenContent currency={convertsTo} coin={config.stablecoin} />
+        <g ref={bRef} opacity={0} transform={`translate(702,${Y})`}>
+          <TokenContent currency={convertsTo} coin={config.stablecoin} accent={accent} />
         </g>
       </g>
     </svg>

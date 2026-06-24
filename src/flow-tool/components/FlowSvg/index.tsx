@@ -6,6 +6,7 @@ export { FlowNodeShape, CornerLockup } from "./Nodes";
 export { CurrencyToken, SwapCapsule, TraceMark, displayCurrency } from "./Tokens";
 export { AnimatedToken } from "./AnimatedToken";
 export { ConversionHub } from "./ConversionHub";
+export { TraceArrow, TraceMonogram } from "./TraceArrow";
 
 /** Deck background: base + radial green glow + bright top rule. */
 export function Background({ width, height }: { width: number; height: number }) {

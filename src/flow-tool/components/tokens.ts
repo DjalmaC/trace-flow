@@ -78,3 +78,13 @@ export const ASSETS = {
 } as const;
 
 export const TRACE_LOGO_AR = 1.576; // width / height of the extracted mark
+
+// Direction drives the brand color (echoing the logo's two arrows): pay-in is
+// Trace green + right-facing; pay-out is Trace cyan + left-facing.
+export function accentFor(direction: "collection" | "disbursement"): string {
+  return direction === "collection" ? C.green : C.traceCyan;
+}
+/** Faint direction-tinted tube fill. */
+export function tubeTint(direction: "collection" | "disbursement"): string {
+  return direction === "collection" ? "rgba(70,211,154,0.06)" : "rgba(43,232,214,0.06)";
+}
