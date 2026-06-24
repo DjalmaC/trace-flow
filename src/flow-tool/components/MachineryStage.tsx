@@ -148,7 +148,18 @@ export function MachineryStage({
         activeHub = p.hub!;
         cur = lp >= 0.5 ? p.cur : p.preCur ?? p.cur;
       }
-      if (tokenRef.current) tokenRef.current.setAttribute("transform", `translate(${x.toFixed(1)},${railY})`);
+      // shrink into / pop out of the hub: the token scales to ~0 at a hub
+      // center (absorbed, so the spin shows) and grows back as it clears, so a
+      // wide pill (e.g. USD/EUR) pops out in front rather than sliding out
+      // half-hidden behind the mark.
+      let dmin = Infinity;
+      for (const hb of hubs) {
+        const d = Math.abs(x - hb.x);
+        if (d < dmin) dmin = d;
+      }
+      const t = hubs.length ? Math.max(0, Math.min(1, dmin / 58)) : 1;
+      const ts = t * t * (3 - 2 * t); // smoothstep pop
+      if (tokenRef.current) tokenRef.current.setAttribute("transform", `translate(${x.toFixed(1)},${railY}) scale(${ts.toFixed(3)})`);
       currencies.forEach((c) => {
         const el = curRefs.current[c];
         if (el) el.style.opacity = c === cur ? "1" : "0";
