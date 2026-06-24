@@ -6,10 +6,10 @@ import type { FlowLayout } from "./layout";
 import { useLegOpacity, useLegProgress } from "../animation/sequence";
 import {
   AnimatedToken,
+  ConversionHub,
   CurrencyToken,
   FlowNodeShape,
   MachineryContainer,
-  SwapCapsule,
   displayCurrency,
 } from "./FlowSvg";
 
@@ -52,11 +52,9 @@ function MachineryLeg({
       <rect x={tx0} y={ty - 15} width={tw} height={30} rx={15} fill={C.surfaceTube} stroke="#ffffff" strokeOpacity={0.07} />
       <line x1={tx0 + 14} y1={ty - 13.6} x2={tx0 + tw - 14} y2={ty - 13.6} stroke="#ffffff" strokeOpacity={0.05} strokeWidth={1} />
       <path d={arrow} fill="none" stroke={C.green} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" opacity={0.85} />
-      {/* conversion capsule sits statically at the crossing */}
+      {/* the Trace-mark conversion hub sits at every crossing/conversion */}
       {convertsTo && (
-        <g transform={`translate(${leg.mid.x},${leg.mid.y})`}>
-          <SwapCapsule left={reverse ? convertsTo : carries} right={reverse ? carries : convertsTo} coin={config.stablecoin} />
-        </g>
+        <ConversionHub cx={leg.mid.x} cy={leg.mid.y} progress={animate ? progress : undefined} />
       )}
       {/* faint static token anchors a plain leg for legibility */}
       {!convertsTo && !animate && (
