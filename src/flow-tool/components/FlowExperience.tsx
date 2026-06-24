@@ -231,15 +231,13 @@ export function FlowExperience({
           <div className="w-full max-w-[1200px]">{SurfaceSvg}</div>
         </motion.div>
 
-        {!presentation && (
-          <motion.div
-            style={{ opacity: hintOpacity }}
-            className="pointer-events-none absolute bottom-10 left-1/2 z-30 -translate-x-1/2 text-center text-sm text-muted"
-          >
-            <div className="mb-1">scroll to dive into how Trace makes it happen</div>
-            <div className="animate-bounce text-green-accent">↓</div>
-          </motion.div>
-        )}
+        <motion.div
+          style={{ opacity: hintOpacity }}
+          className="pointer-events-none absolute bottom-9 left-1/2 z-30 -translate-x-1/2 text-center"
+        >
+          <div className="mb-1.5 text-sm font-medium tracking-wide text-subtitle">Explore the full flow below</div>
+          <div className="animate-bounce text-2xl leading-none text-green-accent">↓</div>
+        </motion.div>
 
         <Lockup />
       </div>

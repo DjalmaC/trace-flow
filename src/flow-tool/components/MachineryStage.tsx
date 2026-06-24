@@ -25,9 +25,9 @@ const EASE = "cubic-bezier(.4,0,.2,1)";
 const HUB_R = 22;
 
 // ── motion-design constants ──────────────────────────────────────────────────
-const MS_PER_PX = 10; // CONSTANT travel speed across every leg (no clamp → even pace)
-const MIN_GO = 460; // floor so a short half-leg into/out of a hub isn't a blink
-const PAUSE_MS = 200; // a brief breath as value rests behind each station
+const MS_PER_PX = 14; // CONSTANT travel speed across every leg (higher = slower, more deliberate)
+const MIN_GO = 560; // floor so a short half-leg into/out of a hub isn't a blink
+const PAUSE_MS = 260; // a brief breath as value rests behind each station
 const SPIN_MS = 1180; // the FX-engine conversion moment
 const END_REST_MS = 700;
 const R_HIDE = 40; // token fully hidden within this of a hub centre (absorbed)
