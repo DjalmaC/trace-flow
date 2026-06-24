@@ -14,19 +14,19 @@ export const flow02: Flow = {
     "The eFX Service Provider settles BRL into a Non Resident Account held by Trace's " +
     "banking partner. Trace, via Pix Inc / Finance LTDA, converts BRL to USDT/C and " +
     "delivers the virtual asset to the NRA Holder's wallet abroad.",
-  headline: { partyA: "efxsp", partyB: "nrawallet", carries: "BRL", convertsTo: "USDC/T" },
+  headline: { partyA: "efxsp", partyB: "nrawallet", carries: "BRL", convertsTo: "USDC/USDT" },
   nodes: [
     { id: "enduser", label: "Brazilian end user", kind: "operational", lane: "brazil" },
     { id: "efxsp", label: "eFX Service Provider", kind: "client", lane: "brazil" },
-    { id: "nra", label: "Non Resident Account", kind: "operational", lane: "brazil" },
+    { id: "nra", label: "Non Resident Account", kind: "client", lane: "brazil" },
     { id: "pix", label: "Pix Inc / Finance LTDA", kind: "trace", lane: "abroad" },
-    { id: "nrawallet", label: "NRA Holder Wallet Abroad", kind: "merchant", lane: "abroad" },
+    { id: "nrawallet", label: "NRA Holder Wallet Abroad", kind: "client", lane: "abroad" },
   ],
   legs: [
     { from: "enduser", to: "efxsp", carries: "BRL" },
     { from: "efxsp", to: "nra", carries: "BRL" },
     { from: "nra", to: "pix", carries: "BRL" },
-    { from: "pix", to: "nrawallet", carries: "BRL", convertsTo: "USDC/T", crosses: true },
+    { from: "pix", to: "nrawallet", carries: "BRL", convertsTo: "USDC/USDT", crosses: true },
   ],
   sameActor: [
     { headlineNode: "efxsp", machineryNode: "efxsp" },

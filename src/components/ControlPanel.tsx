@@ -1,14 +1,25 @@
 "use client";
 import { useMemo, useState } from "react";
-import type { Currency, Direction, FlowConfig } from "@/flow-tool/data/schema";
-import { FLOWS } from "@/flow-tool/data";
+import type { Currency, Direction, FlowConfig, Stablecoin } from "@/flow-tool/data/schema";
+import { FLOWS, getFlow } from "@/flow-tool/data";
 import { QUESTIONS, type IntakeAnswers } from "@/flow-tool/intake/questions";
 import { resolve, NO_MATCH_MESSAGE } from "@/flow-tool/intake/resolver";
 
 type Mode = "intake" | "manual";
 
 const COLLECTED: Currency[] = ["BRL"];
-const DELIVERED: Currency[] = ["USD/EUR", "USDC", "USDT"];
+const DELIVERED: Currency[] = ["USD/EUR"];
+const STABLECOINS: { value: Stablecoin; label: string }[] = [
+  { value: "both", label: "Both" },
+  { value: "USDC", label: "USDC" },
+  { value: "USDT", label: "USDT" },
+];
+
+/** Does the selected flow move a stablecoin (so the coin choice is relevant)? */
+function usesStablecoin(flowId: string): boolean {
+  const flow = getFlow(flowId);
+  return !!flow?.legs.some((l) => l.carries === "USDC/USDT" || l.convertsTo === "USDC/USDT");
+}
 
 export function ControlPanel({
   config,
@@ -120,6 +131,24 @@ export function ControlPanel({
                 ))}
               </div>
             </Field>
+
+            {usesStablecoin(config.flowId) && (
+              <Field label="Stablecoin">
+                <div className="grid grid-cols-3 gap-1 rounded-lg bg-node-fill p-1">
+                  {STABLECOINS.map((s) => (
+                    <button
+                      key={s.value}
+                      onClick={() => patch({ stablecoin: s.value })}
+                      className={`rounded-md px-2 py-1.5 text-xs font-medium transition ${
+                        config.stablecoin === s.value ? "bg-green-accent text-[#06120c]" : "text-subtitle hover:text-title"
+                      }`}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </Field>
+            )}
           </div>
 
           <button

@@ -90,6 +90,8 @@ export interface FlowLayout {
   brazilLabelX: number;
   abroadLabelX: number;
   reverse: boolean;
+  /** Machinery node that carries the uploaded client logo (the primary client). */
+  primaryClientId?: string;
 }
 
 /** Naive label wrap: split into <=2 lines near the middle on a word boundary. */
@@ -212,11 +214,19 @@ export function computeLayout(flow: Flow, config: FlowConfig): FlowLayout {
   const ax = a.x + a.w;
   const bx = b.x;
   const arcMidX = (ax + bx) / 2;
+
+  // The uploaded logo lands on exactly one node — the primary client, which is
+  // the client-kind headline endpoint (prefer A). Other client-kind nodes (a
+  // second customer) render their own label until two-logo input lands in v2.
+  const aIsPrimary = aMach.kind === "client" || bMach.kind !== "client";
+  const primaryClientMach =
+    aMach.kind === "client" ? aMach : bMach.kind === "client" ? bMach : undefined;
+
   const headline: HeadlineLayout = {
     a,
     b,
-    aIsClient: aMach.kind === "client",
-    bIsClient: bMach.kind === "client",
+    aIsClient: aIsPrimary && aMach.kind === "client",
+    bIsClient: !aIsPrimary && bMach.kind === "client",
     aLabel: aMach.label,
     bLabel: bMach.label,
     d: `M${ax} ${arcY} Q${arcMidX} ${dipY} ${bx} ${arcY}`,
@@ -242,5 +252,6 @@ export function computeLayout(flow: Flow, config: FlowConfig): FlowLayout {
     brazilLabelX,
     abroadLabelX,
     reverse,
+    primaryClientId: primaryClientMach?.id,
   };
 }

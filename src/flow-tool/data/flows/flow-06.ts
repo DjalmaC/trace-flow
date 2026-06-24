@@ -23,8 +23,8 @@ export const flow06: Flow = {
   ],
   legs: [
     { from: "brco", to: "pixnra", carries: "BRL" },
-    { from: "pixnra", to: "pixwallet", carries: "BRL", convertsTo: "USDC/T", crosses: true },
-    { from: "pixwallet", to: "counterparty", carries: "USDC/T", convertsTo: "USD/EUR" },
+    { from: "pixnra", to: "pixwallet", carries: "BRL", convertsTo: "USDC/USDT", crosses: true },
+    { from: "pixwallet", to: "counterparty", carries: "USDC/USDT", convertsTo: "USD/EUR" },
   ],
   sameActor: [
     { headlineNode: "brco", machineryNode: "brco" },

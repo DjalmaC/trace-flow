@@ -18,10 +18,10 @@ export const flow07: Flow = {
   nodes: [
     { id: "enduser", label: "Brazilian end user", kind: "operational", lane: "brazil" },
     { id: "efxsp", label: "eFX Service Provider", kind: "client", lane: "brazil" },
-    { id: "nra", label: "Non Resident Account", kind: "operational", lane: "brazil" },
-    { id: "pixlp", label: "Pix Inc · Liquidity Provider", kind: "trace", lane: "abroad" },
-    { id: "pixacct", label: "Pix Inc · Account", kind: "trace", lane: "abroad" },
-    { id: "nraacct", label: "NRA Holder's Account Abroad", kind: "operational", lane: "abroad" },
+    { id: "nra", label: "Non Resident Acct", kind: "operational", lane: "brazil" },
+    { id: "pixlp", label: "Pix Inc · LP", kind: "trace", lane: "abroad" },
+    { id: "pixacct", label: "Pix Inc · acct", kind: "trace", lane: "abroad" },
+    { id: "nraacct", label: "NRA Holder acct", kind: "client", lane: "abroad" },
     { id: "merchants", label: "End Merchants", kind: "merchant", lane: "abroad" },
   ],
   legs: [

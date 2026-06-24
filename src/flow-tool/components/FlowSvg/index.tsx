@@ -18,7 +18,13 @@ export function Background({ width, height }: { width: number; height: number })
 }
 
 /** The "How Trace makes it happen" engine bay: dashed container + lane divide. */
-export function MachineryContainer({ layout }: { layout: FlowLayout }) {
+export function MachineryContainer({
+  layout,
+  showHeading = true,
+}: {
+  layout: FlowLayout;
+  showHeading?: boolean;
+}) {
   const { width, dividerX, brazilLabelX, abroadLabelX } = layout;
   return (
     <g opacity={0.95}>
@@ -34,9 +40,11 @@ export function MachineryContainer({ layout }: { layout: FlowLayout }) {
         strokeWidth={1}
         strokeDasharray="3 4"
       />
-      <text x={42} y={CONT_Y + 28} fontSize={14} fontWeight={600} fill={C.subtitle}>
-        How Trace makes it happen
-      </text>
+      {showHeading && (
+        <text x={42} y={CONT_Y + 28} fontSize={14} fontWeight={600} fill={C.subtitle}>
+          How Trace makes it happen
+        </text>
+      )}
       <text x={brazilLabelX} y={CONT_Y + 56} fontSize={12} fill={C.muted} textAnchor="middle">
         Brazil
       </text>

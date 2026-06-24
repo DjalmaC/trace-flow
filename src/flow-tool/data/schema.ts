@@ -5,7 +5,10 @@
 // read this shape, so new flows are *data*, not new components.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type Currency = "BRL" | "USD/EUR" | "USDC" | "USDT" | "USDC/T";
+// 'USDC/USDT' is the semantic stablecoin token; which coin actually shows is a
+// client choice carried on FlowConfig.stablecoin and resolved at render time.
+export type Currency = "BRL" | "USD/EUR" | "USDC/USDT";
+export type Stablecoin = "USDC" | "USDT" | "both";
 export type Lane = "brazil" | "abroad";
 export type NodeKind = "client" | "trace" | "operational" | "merchant";
 export type Direction = "collection" | "disbursement";
@@ -90,6 +93,8 @@ export interface FlowConfig {
   collected: Currency; // default 'BRL'
   delivered: Currency; // default 'USD/EUR'
   direction: Direction; // default 'collection'
+  /** Which coin a 'USDC/USDT' token shows (stablecoin flows only). Default 'both'. */
+  stablecoin: Stablecoin;
 }
 
 // ── Computed-field rules (spec §2.1), kept here so they're auditable ──────────
@@ -109,7 +114,7 @@ export function settlementForm(rail: DialCoordinate["rail"]): "virtual-asset" | 
 export function computeTraceRole(flow: Pick<Flow, "dials" | "legs">): TraceRole[] {
   const roles: TraceRole[] = [];
   const hasVA = flow.legs.some((l) =>
-    [l.carries, l.convertsTo].some((c) => c === "USDC" || c === "USDT" || c === "USDC/T"),
+    [l.carries, l.convertsTo].some((c) => c === "USDC/USDT"),
   );
   if (hasVA) roles.push("VASP");
 

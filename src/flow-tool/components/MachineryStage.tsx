@@ -51,13 +51,13 @@ function MachineryLeg({
       {/* conversion capsule sits statically at the crossing */}
       {convertsTo && (
         <g transform={`translate(${leg.mid.x},${leg.mid.y})`}>
-          <SwapCapsule left={reverse ? convertsTo : carries} right={reverse ? carries : convertsTo} />
+          <SwapCapsule left={reverse ? convertsTo : carries} right={reverse ? carries : convertsTo} coin={config.stablecoin} />
         </g>
       )}
       {/* faint static token anchors a plain leg for legibility */}
       {!convertsTo && !animate && (
         <g transform={`translate(${leg.mid.x},${leg.mid.y})`}>
-          <CurrencyToken currency={carries} />
+          <CurrencyToken currency={carries} coin={config.stablecoin} />
         </g>
       )}
       {/* the traveling value */}
@@ -69,6 +69,7 @@ function MachineryLeg({
           reverse={reverse}
           carries={carries}
           convertsTo={convertsTo}
+          coin={config.stablecoin}
         />
       )}
     </g>
@@ -80,15 +81,17 @@ export function MachineryStage({
   config,
   loop,
   animate,
+  showHeading = true,
 }: {
   layout: FlowLayout;
   config: FlowConfig;
   loop: MotionValue<number>;
   animate: boolean;
+  showHeading?: boolean;
 }) {
   return (
     <g>
-      <MachineryContainer layout={layout} />
+      <MachineryContainer layout={layout} showHeading={showHeading} />
 
       {/* projector ("same actor") lines */}
       {layout.projectors.map((p, i) => (
@@ -119,6 +122,7 @@ export function MachineryStage({
         <FlowNodeShape
           key={node.id}
           node={node}
+          isPrimaryClient={node.id === layout.primaryClientId}
           clientName={config.clientName}
           clientLogoUrl={config.clientLogoUrl}
         />

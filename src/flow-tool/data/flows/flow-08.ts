@@ -12,24 +12,24 @@ export const flow08: Flow = {
   directions: ["collection", "disbursement"],
   narrative:
     "Both the eFX Service Provider and the NRA Holder are Trace customers. Trace, via Pix Inc, " +
-    "receives BRL and converts it to USDC/T abroad; Pix Inc converts USDC/T to USD/EUR, funding " +
+    "receives BRL and converts it to USDC/USDT abroad; Pix Inc converts USDC/USDT to USD/EUR, funding " +
     "the NRA Holder's account abroad; the NRA Holder then disburses to its End Merchants.",
   headline: { partyA: "efxsp", partyB: "merchants", carries: "BRL", convertsTo: "USD/EUR" },
   nodes: [
     { id: "enduser", label: "Brazilian end user", kind: "operational", lane: "brazil" },
     { id: "efxsp", label: "eFX Service Provider", kind: "client", lane: "brazil" },
-    { id: "nra", label: "Non Resident Account", kind: "operational", lane: "brazil" },
-    { id: "pixlp", label: "Pix Inc · Liquidity Provider", kind: "trace", lane: "abroad" },
-    { id: "pixacct", label: "Pix Inc · Account", kind: "trace", lane: "abroad" },
-    { id: "nraacct", label: "NRA Holder's Account Abroad", kind: "operational", lane: "abroad" },
+    { id: "nra", label: "Non Resident Acct", kind: "operational", lane: "brazil" },
+    { id: "pixlp", label: "Pix Inc · LP", kind: "trace", lane: "abroad" },
+    { id: "pixacct", label: "Pix Inc · acct", kind: "trace", lane: "abroad" },
+    { id: "nraacct", label: "NRA Holder acct", kind: "client", lane: "abroad" },
     { id: "merchants", label: "End Merchants", kind: "merchant", lane: "abroad" },
   ],
   legs: [
     { from: "enduser", to: "efxsp", carries: "BRL" },
     { from: "efxsp", to: "nra", carries: "BRL" },
     { from: "nra", to: "pixlp", carries: "BRL" },
-    { from: "pixlp", to: "pixacct", carries: "BRL", convertsTo: "USDC/T", crosses: true },
-    { from: "pixacct", to: "nraacct", carries: "USDC/T", convertsTo: "USD/EUR" },
+    { from: "pixlp", to: "pixacct", carries: "BRL", convertsTo: "USDC/USDT", crosses: true },
+    { from: "pixacct", to: "nraacct", carries: "USDC/USDT", convertsTo: "USD/EUR" },
     { from: "nraacct", to: "merchants", carries: "USD/EUR" },
   ],
   sameActor: [

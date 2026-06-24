@@ -24,11 +24,14 @@ function NodeLines({ node, dy = 0, fill }: { node: NodeLayout; dy?: number; fill
 export function FlowNodeShape({
   node,
   green = false,
+  isPrimaryClient = false,
   clientName,
   clientLogoUrl,
 }: {
   node: NodeLayout;
   green?: boolean;
+  /** Only the primary client carries the uploaded logo + client name. */
+  isPrimaryClient?: boolean;
   clientName?: string;
   clientLogoUrl?: string;
 }) {
@@ -56,7 +59,7 @@ export function FlowNodeShape({
     );
   }
 
-  if (node.kind === "client") {
+  if (node.kind === "client" && isPrimaryClient) {
     const slotStroke = green ? C.green : C.clientSlot;
     return (
       <g>

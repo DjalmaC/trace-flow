@@ -45,5 +45,6 @@ export function defaultConfig(flowId: string, clientName = "Your Client"): FlowC
     collected: "BRL",
     delivered: "USD/EUR",
     direction: "collection",
+    stablecoin: "both",
   };
 }

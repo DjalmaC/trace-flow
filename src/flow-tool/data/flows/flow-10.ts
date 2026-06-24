@@ -8,29 +8,32 @@ export const flow10: Flow = {
   displayId: "10",
   title: "VA and NRA — NRA held by Partner Bank and a Local Liquidity Provider, Virtual Asset settlement abroad",
   blurb: "Foreign NRA holder collects from Brazil; bank-held NRA + local LP; asset delivered abroad.",
-  dials: { model: "VA+NRA", rail: "VA-delivery", nraOwnership: "third-party", pixRole: "settler", localLp: true },
+  // NOTE: matches flow_10_dark.svg, which diverged from Architecture Spec §10
+  // (the separate Pix Inc US node was dropped; the NRA became Pix Inc NRA; the
+  // conversion moved onto the Local LP → NRA Holder leg). nraOwnership=pix-own
+  // per the render — flagged for Diogo to confirm vs the spec's 'third-party'
+  // (it does not change the computed traceRole or the resolver match either way).
+  dials: { model: "VA+NRA", rail: "VA-delivery", nraOwnership: "pix-own", pixRole: "settler", localLp: true },
   traceRole: ["VASP", "Correspondente Cambial"],
   directions: ["collection", "disbursement"],
   narrative:
-    "A Brazilian end user pays BRL into a Non Resident Account held by Trace's banking partner. " +
-    "Pix Inc sources liquidity from a Local Liquidity Provider and converts BRL to USDT/C; once " +
-    "abroad, Pix Inc settles the USDT/C to the NRA Holder's Wallet Abroad.",
-  headline: { partyA: "enduser", partyB: "nrawallet", carries: "BRL", convertsTo: "USDC/T" },
+    "A Brazilian end user pays BRL into the Pix Inc Non Resident Account held by Trace's banking " +
+    "partner. Pix Inc sources liquidity from a Local Liquidity Provider and converts BRL to USDC/USDT, " +
+    "settling the virtual asset to the NRA Holder abroad.",
+  headline: { partyA: "enduser", partyB: "nraholder", carries: "BRL", convertsTo: "USDC/USDT" },
   nodes: [
     { id: "enduser", label: "Brazilian end user", kind: "operational", lane: "brazil" },
-    { id: "nra", label: "Non Resident Account", kind: "operational", lane: "brazil" },
-    { id: "locallp", label: "Local Liquidity Provider", kind: "operational", lane: "brazil" },
-    { id: "pix", label: "Pix Inc", kind: "trace", lane: "brazil" },
-    { id: "nrawallet", label: "NRA Holder's Wallet Abroad", kind: "client", lane: "abroad" },
+    { id: "pixnra", label: "Pix Inc NRA", kind: "trace", lane: "brazil" },
+    { id: "locallp", label: "Local LP", kind: "operational", lane: "brazil" },
+    { id: "nraholder", label: "NRA Holder", kind: "client", lane: "abroad" },
   ],
   legs: [
-    { from: "enduser", to: "nra", carries: "BRL" },
-    { from: "nra", to: "locallp", carries: "BRL" },
-    { from: "locallp", to: "pix", carries: "BRL" },
-    { from: "pix", to: "nrawallet", carries: "BRL", convertsTo: "USDC/T", crosses: true },
+    { from: "enduser", to: "pixnra", carries: "BRL" },
+    { from: "pixnra", to: "locallp", carries: "BRL" },
+    { from: "locallp", to: "nraholder", carries: "BRL", convertsTo: "USDC/USDT", crosses: true },
   ],
   sameActor: [
     { headlineNode: "enduser", machineryNode: "enduser" },
-    { headlineNode: "nrawallet", machineryNode: "nrawallet" },
+    { headlineNode: "nraholder", machineryNode: "nraholder" },
   ],
 };

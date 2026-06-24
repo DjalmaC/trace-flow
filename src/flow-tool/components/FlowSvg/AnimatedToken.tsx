@@ -1,6 +1,6 @@
 "use client";
 import { motion, useTransform, type MotionValue } from "framer-motion";
-import type { Currency } from "../../data/schema";
+import type { Currency, Stablecoin } from "../../data/schema";
 import { useTokenAlongPath } from "../../animation/useTokenAlongPath";
 import { CurrencyToken } from "./Tokens";
 
@@ -15,6 +15,7 @@ export function AnimatedToken({
   reverse = false,
   carries,
   convertsTo,
+  coin = "both",
 }: {
   d: string;
   progress: MotionValue<number>;
@@ -22,6 +23,7 @@ export function AnimatedToken({
   reverse?: boolean;
   carries: Currency;
   convertsTo?: Currency;
+  coin?: Stablecoin;
 }) {
   const { x, y } = useTokenAlongPath(d, progress, reverse);
 
@@ -38,14 +40,14 @@ export function AnimatedToken({
       {convertsTo ? (
         <motion.g style={{ scale }}>
           <motion.g style={{ opacity: preOpacity }}>
-            <CurrencyToken currency={pre} />
+            <CurrencyToken currency={pre} coin={coin} />
           </motion.g>
           <motion.g style={{ opacity: postOpacity }}>
-            <CurrencyToken currency={post!} />
+            <CurrencyToken currency={post!} coin={coin} />
           </motion.g>
         </motion.g>
       ) : (
-        <CurrencyToken currency={carries} />
+        <CurrencyToken currency={carries} coin={coin} />
       )}
     </motion.g>
   );

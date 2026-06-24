@@ -25,8 +25,8 @@ export const flow03: Flow = {
   legs: [
     { from: "enduser", to: "efxsp", carries: "BRL" },
     { from: "efxsp", to: "pixnra", carries: "BRL" },
-    { from: "pixnra", to: "pixwallet", carries: "BRL", convertsTo: "USDC/T", crosses: true },
-    { from: "pixwallet", to: "merchant", carries: "USDC/T", convertsTo: "USD/EUR" },
+    { from: "pixnra", to: "pixwallet", carries: "BRL", convertsTo: "USDC/USDT", crosses: true },
+    { from: "pixwallet", to: "merchant", carries: "USDC/USDT", convertsTo: "USD/EUR" },
   ],
   sameActor: [
     { headlineNode: "efxsp", machineryNode: "efxsp" },

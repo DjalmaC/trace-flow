@@ -55,12 +55,15 @@ export function HeadlineStage({
   flowTag,
   loop,
   animate,
+  showChrome = true,
 }: {
   layout: FlowLayout;
   config: FlowConfig;
   flowTag: string;
   loop: MotionValue<number>;
   animate: boolean;
+  /** SVG title + flow tag. Off when the section supplies its own HTML heading. */
+  showChrome?: boolean;
 }) {
   const h = layout.headline;
   const carries = displayCurrency(h.carries, config);
@@ -70,12 +73,16 @@ export function HeadlineStage({
 
   return (
     <g>
-      <text x={34} y={50} fontSize={15} fontWeight={600} fill={C.title}>
-        What the client wants
-      </text>
-      <text x={layout.width - 34} y={42} fontSize={12} fill={C.muted} textAnchor="end">
-        {flowTag}
-      </text>
+      {showChrome && (
+        <>
+          <text x={34} y={50} fontSize={15} fontWeight={600} fill={C.title}>
+            What the client wants
+          </text>
+          <text x={layout.width - 34} y={42} fontSize={12} fill={C.muted} textAnchor="end">
+            {flowTag}
+          </text>
+        </>
+      )}
 
       {/* the desired-transaction arc */}
       <path
@@ -97,17 +104,17 @@ export function HeadlineStage({
       {/* conversion capsule on the arc */}
       {convertsTo && (
         <g transform={`translate(${h.mid.x},${h.mid.y})`}>
-          <SwapCapsule left={reverse ? convertsTo : carries} right={reverse ? carries : convertsTo} green />
+          <SwapCapsule left={reverse ? convertsTo : carries} right={reverse ? carries : convertsTo} green coin={config.stablecoin} />
         </g>
       )}
 
       {/* the traveling value */}
       {animate ? (
-        <AnimatedToken d={h.d} progress={loop} opacity={tokenOpacity} reverse={reverse} carries={carries} convertsTo={convertsTo} />
+        <AnimatedToken d={h.d} progress={loop} opacity={tokenOpacity} reverse={reverse} carries={carries} convertsTo={convertsTo} coin={config.stablecoin} />
       ) : (
         !convertsTo && (
           <g transform={`translate(${h.mid.x},${h.mid.y})`}>
-            <CurrencyToken currency={carries} />
+            <CurrencyToken currency={carries} coin={config.stablecoin} />
           </g>
         )
       )}

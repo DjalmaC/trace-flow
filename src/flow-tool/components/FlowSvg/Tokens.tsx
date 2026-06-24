@@ -1,9 +1,13 @@
-import type { Currency, FlowConfig } from "../../data/schema";
+import type { Currency, FlowConfig, Stablecoin } from "../../data/schema";
 import { ASSETS, C } from "../tokens";
 
 // Currency tokens, swap capsules, and the Trace mark — all rendered centered at
 // the local origin (0,0) so the same component serves static placement (<g
 // transform>) and animated placement (<motion.g style={{x,y}}>).
+//
+// The 'USDC/USDT' token is the semantic stablecoin: which coin actually shows
+// (single USDC, single USDT, or the pair) is the client's choice, passed down as
+// `coin` (FlowConfig.stablecoin). Pills (BRL, USD/EUR) ignore it.
 
 /** Resolve a data currency to its display label, honouring config overrides. */
 export function displayCurrency(c: Currency, config: FlowConfig): Currency {
@@ -12,18 +16,9 @@ export function displayCurrency(c: Currency, config: FlowConfig): Currency {
   return c;
 }
 
-function isCoin(c: Currency): "single-usdc" | "single-usdt" | "pair" | null {
-  if (c === "USDC") return "single-usdc";
-  if (c === "USDT") return "single-usdt";
-  if (c === "USDC/T") return "pair";
-  return null;
-}
-
 /** Pixel width of a token, for centering / capsule sizing. */
-export function tokenWidth(c: Currency): number {
-  const coin = isCoin(c);
-  if (coin === "pair") return 38;
-  if (coin) return 22;
+export function tokenWidth(c: Currency, coin: Stablecoin = "both"): number {
+  if (c === "USDC/USDT") return coin === "both" ? 38 : 22;
   return Math.max(38, c.length * 7 + 16);
 }
 
@@ -39,9 +34,9 @@ function Pill({ text }: { text: string }) {
   );
 }
 
-function Coins({ which }: { which: "single-usdc" | "single-usdt" | "pair" }) {
-  if (which === "single-usdc") return <image href={ASSETS.usdc} x={-11} y={-11} width={22} height={22} />;
-  if (which === "single-usdt") return <image href={ASSETS.usdt} x={-11} y={-11} width={22} height={22} />;
+function Coins({ coin }: { coin: Stablecoin }) {
+  if (coin === "USDC") return <image href={ASSETS.usdc} x={-11} y={-11} width={22} height={22} />;
+  if (coin === "USDT") return <image href={ASSETS.usdt} x={-11} y={-11} width={22} height={22} />;
   return (
     <>
       <image href={ASSETS.usdc} x={-19} y={-11} width={22} height={22} />
@@ -50,10 +45,9 @@ function Coins({ which }: { which: "single-usdc" | "single-usdt" | "pair" }) {
   );
 }
 
-/** A single currency token (pill or coin pair), centered at origin. */
-export function CurrencyToken({ currency }: { currency: Currency }) {
-  const coin = isCoin(currency);
-  return coin ? <Coins which={coin} /> : <Pill text={currency} />;
+/** A single currency token (pill or coin), centered at origin. */
+export function CurrencyToken({ currency, coin = "both" }: { currency: Currency; coin?: Stablecoin }) {
+  return currency === "USDC/USDT" ? <Coins coin={coin} /> : <Pill text={currency} />;
 }
 
 /** A conversion capsule: leftToken ⇄ rightToken, centered at origin. */
@@ -61,13 +55,15 @@ export function SwapCapsule({
   left,
   right,
   green = false,
+  coin = "both",
 }: {
   left: Currency;
   right: Currency;
   green?: boolean;
+  coin?: Stablecoin;
 }) {
-  const lw = tokenWidth(left);
-  const rw = tokenWidth(right);
+  const lw = tokenWidth(left, coin);
+  const rw = tokenWidth(right, coin);
   const gap = 22;
   const total = lw + gap + rw;
   const x0 = -total / 2;
@@ -82,12 +78,12 @@ export function SwapCapsule({
     <g>
       <rect x={x0 - 13} y={-19} width={total + 26} height={38} rx={19} fill={fill} stroke={stroke} />
       <g transform={`translate(${lx},0)`}>
-        <CurrencyToken currency={left} />
+        <CurrencyToken currency={left} coin={coin} />
       </g>
       <line x1={axc - 7} y1={-3} x2={axc + 7} y2={-3} stroke={acol} strokeWidth={1.5} markerEnd={`url(#${marker})`} />
       <line x1={axc + 7} y1={3} x2={axc - 7} y2={3} stroke={acol} strokeWidth={1.5} markerEnd={`url(#${marker})`} />
       <g transform={`translate(${rx},0)`}>
-        <CurrencyToken currency={right} />
+        <CurrencyToken currency={right} coin={coin} />
       </g>
     </g>
   );
