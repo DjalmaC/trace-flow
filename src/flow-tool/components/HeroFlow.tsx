@@ -170,24 +170,25 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
       <TraceArrow cx={524} cy={Y} size={26} direction={dir} />
       <TraceArrow cx={736} cy={Y} size={26} direction={dir} />
 
-      {/* client station */}
+      {/* client station — once a logo is uploaded it fills nearly the whole
+          block (the client's identity); otherwise show an initial + name + role */}
       <ElevatedNode x={196} w={300} green>
         {config.clientLogoUrl ? (
-          <image href={config.clientLogoUrl} x={320} y={420} width={52} height={20} preserveAspectRatio="xMidYMid meet" />
+          <image href={config.clientLogoUrl} x={214} y={412} width={264} height={90} preserveAspectRatio="xMidYMid meet" />
         ) : (
           <>
             <circle cx={346} cy={436} r={19} fill="#0f1814" stroke={C.green} strokeOpacity={0.35} />
             <text x={346} y={442} textAnchor="middle" fontSize={15} fontWeight={600} fill="#9cc4b3">
               {config.clientName.charAt(0).toUpperCase()}
             </text>
+            <text x={346} y={481} textAnchor="middle" fontSize={20} fontWeight={600} fill="#f1f4f2">
+              {config.clientName}
+            </text>
+            <text x={346} y={502} textAnchor="middle" fontSize={13} fontWeight={400} fill="#6f857b">
+              {clientSub}
+            </text>
           </>
         )}
-        <text x={346} y={481} textAnchor="middle" fontSize={20} fontWeight={600} fill="#f1f4f2">
-          {config.clientName}
-        </text>
-        <text x={346} y={502} textAnchor="middle" fontSize={13} fontWeight={400} fill="#6f857b">
-          {clientSub}
-        </text>
       </ElevatedNode>
 
       {/* beneficiary station */}

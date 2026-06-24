@@ -93,19 +93,23 @@ export function FlowNodeShape({
 
   if (node.kind === "client" && isPrimaryClient) {
     const slotStroke = green ? C.green : C.clientSlot;
+    // an uploaded logo fills nearly the whole node; otherwise dashed slot + name
+    if (clientLogoUrl) {
+      const pad = 9;
+      return (
+        <g>
+          {rect}
+          <image href={clientLogoUrl} x={x + pad} y={y + pad} width={w - pad * 2} height={h - pad * 2} preserveAspectRatio="xMidYMid meet" />
+        </g>
+      );
+    }
     return (
       <g>
         {rect}
-        {clientLogoUrl ? (
-          <image href={clientLogoUrl} x={cx - 28} y={y + 7} width={56} height={20} preserveAspectRatio="xMidYMid meet" />
-        ) : (
-          <>
-            <rect x={cx - 30} y={y + 8} width={60} height={18} rx={4} fill="none" stroke={slotStroke} strokeDasharray="3 2" />
-            <text x={cx} y={y + 21} fontSize={9} fill={slotStroke} textAnchor="middle">
-              client logo
-            </text>
-          </>
-        )}
+        <rect x={cx - 30} y={y + 8} width={60} height={18} rx={4} fill="none" stroke={slotStroke} strokeDasharray="3 2" />
+        <text x={cx} y={y + 21} fontSize={9} fill={slotStroke} textAnchor="middle">
+          client logo
+        </text>
         <text x={cx} y={y + h - 11} fontSize={10} fill={txt} textAnchor="middle">
           {clientName ?? node.label}
         </text>
