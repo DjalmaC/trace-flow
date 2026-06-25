@@ -103,15 +103,16 @@ export function SharedFlowView({ code }: { code: string }) {
                 {config.clientRep && <div className="text-[11px] text-muted">Prepared for {config.clientRep}</div>}
               </div>
             </div>
-            <button
-              onClick={onDownload}
-              disabled={pdf === "working"}
-              className="rounded-lg border border-white/10 bg-[#0e1410]/70 px-3 py-1.5 text-[12.5px] font-medium text-[#bfe8d4] backdrop-blur transition hover:border-green-accent/40 disabled:opacity-60"
-            >
-              {pdf === "working" ? "Preparing…" : pdf === "error" ? "Try again" : "Download PDF ↓"}
-            </button>
           </header>
           <FlowExperience config={{ ...config, direction }} presentation onDirectionChange={setDirection} />
+          {/* Download PDF — larger, bottom-left, clear of the Pay-in/Pay-out toggle */}
+          <button
+            onClick={onDownload}
+            disabled={pdf === "working"}
+            className="fixed bottom-6 left-6 z-40 flex items-center gap-2 rounded-xl border border-green-accent/40 bg-[#0e1410]/85 px-5 py-3 text-sm font-semibold text-[#bfe8d4] shadow-xl backdrop-blur transition hover:border-green-accent hover:bg-[#13201a] disabled:opacity-60"
+          >
+            {pdf === "working" ? "Preparing…" : pdf === "error" ? "Try again" : "Download PDF ↓"}
+          </button>
         </>
       )}
 
