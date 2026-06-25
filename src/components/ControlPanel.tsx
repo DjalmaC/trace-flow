@@ -5,7 +5,7 @@ import { FLOWS, getFlow } from "@/flow-tool/data";
 import { QUESTIONS, type IntakeAnswers } from "@/flow-tool/intake/questions";
 import { resolve, NO_MATCH_MESSAGE } from "@/flow-tool/intake/resolver";
 import { createShareLink, isShareConfigured } from "@/flow-tool/lib/share";
-import { detectLogoPlate } from "@/flow-tool/lib/logo";
+import { detectLogoPlate, removeBackground } from "@/flow-tool/lib/logo";
 
 type PlateMode = "auto" | "light" | "none";
 
@@ -39,6 +39,8 @@ export function ControlPanel({
   const [answers, setAnswers] = useState<IntakeAnswers>({});
   const [share, setShare] = useState<{ status: "idle" | "loading" | "done" | "error"; url?: string; msg?: string; copied?: boolean }>({ status: "idle" });
   const [plateMode, setPlateMode] = useState<PlateMode>("auto");
+  // background removal: keep the pre-cutout logo so we can revert
+  const [bg, setBg] = useState<{ status: "idle" | "working" | "done" | "error"; orig?: string; msg?: string }>({ status: "idle" });
 
   const resolution = useMemo(() => resolve(answers, config.clientName), [answers, config.clientName]);
 
@@ -65,9 +67,34 @@ export function ControlPanel({
     reader.onload = async () => {
       const url = String(reader.result);
       const plate = plateMode === "auto" ? await detectLogoPlate(url) : plateMode === "light" ? "light" : "none";
+      setBg({ status: "idle" }); // fresh upload — drop any prior cutout state
       patch({ clientLogoUrl: url, clientLogoPlate: plate });
     };
     reader.readAsDataURL(file);
+  }
+
+  // strip the background from the current logo (edge cut-out, fully in-browser)
+  async function removeLogoBackground() {
+    if (!config.clientLogoUrl) return;
+    const orig = config.clientLogoUrl;
+    setBg({ status: "working" });
+    const cut = await removeBackground(orig);
+    if (!cut) {
+      setBg({ status: "error", msg: "No clear background to remove — try a logo on a solid backdrop." });
+      return;
+    }
+    const plate = plateMode === "auto" ? await detectLogoPlate(cut) : plateMode === "light" ? "light" : "none";
+    setBg({ status: "done", orig });
+    patch({ clientLogoUrl: cut, clientLogoPlate: plate });
+  }
+
+  // restore the logo as it was before the cutout
+  async function revertLogoBackground() {
+    if (!bg.orig) return;
+    const orig = bg.orig;
+    const plate = plateMode === "auto" ? await detectLogoPlate(orig) : plateMode === "light" ? "light" : "none";
+    setBg({ status: "idle" });
+    patch({ clientLogoUrl: orig, clientLogoPlate: plate });
   }
 
   // re-resolve the logo backing when the override changes
@@ -156,6 +183,34 @@ export function ControlPanel({
                 className="w-full text-xs text-subtitle file:mr-2 file:rounded file:border-0 file:bg-node-fill file:px-2 file:py-1 file:text-subtitle"
               />
             </Field>
+
+            {config.clientLogoUrl && (
+              <Field label="Background">
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={removeLogoBackground}
+                    disabled={bg.status === "working"}
+                    className="flex-1 rounded-md border border-node-stroke bg-node-fill px-2 py-1.5 text-xs font-medium text-subtitle transition hover:border-green-accent hover:text-title disabled:opacity-60"
+                  >
+                    {bg.status === "working" ? "Removing…" : bg.status === "done" ? "Background removed ✓" : "Remove background ✂"}
+                  </button>
+                  {bg.status === "done" && (
+                    <button
+                      onClick={revertLogoBackground}
+                      className="shrink-0 rounded-md border border-node-stroke px-2.5 py-1.5 text-xs font-medium text-muted transition hover:text-title"
+                    >
+                      Undo
+                    </button>
+                  )}
+                </div>
+                {bg.status === "error" && <p className="mt-1 text-[10px] leading-snug text-[#e6b566]">⚑ {bg.msg}</p>}
+                {bg.status !== "error" && (
+                  <p className="mt-1 text-[10px] leading-snug text-muted">
+                    Removes a solid/near-solid backdrop and trims to the logo. Best for logos on a flat background.
+                  </p>
+                )}
+              </Field>
+            )}
 
             {config.clientLogoUrl && (
               <Field label="Logo backdrop">
