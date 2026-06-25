@@ -42,7 +42,6 @@ function easeOutBack(t: number) {
   return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
 }
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
-const smoothstep = (t: number) => t * t * (3 - 2 * t);
 
 type Phase = {
   kind: "go" | "conv" | "pause";
@@ -130,6 +129,7 @@ export function MachineryStage({
   const curRefs = useRef<Record<string, SVGGElement | null>>({});
   const hubMarkRefs = useRef<Record<number, SVGGElement | null>>({});
   const pulseRefs = useRef<Record<number, SVGCircleElement | null>>({});
+  const boxGlowRefs = useRef<Record<string, SVGGElement | null>>({});
 
   // QA hook: ?frame=<ms> freezes the relay at a fixed point in the cycle so a
   // deterministic frame can be captured (the loop is rAF-driven otherwise).
@@ -161,7 +161,9 @@ export function MachineryStage({
       let pulseR = HUB_R;
       let activeHub = -1;
       if (p.kind === "go") {
-        x = p.x0 + (p.x1 - p.x0) * easeInOut(lp);
+        // LINEAR travel: constant pixels-per-ms, so the token moves at exactly
+        // the same speed across every leg (no per-leg accelerate/decelerate).
+        x = p.x0 + (p.x1 - p.x0) * lp;
       } else if (p.kind === "pause") {
         x = p.x0;
       } else {
@@ -183,20 +185,32 @@ export function MachineryStage({
         cur = a >= 0.5 ? p.cur : p.preCur ?? p.cur;
       }
 
-      // absorb / emit: the token fully disappears within R_HIDE of a hub (so a
-      // wide pill never flashes its edges beside the plinth) and only fades +
-      // scales back in once it has cleared the plinth on the far side.
+      // The token travels at FULL SIZE the whole way (always legible). It only
+      // fades — never shrinks — and only right at a conversion hub, so its wide
+      // pill never flashes its edges beside the plinth during the swap. Between
+      // boxes it stays fully opaque; behind a box it's hidden by z-order while
+      // that box lights up (see the box-glow pass below).
       let dmin = Infinity;
       for (const hb of hubs) {
         const d = Math.abs(x - hb.x);
         if (d < dmin) dmin = d;
       }
-      const ts = hubs.length ? smoothstep(clamp01(dmin / R_SHOW)) : 1;
       const op = hubs.length ? clamp01((dmin - R_HIDE) / (R_SHOW - R_HIDE)) : 1;
       if (tokenRef.current) {
-        tokenRef.current.setAttribute("transform", `translate(${x.toFixed(1)},${railY}) scale(${ts.toFixed(3)})`);
+        tokenRef.current.setAttribute("transform", `translate(${x.toFixed(1)},${railY})`);
         tokenRef.current.style.opacity = op.toFixed(3);
       }
+
+      // box-glow: each station emits a faint green halo as value lands on it.
+      // The glow peaks when the token is centered on the box (the "landing")
+      // and eases off as it leaves — the default sign that the box is acting.
+      nodes.forEach((n) => {
+        const g = boxGlowRefs.current[n.id];
+        if (!g) return;
+        const rad = n.w / 2 + 26;
+        const prox = clamp01(1 - Math.abs(x - n.cx) / rad);
+        g.style.opacity = (easeOut(prox) * 0.85).toFixed(3);
+      });
       currencies.forEach((c) => {
         const el = curRefs.current[c];
         if (el) el.style.opacity = c === cur ? "1" : "0";
@@ -281,6 +295,15 @@ export function MachineryStage({
           clientLogoUrl={config.clientLogoUrl}
           clientLogoPlate={config.clientLogoPlate}
         />
+      ))}
+
+      {/* box-glow overlays — a faint green halo + crisp rim each station emits
+          as value lands on it (driven by the relay loop). On top of the boxes. */}
+      {nodes.map((n) => (
+        <g key={`glow-${n.id}`} ref={(el) => { boxGlowRefs.current[n.id] = el; }} style={{ opacity: 0, willChange: "opacity" }}>
+          <rect x={n.x} y={n.y} width={n.w} height={n.h} rx={12} fill="none" stroke={C.green} strokeWidth={3.5} filter="url(#tf-boxglow)" />
+          <rect x={n.x} y={n.y} width={n.w} height={n.h} rx={12} fill="none" stroke={C.green} strokeWidth={1.3} strokeOpacity={0.85} />
+        </g>
       ))}
 
       {/* conversion hubs — sit ON the line, drawn over the boxes */}
