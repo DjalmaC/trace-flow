@@ -32,6 +32,8 @@ const SPIN_MS = 1180; // the FX-engine conversion moment
 const END_REST_MS = 700;
 const R_HIDE = 40; // token fully hidden within this of a hub centre (absorbed)
 const R_SHOW = 78; // token fully shown beyond this (clear of the plinth)
+const RIPPLE_MS = 460; // box landing ripple — fast, like the FX hub's impact ring
+const RIPPLE_MAX = 0.5; // ripple peak opacity (kept gentle, not a steady glow)
 
 // easings
 const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
@@ -84,7 +86,13 @@ function buildTimeline(layout: FlowLayout, config: FlowConfig, byId: Map<string,
       phases.push({ kind: "pause", x0: x, x1: x, cur, dur: PAUSE_MS, s: 0 });
     }
   }
-  if (phases.length) phases[phases.length - 1].dur = END_REST_MS;
+  // a brief rest at the final station before the relay loops (and so every
+  // node has a clean arrival time, even conversion-ending flows)
+  if (phases.length) {
+    const last = phases[phases.length - 1];
+    if (last.kind === "pause") last.dur = END_REST_MS;
+    else phases.push({ kind: "pause", x0: last.x1, x1: last.x1, cur: last.cur, dur: END_REST_MS, s: 0 });
+  }
   let t = 0;
   for (const ph of phases) {
     ph.s = t;
@@ -125,11 +133,28 @@ export function MachineryStage({
   }, [layout.legs, config]);
   const timeline = useMemo(() => buildTimeline(layout, config, byId), [layout, config, byId]);
 
+  // when (in the relay cycle) the token arrives at each node centre — used to
+  // fire that box's landing ripple. Earliest phase ending at the node's cx.
+  const landings = useMemo(() => {
+    const m: Record<string, number> = {};
+    const byCx = new Map<number, string>();
+    nodes.forEach((n) => byCx.set(Math.round(n.cx), n.id));
+    const startId = byCx.get(Math.round(timeline.startX));
+    if (startId) m[startId] = 0; // value originates at the first node
+    for (const ph of timeline.phases) {
+      const id = byCx.get(Math.round(ph.x1));
+      if (id == null) continue;
+      const t = ph.s + ph.dur;
+      if (!(id in m) || t < m[id]) m[id] = t;
+    }
+    return m;
+  }, [timeline, nodes]);
+
   const tokenRef = useRef<SVGGElement>(null);
   const curRefs = useRef<Record<string, SVGGElement | null>>({});
   const hubMarkRefs = useRef<Record<number, SVGGElement | null>>({});
   const pulseRefs = useRef<Record<number, SVGCircleElement | null>>({});
-  const boxGlowRefs = useRef<Record<string, SVGGElement | null>>({});
+  const rippleRefs = useRef<Record<string, SVGGElement | null>>({});
 
   // QA hook: ?frame=<ms> freezes the relay at a fixed point in the cycle so a
   // deterministic frame can be captured (the loop is rAF-driven otherwise).
@@ -201,15 +226,26 @@ export function MachineryStage({
         tokenRef.current.style.opacity = op.toFixed(3);
       }
 
-      // box-glow: each station emits a faint green halo as value lands on it.
-      // The glow peaks when the token is centered on the box (the "landing")
-      // and eases off as it leaves — the default sign that the box is acting.
+      // box ripple: each station fires a single quick green ripple as value
+      // lands on it — the same impact-ring gesture the FX hub makes when money
+      // goes in. A fast expand-and-fade from the box border, then gone.
       nodes.forEach((n) => {
-        const g = boxGlowRefs.current[n.id];
+        const g = rippleRefs.current[n.id];
         if (!g) return;
-        const rad = n.w / 2 + 26;
-        const prox = clamp01(1 - Math.abs(x - n.cx) / rad);
-        g.style.opacity = (easeOut(prox) * 0.85).toFixed(3);
+        const land = landings[n.id];
+        if (land == null) {
+          g.style.opacity = "0";
+          return;
+        }
+        const dt = (((e - land) % total) + total) % total;
+        if (dt > RIPPLE_MS) {
+          g.style.opacity = "0";
+          return;
+        }
+        const rp = dt / RIPPLE_MS;
+        const s = 1 + 0.11 * easeOut(rp); // expand outward from the border
+        g.setAttribute("transform", `translate(${n.cx} ${n.cy}) scale(${s.toFixed(4)}) translate(${-n.cx} ${-n.cy})`);
+        g.style.opacity = (RIPPLE_MAX * (1 - rp)).toFixed(3);
       });
       currencies.forEach((c) => {
         const el = curRefs.current[c];
@@ -239,7 +275,7 @@ export function MachineryStage({
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [run, timeline, railY, config.direction, currencies, hubs, freezeMs]);
+  }, [run, timeline, railY, config.direction, currencies, hubs, landings, nodes, freezeMs]);
 
   const x0 = nodes[0]?.cx ?? 0;
   const xN = nodes[nodes.length - 1]?.cx ?? 0;
@@ -297,12 +333,11 @@ export function MachineryStage({
         />
       ))}
 
-      {/* box-glow overlays — a faint green halo + crisp rim each station emits
-          as value lands on it (driven by the relay loop). On top of the boxes. */}
+      {/* box landing ripples — a single quick green ring each station emits as
+          value lands on it (driven by the relay loop). On top of the boxes. */}
       {nodes.map((n) => (
-        <g key={`glow-${n.id}`} ref={(el) => { boxGlowRefs.current[n.id] = el; }} style={{ opacity: 0, willChange: "opacity" }}>
-          <rect x={n.x} y={n.y} width={n.w} height={n.h} rx={12} fill="none" stroke={C.green} strokeWidth={3.5} filter="url(#tf-boxglow)" />
-          <rect x={n.x} y={n.y} width={n.w} height={n.h} rx={12} fill="none" stroke={C.green} strokeWidth={1.3} strokeOpacity={0.85} />
+        <g key={`rip-${n.id}`} ref={(el) => { rippleRefs.current[n.id] = el; }} style={{ opacity: 0, willChange: "transform, opacity" }}>
+          <rect x={n.x} y={n.y} width={n.w} height={n.h} rx={12} fill="none" stroke={C.green} strokeWidth={2} vectorEffect="non-scaling-stroke" />
         </g>
       ))}
 

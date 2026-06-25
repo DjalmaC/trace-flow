@@ -17,10 +17,6 @@ export function Defs() {
       <filter id="tf-mono">
         <feColorMatrix type="saturate" values="0.1" />
       </filter>
-      {/* soft green halo — a box emits this around its border as value lands */}
-      <filter id="tf-boxglow" x="-60%" y="-60%" width="220%" height="220%">
-        <feGaussianBlur stdDeviation="5" />
-      </filter>
       <marker id="tf-leg" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse">
         <path d="M2 1L8 5L2 9" fill="none" stroke={C.leg} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
       </marker>
