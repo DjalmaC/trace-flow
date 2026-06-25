@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import {
   motion,
   useMotionTemplate,
@@ -9,7 +9,7 @@ import {
 } from "framer-motion";
 import type { FlowConfig } from "../data/schema";
 import { getFlow } from "../data";
-import { computeLayout, detectEngine, CONT_Y, CONT_H } from "./layout";
+import { computeLayout, CONT_Y, CONT_H } from "./layout";
 import { Defs } from "./FlowSvg";
 import { HeroFlow } from "./HeroFlow";
 import { MachineryStage } from "./MachineryStage";
@@ -43,14 +43,6 @@ export function FlowExperience({
   const flow = getFlow(config.flowId);
   const reduced = useReducedMotion();
   const animate = !reduced;
-  // dense flows (Trace middle >= 3 nodes) fold into a single "engine" by default
-  const [engineExpanded, setEngineExpanded] = useState(false);
-  // QA hook: ?expand=1 opens the engine detail on load
-  useEffect(() => {
-    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("expand") === "1") {
-      setEngineExpanded(true);
-    }
-  }, []);
 
   const sectionRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress: p } = useScroll({
@@ -78,9 +70,9 @@ export function FlowExperience({
     return <div className="p-8 text-node-text">Unknown flow: {config.flowId}</div>;
   }
 
-  const engineInfo = detectEngine(flow);
-  const collapsedView = !!engineInfo && !engineExpanded;
-  const layout = computeLayout(flow, config, { collapsed: collapsedView });
+  // One unified machinery diagram per flow — the full chain, always shown and
+  // scaled to fit the deck (no collapse/expand split, no horizontal pan).
+  const layout = computeLayout(flow, config);
   const flowTag = `Flow ${flow.displayId} · ${flow.dials.model}`;
   const machineryVB = `0 ${CONT_Y - 12} ${layout.width} ${CONT_H + 30}`;
 
@@ -92,35 +84,16 @@ export function FlowExperience({
 
   const SurfaceSvg = <HeroFlow flow={flow} config={config} />;
 
-  const MachineryInner = (fixedWidth?: number) => (
+  const MachinerySvg = (
     <svg
       viewBox={machineryVB}
       preserveAspectRatio="xMidYMid meet"
-      style={fixedWidth ? { ...svgStyle, width: `${fixedWidth}px` } : { ...svgStyle, maxHeight: "64vh" }}
+      style={{ ...svgStyle, maxHeight: "64vh" }}
       aria-label={`How Trace makes it happen — ${flow.title}`}
     >
       <Defs />
       <MachineryStage layout={layout} config={config} animate={animate} showHeading={false} />
     </svg>
-  );
-
-  const MachinerySvg = (
-    <div className="relative w-full">
-      {engineInfo && (
-        <button
-          onClick={() => setEngineExpanded((v) => !v)}
-          className="absolute -top-9 left-1/2 z-30 -translate-x-1/2 whitespace-nowrap rounded-lg border border-white/10 bg-[#0e1410]/70 px-3 py-1.5 text-[12.5px] font-medium text-[#bfe8d4] backdrop-blur transition hover:border-green-accent/40"
-        >
-          {engineExpanded ? "← Collapse the engine" : `See how the engine works · +${engineInfo.count} steps →`}
-        </button>
-      )}
-      {engineExpanded && engineInfo ? (
-        // expanded: full detail, do NOT shrink-to-fit; pan/scroll horizontally
-        <ExpandedScroller>{MachineryInner(Math.max(layout.width * 1.18, 1500))}</ExpandedScroller>
-      ) : (
-        MachineryInner()
-      )}
-    </div>
   );
 
   // ambient: a single soft radial light + vignette over the near-black page.
@@ -241,37 +214,6 @@ export function FlowExperience({
 
         <Lockup />
       </div>
-    </div>
-  );
-}
-
-// Expanded engine detail: horizontally scrollable, with a gentle "camera"
-// auto-pan that follows the money across the width (manual scroll overrides it).
-function ExpandedScroller({ children }: { children: React.ReactNode }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const reduced = useReducedMotion();
-  useEffect(() => {
-    if (reduced) return;
-    const el = ref.current;
-    if (!el) return;
-    let raf = 0;
-    const start = performance.now();
-    const PERIOD = 11000;
-    const tick = (now: number) => {
-      const max = el.scrollWidth - el.clientWidth;
-      if (max > 4) {
-        const p = ((now - start) % PERIOD) / PERIOD;
-        const e = p < 0.5 ? p * 2 : (1 - p) * 2; // ease across and back
-        el.scrollLeft = e * max;
-      }
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [reduced]);
-  return (
-    <div ref={ref} className="w-full overflow-x-auto">
-      {children}
     </div>
   );
 }
