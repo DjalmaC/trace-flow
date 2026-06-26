@@ -6,12 +6,18 @@ import { loadSharedFlow } from "@/flow-tool/lib/share";
 import { downloadFlowPdf, pdfDeckAvailable } from "@/flow-tool/lib/pdf";
 import type { Direction, FlowConfig } from "@/flow-tool/data/schema";
 
+// A shared link may carry more than one flow "variant" (e.g. ARQ's With-Arq-IP
+// vs Direct structures). The viewer switches between them with a left-side
+// toggle that mirrors the Pay-in / Pay-out control on the right.
+type Variant = { flowId: string; name: string };
+type SharedConfig = FlowConfig & { variants?: Variant[] };
+
 type State =
   | { status: "loading" }
   | { status: "notfound" }
   | { status: "unconfigured" }
   | { status: "error"; msg: string }
-  | { status: "ready"; config: FlowConfig };
+  | { status: "ready"; config: SharedConfig };
 
 // intro choreography after a private link opens:
 //   loading → welcome (held) → fadeout → done (the flow underneath is revealed)
@@ -24,16 +30,20 @@ export function SharedFlowView({ code }: { code: string }) {
   const [state, setState] = useState<State>({ status: "loading" });
   const [intro, setIntro] = useState<Intro>("loading");
   const [direction, setDirection] = useState<Direction>("collection");
+  const [activeFlowId, setActiveFlowId] = useState<string | null>(null);
   const [pdf, setPdf] = useState<"idle" | "working" | "error">("idle");
 
   const config = state.status === "ready" ? state.config : null;
+  const variants = config?.variants;
+  const flowId = activeFlowId ?? config?.flowId ?? "";
   const repName = config?.clientRep?.split(",")[0]?.trim();
 
   async function onDownload() {
     if (!config) return;
     setPdf("working");
     try {
-      await downloadFlowPdf({ ...config, direction });
+      const { variants: _v, ...base } = config;
+      await downloadFlowPdf({ ...base, flowId, direction });
       setPdf("idle");
     } catch {
       setPdf("error");
@@ -46,15 +56,16 @@ export function SharedFlowView({ code }: { code: string }) {
     (async () => {
       try {
         // hold the loading screen a beat so it reads, even on a fast fetch
-        const [config] = await Promise.all([
-          loadSharedFlow(code),
+        const [loaded] = await Promise.all([
+          loadSharedFlow(code) as Promise<SharedConfig | null>,
           new Promise((r) => setTimeout(r, MIN_LOAD_MS)),
         ]);
         if (cancelled) return;
-        if (!config) setState({ status: "notfound" });
+        if (!loaded) setState({ status: "notfound" });
         else {
-          setDirection(config.direction);
-          setState({ status: "ready", config });
+          setDirection(loaded.direction);
+          setActiveFlowId(loaded.variants?.[0]?.flowId ?? loaded.flowId);
+          setState({ status: "ready", config: loaded });
         }
       } catch (err) {
         if (cancelled) return;
@@ -80,12 +91,15 @@ export function SharedFlowView({ code }: { code: string }) {
     };
   }, [state.status]);
 
+  const hasVariants = !!variants && variants.length > 1;
+
   return (
     <main className="relative bg-[#07090b]">
       {/* the flow (revealed as the intro overlay fades out) */}
       {config && (
         <>
-          <header className="no-print absolute left-0 right-0 top-0 z-40 flex items-center justify-between px-6 py-4">
+          {/* top-left: client identity + (when there's more than one) the flow switch */}
+          <div className="no-print absolute left-6 top-4 z-40 flex flex-col items-start gap-3">
             <div className="flex items-center gap-3">
               {config.clientLogoUrl ? (
                 config.clientLogoPlate === "light" ? (
@@ -103,11 +117,20 @@ export function SharedFlowView({ code }: { code: string }) {
                 {config.clientRep && <div className="text-[11px] text-muted">Prepared for {config.clientRep}</div>}
               </div>
             </div>
-          </header>
-          <FlowExperience config={{ ...config, direction }} presentation onDirectionChange={setDirection} />
-          {/* Download PDF — larger, bottom-left, clear of the Pay-in/Pay-out toggle.
-              Only shown for flows that have a pre-designed deck (PDF source). */}
-          {pdfDeckAvailable(config.flowId) && (
+            {hasVariants && <FlowSwitch variants={variants!} activeId={flowId} onChange={setActiveFlowId} />}
+          </div>
+
+          <FlowExperience
+            config={(() => {
+              const { variants: _v, ...base } = config;
+              return { ...base, flowId, direction };
+            })()}
+            presentation
+            onDirectionChange={setDirection}
+          />
+
+          {/* Download PDF — bottom-left, only when the active flow has a designed deck */}
+          {pdfDeckAvailable(flowId) && (
             <button
               onClick={onDownload}
               disabled={pdf === "working"}
@@ -145,7 +168,9 @@ export function SharedFlowView({ code }: { code: string }) {
                 Welcome{repName ? `, ${repName}` : ""}
               </h1>
               <p className="max-w-md text-sm text-subtitle">
-                Here’s the cross-border payment flow we’ve prepared for {config!.clientName}.
+                {hasVariants
+                  ? `Here are the cross-border payment flows we’ve prepared for ${config!.clientName}.`
+                  : `Here’s the cross-border payment flow we’ve prepared for ${config!.clientName}.`}
               </p>
             </div>
           ) : (
@@ -162,6 +187,26 @@ export function SharedFlowView({ code }: { code: string }) {
         </div>
       )}
     </main>
+  );
+}
+
+// Left-side flow switch — same segmented-pill styling as the Pay-in / Pay-out
+// toggle, but it swaps the whole flow between the prepared variants.
+function FlowSwitch({ variants, activeId, onChange }: { variants: Variant[]; activeId: string; onChange: (id: string) => void }) {
+  return (
+    <div className="flex flex-col gap-0.5 rounded-[11px] border border-white/10 bg-[#0e1410]/70 p-[3px] backdrop-blur">
+      {variants.map((v) => (
+        <button
+          key={v.flowId}
+          onClick={() => onChange(v.flowId)}
+          className={`w-full rounded-lg px-[15px] py-[6px] text-left text-[12.5px] font-medium tracking-[0.2px] transition ${
+            activeId === v.flowId ? "bg-[#46d39a24] text-[#bfe8d4]" : "text-[#8b948f] hover:text-[#bfe8d4]"
+          }`}
+        >
+          {v.name}
+        </button>
+      ))}
+    </div>
   );
 }
 
