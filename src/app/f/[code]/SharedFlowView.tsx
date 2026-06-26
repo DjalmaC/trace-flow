@@ -32,6 +32,7 @@ export function SharedFlowView({ code }: { code: string }) {
   const [direction, setDirection] = useState<Direction>("collection");
   const [activeFlowId, setActiveFlowId] = useState<string | null>(null);
   const [pdf, setPdf] = useState<"idle" | "working" | "error">("idle");
+  const [ppt, setPpt] = useState<"idle" | "working" | "error">("idle");
 
   const config = state.status === "ready" ? state.config : null;
   const variants = config?.variants;
@@ -48,6 +49,21 @@ export function SharedFlowView({ code }: { code: string }) {
     } catch {
       setPdf("error");
       setTimeout(() => setPdf("idle"), 2500);
+    }
+  }
+
+  // personalised PowerPoint: a title slide + one slide per prepared flow
+  async function onPptx() {
+    if (!config) return;
+    setPpt("working");
+    try {
+      const { variants: _v, ...base } = config;
+      const { downloadFlowPptx } = await import("@/flow-tool/lib/pptx");
+      await downloadFlowPptx({ ...base, direction }, variants);
+      setPpt("idle");
+    } catch {
+      setPpt("error");
+      setTimeout(() => setPpt("idle"), 3000);
     }
   }
 
@@ -98,8 +114,9 @@ export function SharedFlowView({ code }: { code: string }) {
       {/* the flow (revealed as the intro overlay fades out) */}
       {config && (
         <>
-          {/* top-left: client identity + (when there's more than one) the flow switch */}
-          <div className="no-print absolute left-6 top-4 z-40 flex flex-col items-start gap-3">
+          {/* top-left: client identity + (when there's more than one) the flow switch.
+              Fixed so it stays available through the "Beneath the surface" scroll. */}
+          <div className="no-print fixed left-6 top-4 z-40 flex flex-col items-start gap-3">
             <div className="flex items-center gap-3">
               {config.clientLogoUrl ? (
                 config.clientLogoPlate === "light" ? (
@@ -117,7 +134,12 @@ export function SharedFlowView({ code }: { code: string }) {
                 {config.clientRep && <div className="text-[11px] text-muted">Prepared for {config.clientRep}</div>}
               </div>
             </div>
-            {hasVariants && <FlowSwitch variants={variants!} activeId={flowId} onChange={setActiveFlowId} />}
+            {hasVariants && (
+              <div className="flex flex-col gap-1.5">
+                <span className="pl-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">Flows</span>
+                <FlowSwitch variants={variants!} activeId={flowId} onChange={setActiveFlowId} />
+              </div>
+            )}
           </div>
 
           <FlowExperience
@@ -129,16 +151,26 @@ export function SharedFlowView({ code }: { code: string }) {
             onDirectionChange={setDirection}
           />
 
-          {/* Download PDF — bottom-left, only when the active flow has a designed deck */}
-          {pdfDeckAvailable(flowId) && (
+          {/* downloads — bottom-left. PowerPoint is always available (rendered live);
+              PDF only when the active flow has a pre-designed deck. */}
+          <div className="fixed bottom-6 left-6 z-40 flex items-center gap-2">
             <button
-              onClick={onDownload}
-              disabled={pdf === "working"}
-              className="fixed bottom-6 left-6 z-40 flex items-center gap-2 rounded-xl border border-green-accent/40 bg-[#0e1410]/85 px-5 py-3 text-sm font-semibold text-[#bfe8d4] shadow-xl backdrop-blur transition hover:border-green-accent hover:bg-[#13201a] disabled:opacity-60"
+              onClick={onPptx}
+              disabled={ppt === "working"}
+              className="flex items-center gap-2 rounded-xl border border-green-accent/40 bg-[#0e1410]/85 px-5 py-3 text-sm font-semibold text-[#bfe8d4] shadow-xl backdrop-blur transition hover:border-green-accent hover:bg-[#13201a] disabled:opacity-60"
             >
-              {pdf === "working" ? "Preparing…" : pdf === "error" ? "Try again" : "Download PDF ↓"}
+              {ppt === "working" ? "Building deck…" : ppt === "error" ? "Try again" : "Download PowerPoint ↓"}
             </button>
-          )}
+            {pdfDeckAvailable(flowId) && (
+              <button
+                onClick={onDownload}
+                disabled={pdf === "working"}
+                className="rounded-xl border border-white/10 bg-[#0e1410]/85 px-4 py-3 text-sm font-medium text-subtitle shadow-xl backdrop-blur transition hover:border-green-accent/40 hover:text-title disabled:opacity-60"
+              >
+                {pdf === "working" ? "Preparing…" : pdf === "error" ? "Try again" : "PDF"}
+              </button>
+            )}
+          </div>
         </>
       )}
 
