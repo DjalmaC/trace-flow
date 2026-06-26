@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { FlowExperience } from "@/flow-tool/components/FlowExperience";
 import { ASSETS, C, TRACE_LOGO_AR } from "@/flow-tool/components/tokens";
 import { loadSharedFlow } from "@/flow-tool/lib/share";
-import { downloadFlowPdf } from "@/flow-tool/lib/pdf";
+import { downloadFlowPdf, pdfDeckAvailable } from "@/flow-tool/lib/pdf";
 import type { Direction, FlowConfig } from "@/flow-tool/data/schema";
 
 type State =
@@ -105,14 +105,17 @@ export function SharedFlowView({ code }: { code: string }) {
             </div>
           </header>
           <FlowExperience config={{ ...config, direction }} presentation onDirectionChange={setDirection} />
-          {/* Download PDF — larger, bottom-left, clear of the Pay-in/Pay-out toggle */}
-          <button
-            onClick={onDownload}
-            disabled={pdf === "working"}
-            className="fixed bottom-6 left-6 z-40 flex items-center gap-2 rounded-xl border border-green-accent/40 bg-[#0e1410]/85 px-5 py-3 text-sm font-semibold text-[#bfe8d4] shadow-xl backdrop-blur transition hover:border-green-accent hover:bg-[#13201a] disabled:opacity-60"
-          >
-            {pdf === "working" ? "Preparing…" : pdf === "error" ? "Try again" : "Download PDF ↓"}
-          </button>
+          {/* Download PDF — larger, bottom-left, clear of the Pay-in/Pay-out toggle.
+              Only shown for flows that have a pre-designed deck (PDF source). */}
+          {pdfDeckAvailable(config.flowId) && (
+            <button
+              onClick={onDownload}
+              disabled={pdf === "working"}
+              className="fixed bottom-6 left-6 z-40 flex items-center gap-2 rounded-xl border border-green-accent/40 bg-[#0e1410]/85 px-5 py-3 text-sm font-semibold text-[#bfe8d4] shadow-xl backdrop-blur transition hover:border-green-accent hover:bg-[#13201a] disabled:opacity-60"
+            >
+              {pdf === "working" ? "Preparing…" : pdf === "error" ? "Try again" : "Download PDF ↓"}
+            </button>
+          )}
         </>
       )}
 
