@@ -10,7 +10,9 @@
 // "USD/EUR" is the semantic delivered-fiat token used in flow DATA; the
 // client-facing display can resolve it to the combined label or a specific
 // "USD" / "EUR" via FlowConfig.delivered.
-export type Currency = "BRL" | "USD" | "EUR" | "USD/EUR" | "USDC/USDT";
+// "USD/USDC" is a combined cash-or-stablecoin token used by the Arq Argentina
+// flow (foreign value funded as USD or USDC); it renders as a labelled pill.
+export type Currency = "BRL" | "USD" | "EUR" | "USD/EUR" | "USDC/USDT" | "USD/USDC";
 export type Stablecoin = "USDC" | "USDT" | "both";
 export type Lane = "brazil" | "abroad";
 export type NodeKind = "client" | "trace" | "operational" | "merchant";
@@ -23,7 +25,7 @@ export type Direction = "collection" | "disbursement";
  */
 export interface DialCoordinate {
   /** D1 — the human-facing model label. */
-  model: "eFX-only" | "eFX+NRA" | "NRA-direct" | "VA" | "VA+NRA";
+  model: "eFX-only" | "eFX+NRA" | "NRA-direct" | "VA" | "VA+NRA" | "Arq Argentina";
   /** D3 — the one real conduit input. */
   rail: "direct-fiat" | "treasury-fiat" | "stablecoin-sandwich" | "VA-delivery";
   /** D2 (decomposed) — where/whose value sits offshore. */
@@ -78,6 +80,9 @@ export interface Flow {
   dials: DialCoordinate; // used by the intake resolver (Stage B match)
   traceRole: TraceRole[]; // computed: 'VASP' and/or 'Correspondente Cambial'
   directions: Direction[]; // all flows: ['collection','disbursement']
+  /** Optional hero-subtitle override per direction (the defaults are
+   *  Brazil-centric; flows that originate abroad set their own copy). */
+  heroSupport?: { collection: string; disbursement: string };
   /** One-line description for the manual picker. */
   blurb: string;
   /** House-voice narrative ("text underneath"), client-facing. */

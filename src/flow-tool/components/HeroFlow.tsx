@@ -19,7 +19,7 @@ const Y = 457;
 const HUB = { cx: 680, cy: Y, r: 34 };
 const VIEWBOX = "150 384 1060 168";
 
-const ACRONYMS = new Set(["eFX", "NRA", "LP", "Pix", "Inc", "USDC", "USDT", "USDC/USDT", "BRL", "USD", "EUR", "USD/EUR"]);
+const ACRONYMS = new Set(["eFX", "NRA", "LP", "IP", "Pix", "Inc", "USDC", "USDT", "USDC/USDT", "USD/USDC", "BRL", "USD", "EUR", "USD/EUR", "BR"]);
 function sentenceCase(label: string): string {
   const words = label.split(" ").map((w, i) => {
     if (ACRONYMS.has(w) || w === "/") return w;
@@ -88,6 +88,8 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
   const partyB = flow.nodes.find((n) => n.id === flow.headline.partyB);
   const clientSub = sentenceCase(partyA?.label ?? "Client");
   const merchantName = sentenceCase(partyB?.label ?? "Beneficiary");
+  // the beneficiary isn't always abroad (the Arq Argentina flow settles in Brazil)
+  const merchantWhere = partyB?.lane === "brazil" ? "in Brazil" : "abroad";
 
   useEffect(() => {
     const a = aRef.current, b = bRef.current, hub = hubRef.current, pulse = pulseRef.current;
@@ -205,7 +207,7 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
           {merchantName}
         </text>
         <text x={1014} y={477} textAnchor="middle" fontSize={13} fontWeight={400} fill="#6f857b">
-          Beneficiary, abroad
+          Beneficiary, {merchantWhere}
         </text>
       </ElevatedNode>
 

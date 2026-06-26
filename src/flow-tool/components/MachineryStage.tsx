@@ -30,8 +30,12 @@ const MIN_GO = 560; // floor so a short half-leg into/out of a hub isn't a blink
 const PAUSE_MS = 260; // a brief breath as value rests behind each station
 const SPIN_MS = 1180; // the FX-engine conversion moment
 const END_REST_MS = 700;
-const R_HIDE = 40; // token fully hidden within this of a hub centre (absorbed)
-const R_SHOW = 78; // token fully shown beyond this (clear of the plinth)
+const R_HIDE = 12; // token fully hidden within this of a hub centre (deep inside the
+                   // plinth, absorbed) — kept well inside HUB_R(22) so the token
+                   // visibly travels INTO the hub before vanishing, rather than
+                   // blinking out short of it.
+const R_SHOW = 44; // token fully shown beyond this — fade only begins as the token
+                   // reaches the plinth, so it dissolves as it enters the hub.
 const RIPPLE_MS = 460; // box landing ripple — fast, like the FX hub's impact ring
 const RIPPLE_MAX = 0.5; // ripple peak opacity (kept gentle, not a steady glow)
 

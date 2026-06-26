@@ -1,4 +1,4 @@
-import { FLOWS, defaultConfig } from "../data";
+import { INTAKE_FLOWS, defaultConfig } from "../data";
 import type { DialCoordinate, Direction, Flow, FlowConfig } from "../data/schema";
 import { QUESTIONS, type IntakeAnswers } from "./questions";
 
@@ -42,8 +42,8 @@ export function resolveCoordinate(answers: IntakeAnswers): {
 /** Stage B — flows whose dials equal every *specified* field of the coordinate. */
 export function matchFlows(coordinate: Partial<DialCoordinate>): Flow[] {
   const keys = Object.keys(coordinate) as (keyof DialCoordinate)[];
-  if (keys.length === 0) return [...FLOWS];
-  return FLOWS.filter((flow) =>
+  if (keys.length === 0) return [...INTAKE_FLOWS];
+  return INTAKE_FLOWS.filter((flow) =>
     keys.every((k) => flow.dials[k] === coordinate[k]),
   );
 }

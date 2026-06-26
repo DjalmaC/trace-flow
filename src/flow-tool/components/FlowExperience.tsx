@@ -101,8 +101,9 @@ export function FlowExperience({
     `radial-gradient(62% 62% at 50% 46%, ${C.ambientGlow1} 0%, ${C.ambientGlow2} 58%, rgba(7,9,11,0) 100%),` +
     `radial-gradient(72% 72% at 50% 50%, rgba(7,9,11,0) 58%, ${C.vignette} 100%)`;
 
-  const support =
-    config.direction === "collection"
+  const support = flow.heroSupport
+    ? flow.heroSupport[config.direction]
+    : config.direction === "collection"
       ? "Collect in Brazil, settle to their merchant abroad, in one move."
       : "Fund from abroad, pay out into Brazil, in one move.";
 
