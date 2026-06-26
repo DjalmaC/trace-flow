@@ -1,20 +1,28 @@
 import { computeLayout, CONT_Y, CONT_H } from "../components/layout";
 import { Defs } from "../components/FlowSvg";
 import { MachineryStage } from "../components/MachineryStage";
-import { ASSETS } from "../components/tokens";
-import { getFlow } from "../data";
+import { ASSETS, TRACE_LOGO_AR } from "../components/tokens";
+import { getFlow, defaultConfig } from "../data";
 import type { Flow, FlowConfig } from "../data/schema";
 
-// Personalised PowerPoint export. For each flow variant we render the live
-// machinery component to a STATIC svg (animate=false → the resting diagram),
-// inline its assets + Inter font (an svg rasterised as an image only sees what's
-// embedded in it), rasterise to PNG, and drop each onto a dark slide. A title
-// slide carries the client + Trace branding. Everything is client-side; pptxgenjs
-// and react-dom/server are dynamically imported so they stay out of the main bundle.
+// Personalised PowerPoint export, styled to match the flow 1-10 decks on the web
+// app: near-black background + green radial glow + a thin green top rule + Inter,
+// with the Trace Finance lockup bottom-right. Each slide is a single 960x540 deck
+// composition (rendered live → static SVG → rasterised PNG) placed full-bleed.
+// pptxgenjs + react-dom/server are dynamically imported to stay out of the main bundle.
 
-const SCALE = 2; // raster DPI multiplier
-const DECK_W = 13.333; // 16:9 slide, inches
-const DECK_H = 7.5;
+const DW = 960;
+const DH = 540;
+const SCALE = 2;
+const DECK_W_IN = 13.333; // 16:9 slide
+const DECK_H_IN = 7.5;
+
+// deck palette (from flow_0X_dark.svg)
+const BG = "#08090b";
+const RULE = "#4cc28e";
+const TITLE = "#eef1ee";
+const SUB = "#6f7a76";
+const LABEL = "#7fb89f";
 
 async function dataUri(path: string, mime = "image/png"): Promise<string> {
   const buf = await fetch(path).then((r) => r.arrayBuffer());
@@ -51,27 +59,106 @@ function rasterize(svg: string, w: number, h: number): Promise<string> {
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
-      reject(new Error("Could not render the flow diagram."));
+      reject(new Error("Could not render the deck slide."));
     };
     img.src = url;
   });
 }
 
-/** Render one flow's machinery diagram to a PNG data URL (+ its pixel size). */
-export async function flowDiagramPng(config: FlowConfig, flow: Flow): Promise<{ url: string; w: number; h: number }> {
-  const { renderToStaticMarkup } = await import("react-dom/server");
-  const layout = computeLayout(flow, config);
-  const w = layout.width;
-  const h = CONT_H + 30;
-  const vb = `0 ${CONT_Y - 12} ${w} ${h}`;
+// ── deck composition (JSX → static SVG) ──────────────────────────────────────
 
-  let markup = renderToStaticMarkup(
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox={vb} width={w} height={h} style={{ fontFamily: "Inter, sans-serif" }}>
-      <Defs />
-      <MachineryStage layout={layout} config={config} animate={false} showHeading={false} />
-    </svg>,
+function Lockup() {
+  const mh = 22;
+  const mw = mh * TRACE_LOGO_AR;
+  return (
+    <>
+      <image href={ASSETS.traceLogo} x={775} y={503} width={mw} height={mh} />
+      <text x={930} y={520} fontSize={15} fontWeight={600} fill={TITLE} textAnchor="end">
+        Trace Finance
+      </text>
+    </>
   );
+}
 
+function Frame({ children }: { children: React.ReactNode }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox={`0 0 ${DW} ${DH}`} width={DW} height={DH} style={{ fontFamily: "Inter, sans-serif" }}>
+      <Defs />
+      <rect x={0} y={0} width={DW} height={DH} fill={BG} />
+      <rect x={0} y={0} width={DW} height={DH} fill="url(#tf-glow)" />
+      <rect x={0} y={0} width={DW} height={3.2} fill={RULE} />
+      {children}
+      <Lockup />
+    </svg>
+  );
+}
+
+function titleSlide(config: FlowConfig) {
+  const cw = 320;
+  const ch = 140;
+  const cx = (DW - cw) / 2;
+  const cy = 150;
+  return (
+    <Frame>
+      {config.clientLogoUrl ? (
+        <>
+          <rect x={cx} y={cy} width={cw} height={ch} rx={18} fill="#ffffff" />
+          <image href={config.clientLogoUrl} x={cx + 42} y={cy + 38} width={cw - 84} height={ch - 76} preserveAspectRatio="xMidYMid meet" />
+        </>
+      ) : (
+        <text x={DW / 2} y={cy + ch / 2 + 14} fontSize={46} fontWeight={700} fill={TITLE} textAnchor="middle">
+          {config.clientName}
+        </text>
+      )}
+      <text x={DW / 2} y={cy + ch + 66} fontSize={30} fontWeight={700} fill={TITLE} textAnchor="middle">
+        Cross-border payment architecture
+      </text>
+      <text x={DW / 2} y={cy + ch + 98} fontSize={15} fill={SUB} textAnchor="middle">
+        {config.clientRep ? `Prepared for ${config.clientRep}` : `Prepared for ${config.clientName}`}
+      </text>
+    </Frame>
+  );
+}
+
+function flowSlide(config: FlowConfig, flow: Flow, name: string, support?: string) {
+  const layout = computeLayout(flow, config);
+  const mw = layout.width;
+  const mh = CONT_H + 30;
+  const areaTop = 122;
+  const areaBottom = 474;
+  const availW = DW - 80;
+  const maxH = areaBottom - areaTop;
+  let w2 = availW;
+  let h2 = (w2 * mh) / mw;
+  if (h2 > maxH) {
+    h2 = maxH;
+    w2 = (h2 * mw) / mh;
+  }
+  const x2 = (DW - w2) / 2;
+  const y2 = areaTop + (maxH - h2) / 2;
+  return (
+    <Frame>
+      <text x={48} y={56} fontSize={11} fontWeight={600} fill={LABEL} letterSpacing={2}>
+        BENEATH THE SURFACE
+      </text>
+      <text x={48} y={86} fontSize={24} fontWeight={700} fill={TITLE}>
+        {name}
+      </text>
+      {support && (
+        <text x={48} y={108} fontSize={12.5} fill={SUB}>
+          {support}
+        </text>
+      )}
+      <svg x={x2} y={y2} width={w2} height={h2} viewBox={`0 ${CONT_Y - 12} ${mw} ${mh}`} preserveAspectRatio="xMidYMid meet">
+        <MachineryStage layout={layout} config={config} animate={false} showHeading={false} />
+      </svg>
+    </Frame>
+  );
+}
+
+async function renderDeckPng(node: React.ReactElement): Promise<string> {
+  const { renderToStaticMarkup } = await import("react-dom/server");
+  let markup = renderToStaticMarkup(node);
   const [trace, usdc, usdt, style] = await Promise.all([
     dataUri(ASSETS.traceLogo),
     dataUri(ASSETS.usdc),
@@ -83,9 +170,14 @@ export async function flowDiagramPng(config: FlowConfig, flow: Flow): Promise<{ 
     .split(ASSETS.usdc).join(usdc)
     .split(ASSETS.usdt).join(usdt)
     .replace(/(<svg[^>]*>)/, `$1${style}`);
+  return rasterize(markup, DW, DH);
+}
 
-  const url = await rasterize(markup, w, h);
-  return { url, w, h };
+/** QA hook: render one deck slide to a PNG data URL. */
+export async function previewDeckPng(flowId: string, kind: "title" | "flow"): Promise<string> {
+  const flow = getFlow(flowId)!;
+  const config: FlowConfig = { ...defaultConfig(flowId, "ARQ"), clientRep: "Victor Medeiros", clientLogoPlate: "none" };
+  return renderDeckPng(kind === "title" ? titleSlide(config) : flowSlide(config, flow, "With Arq IP", flow.heroSupport?.collection));
 }
 
 type Variant = { flowId: string; name: string };
@@ -99,59 +191,27 @@ export async function downloadFlowPptx(config: FlowConfig, variants?: Variant[])
       ? variants
       : [{ flowId: config.flowId, name: getFlow(config.flowId)?.title ?? "Flow" }];
 
-  // pre-render each flow diagram
-  const rendered = [];
+  const titlePng = await renderDeckPng(titleSlide(config));
+  const flowPngs: string[] = [];
   for (const it of items) {
     const flow = getFlow(it.flowId);
     if (!flow) continue;
-    const img = await flowDiagramPng({ ...config, flowId: it.flowId }, flow);
-    rendered.push({ ...it, flow, img });
+    const support = flow.heroSupport ? flow.heroSupport[config.direction] : undefined;
+    flowPngs.push(await renderDeckPng(flowSlide({ ...config, flowId: it.flowId }, flow, it.name, support)));
   }
 
   const pptx = new PptxGenJS();
-  pptx.defineLayout({ name: "TF169", width: DECK_W, height: DECK_H });
+  pptx.defineLayout({ name: "TF169", width: DECK_W_IN, height: DECK_H_IN });
   pptx.layout = "TF169";
-  const BG = "07090B";
-  const GREEN = "5FD3A0";
-  const TITLE = "F2F5F3";
-  const SUB = "8B948F";
 
-  // ── title slide ──
   const title = pptx.addSlide();
-  title.background = { color: BG };
-  if (config.clientLogoUrl) {
-    // white card behind the (transparent) client mark so it reads on the dark slide
-    title.addShape("roundRect", { x: 5.17, y: 2.2, w: 3.0, h: 1.2, fill: { color: "FFFFFF" }, line: { type: "none" }, rectRadius: 0.12 });
-    title.addImage({ data: config.clientLogoUrl, x: 5.42, y: 2.45, w: 2.5, h: 0.7, sizing: { type: "contain", w: 2.5, h: 0.7 } });
-  } else {
-    title.addText(config.clientName, { x: 0, y: 2.4, w: DECK_W, h: 0.9, align: "center", color: TITLE, fontSize: 40, bold: true, fontFace: "Inter" });
-  }
-  title.addText("Cross-border payment architecture", { x: 0, y: 3.7, w: DECK_W, h: 0.7, align: "center", color: TITLE, fontSize: 28, bold: true, fontFace: "Inter" });
-  title.addText(
-    config.clientRep ? `Prepared for ${config.clientRep}` : `Prepared for ${config.clientName}`,
-    { x: 0, y: 4.5, w: DECK_W, h: 0.5, align: "center", color: SUB, fontSize: 15, fontFace: "Inter" },
-  );
-  title.addText("Trace Finance", { x: 0, y: 6.7, w: DECK_W, h: 0.4, align: "center", color: GREEN, fontSize: 14, bold: true, fontFace: "Inter" });
+  title.background = { color: "08090B" };
+  title.addImage({ data: titlePng, x: 0, y: 0, w: DECK_W_IN, h: DECK_H_IN });
 
-  // ── one slide per flow ──
-  for (const r of rendered) {
+  for (const png of flowPngs) {
     const s = pptx.addSlide();
-    s.background = { color: BG };
-    s.addText("How Trace makes it happen", { x: 0.6, y: 0.35, w: DECK_W - 1.2, h: 0.4, color: SUB, fontSize: 12, bold: true, fontFace: "Inter", charSpacing: 2 });
-    s.addText(r.name, { x: 0.6, y: 0.7, w: DECK_W - 1.2, h: 0.7, color: TITLE, fontSize: 26, bold: true, fontFace: "Inter" });
-
-    const margin = 0.7;
-    const availW = DECK_W - margin * 2;
-    const aspect = r.img.w / r.img.h;
-    let imgW = availW;
-    let imgH = imgW / aspect;
-    const maxH = 3.6;
-    if (imgH > maxH) { imgH = maxH; imgW = imgH * aspect; }
-    s.addImage({ data: r.img.url, x: (DECK_W - imgW) / 2, y: 1.75, w: imgW, h: imgH });
-
-    if (r.flow.narrative) {
-      s.addText(r.flow.narrative, { x: 1.0, y: 1.85 + imgH + 0.25, w: DECK_W - 2.0, h: 1.6, align: "center", color: SUB, fontSize: 13, fontFace: "Inter" });
-    }
+    s.background = { color: "08090B" };
+    s.addImage({ data: png, x: 0, y: 0, w: DECK_W_IN, h: DECK_H_IN });
   }
 
   await pptx.writeFile({ fileName: `Trace Finance - ${config.clientName} - flows.pptx` });

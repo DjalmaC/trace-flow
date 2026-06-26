@@ -178,9 +178,10 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
         {config.clientLogoUrl ? (
           config.clientLogoPlate === "light" ? (
             <>
-              {/* card + logo centered on the node (cx 346, cy 457) */}
-              <rect x={202} y={405} width={288} height={104} rx={12} fill="#ffffff" />
-              <image href={config.clientLogoUrl} x={218} y={421} width={256} height={72} preserveAspectRatio="xMidYMid meet" />
+              {/* card + logo centered on the node (cx 346, cy 457), with
+                  comfortable padding so the mark reads as a poised lockup */}
+              <rect x={206} y={407} width={280} height={100} rx={16} fill="#ffffff" />
+              <image href={config.clientLogoUrl} x={236} y={429} width={220} height={56} preserveAspectRatio="xMidYMid meet" />
             </>
           ) : (
             <image href={config.clientLogoUrl} x={202} y={405} width={288} height={104} preserveAspectRatio="xMidYMid meet" />
