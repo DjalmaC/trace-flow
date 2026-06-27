@@ -15,18 +15,18 @@ import type { TraceRep } from "./schema";
 
 export const TRACE_REPS: TraceRep[] = [
   {
-    id: "diogo-cassinelli",
-    name: "Diogo Cassinelli",
-    title: "Business Development Manager",
-    email: "dcassinelli@trace.finance",
-    slidePage: 0,
-  },
-  {
     id: "victor-morelli",
     name: "Victor Morelli",
     title: "Head of Sales",
     email: "vmorelli@trace.finance",
     slidePage: 1,
+  },
+  {
+    id: "diogo-cassinelli",
+    name: "Diogo Cassinelli",
+    title: "Business Development Manager",
+    email: "dcassinelli@trace.finance",
+    slidePage: 0,
   },
   {
     id: "rafael-vieira",
