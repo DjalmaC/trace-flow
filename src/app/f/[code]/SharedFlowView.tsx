@@ -321,7 +321,7 @@ function PricingView({ pricing }: { pricing: Pricing }) {
 
         <div className="space-y-5 md:grid md:grid-cols-2 md:gap-5 md:space-y-0">
           {pricing.cards.map((card, i) => (
-            <div key={i} className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.02] p-5 shadow-xl md:p-6">
+            <div key={i} className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.02] p-5 shadow-xl md:p-6" style={{ maxWidth: "calc(100vw - 2.5rem)" }}>
               <div className="flex items-center gap-3">
                 <div
                   className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-lg font-bold text-[#06120c]"
@@ -337,13 +337,13 @@ function PricingView({ pricing }: { pricing: Pricing }) {
               <div className="my-4 h-px bg-white/10" />
               <div className="space-y-2.5">
                 {card.rows.map((r, j) => (
-                  <div key={j} className="flex items-center justify-between gap-3">
+                  <div key={j} className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                     <span className="flex min-w-0 items-center gap-2 text-sm text-subtitle">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={ASSETS.traceLogo} alt="" className="shrink-0" style={{ height: 12, width: 12 * TRACE_LOGO_AR }} />
                       <span className="truncate">{r.label}</span>
                     </span>
-                    <span className="shrink-0 font-mono text-sm font-semibold text-green-accent">{r.value}</span>
+                    <span className="font-mono text-sm font-semibold text-green-accent">{r.value}</span>
                   </div>
                 ))}
               </div>
