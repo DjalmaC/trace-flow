@@ -224,6 +224,29 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
   // Will we replace the contact slide with the rep's pre-designed slide?
   const replaceClosing = rep?.slidePage != null;
 
+  // The template's static "Prepared for" label sits just above the rep line but
+  // gets clipped during redaction; redraw it (with the colon) in its original
+  // style so the title reads "Prepared for: {rep} — {company}".
+  const repField = manifest.fields.find((f) => f.key === "repCompany");
+  if (repField) {
+    manifest.fields.push({
+      key: "preparedFor",
+      page: repField.page,
+      template: "Prepared for:",
+      x: repField.x,
+      baseline: repField.baseline - 14.6,
+      size: 9,
+      color: "#8f98a3",
+      font: "regular",
+      align: "left",
+    });
+  }
+
+  // The placeholder logo box is short, so a square mark renders small — grow it
+  // into the empty top-left space for more presence.
+  const lb = manifest.logo.box;
+  const logoBox: [number, number, number, number] = [lb[0], lb[1], lb[0] + 200, lb[1] + 56];
+
   // Stamp overlays onto the relevant template pages (before inserting flows, so
   // page references stay valid). Skip the closing page when we'll replace it.
   const pages = new Set(manifest.fields.map((f) => f.page));
@@ -239,7 +262,7 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
     }
     const logo =
       pno === manifest.logo.page && opts.companyLogoUrl
-        ? { box: manifest.logo.box, url: opts.companyLogoUrl, plate: opts.companyLogoPlate }
+        ? { box: logoBox, url: opts.companyLogoUrl, plate: opts.companyLogoPlate }
         : undefined;
     if (!fields.length && !logo) continue;
     const svg = await pageOverlaySvg(fields, vars, logo);

@@ -95,20 +95,23 @@ function floodCutout(d: Uint8ClampedArray, w: number, h: number, bg: [number, nu
 
 /** Mean HSV saturation + median luminance of the opaque pixels (subsampled). */
 function markStats(d: Uint8ClampedArray) {
-  let satSum = 0, n = 0;
+  let chromaSum = 0, n = 0;
   const lums: number[] = [];
   const step = Math.max(4, Math.floor(d.length / 4 / 50000)) * 4; // cap samples
   for (let i = 0; i < d.length; i += step) {
     if (d[i + 3] <= 128) continue;
     const r = d[i], g = d[i + 1], b = d[i + 2];
     const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
-    satSum += mx === 0 ? 0 : (mx - mn) / mx;
+    // chroma (absolute max-min), not the saturation RATIO: the ratio is unstable
+    // for dark pixels, so a near-black mark with a tiny colour cast reads as
+    // "colourful" and never auto-whitens. Chroma stays near 0 for any near-grey.
+    chromaSum += mx - mn;
     lums.push(lum1(r, g, b));
     n++;
   }
-  if (!n) return { meanSat: 0, medLum: 255, count: 0 };
+  if (!n) return { meanChroma: 0, medLum: 255, count: 0 };
   lums.sort((a, b) => a - b);
-  return { meanSat: satSum / n, medLum: lums[lums.length >> 1], count: n };
+  return { meanChroma: chromaSum / n / 255, medLum: lums[lums.length >> 1], count: n };
 }
 
 function bbox(d: Uint8ClampedArray, w: number, h: number) {
@@ -129,9 +132,14 @@ function bbox(d: Uint8ClampedArray, w: number, h: number) {
  * monochrome mark that would otherwise vanish on the page. Returns the processed
  * PNG + the recommended plate. On any failure it returns the original untouched.
  */
+/** Mark-colour intent. "auto" = decide per the contrast rule; "white"/"mint" =
+ *  force a recolor (even on a coloured logo); "keep" = never recolor. */
+export type MarkColor = "auto" | "white" | "mint" | "keep";
+const MINT: [number, number, number] = [43, 232, 150]; // #2BE896
+
 export async function normalizeLogo(
   src: string,
-  opts: { recolor?: [number, number, number]; pageBg?: [number, number, number] } = {},
+  opts: { recolor?: [number, number, number]; pageBg?: [number, number, number]; mark?: MarkColor } = {},
 ): Promise<NormalizeResult> {
   const orig = (extra?: Partial<NormalizeResult>): NormalizeResult => ({
     url: src, plate: "none", recolored: false, cut: false, needsModel: false, ...extra,
@@ -139,6 +147,9 @@ export async function normalizeLogo(
   if (typeof document === "undefined") return orig();
   const recolor = opts.recolor ?? [255, 255, 255];
   const pageBg = opts.pageBg ?? [13, 24, 20]; // dark-green proposal canvas
+  const mark: MarkColor = opts.mark ?? "auto";
+  const forced: [number, number, number] | null =
+    mark === "white" ? [255, 255, 255] : mark === "mint" ? MINT : null;
 
   return new Promise((resolve) => {
     const img = new Image();
@@ -175,21 +186,29 @@ export async function normalizeLogo(
         }
 
         // 2) recolor decision (opaque pixels only) -------------------------
-        const { meanSat, medLum, count } = markStats(d);
+        const { meanChroma, medLum, count } = markStats(d);
         let recolored = false;
         let plate: LogoPlate = "none";
+        const paintAll = (c: [number, number, number]) => {
+          for (let i = 0; i < d.length; i += 4) {
+            if (d[i + 3] > 0) { d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; }
+          }
+        };
         if (count > 0) {
-          const mono = meanSat < 0.15;
+          const mono = meanChroma < 0.10; // mean chroma (max-min)/255 below ~25 levels
           const lowContrast = Math.abs(medLum - lum1(pageBg[0], pageBg[1], pageBg[2])) < 55;
-          if (needsModel) {
+          const isolated = cut || transparentShare(d) > 0.02; // mark is alone on transparency
+          if (forced && isolated) {
+            // user forced a recolor — repaint the whole mark, keep alpha
+            paintAll(forced);
+            recolored = true;
+          } else if (needsModel) {
             // couldn't isolate the mark → don't repaint; ride a chip if dark
             plate = medLum < 110 ? "light" : "none";
-          } else if (mono && lowContrast) {
-            for (let i = 0; i < d.length; i += 4) {
-              if (d[i + 3] > 0) { d[i] = recolor[0]; d[i + 1] = recolor[1]; d[i + 2] = recolor[2]; }
-            }
+          } else if (mark === "auto" && mono && lowContrast) {
+            paintAll(recolor);
             recolored = true; // keep alpha → crisp anti-aliased edges
-          } else if (!mono && medLum < 90) {
+          } else if (mark !== "keep" && !mono && medLum < 90) {
             plate = "light"; // dark multi-colour brand mark → light chip
           }
         }

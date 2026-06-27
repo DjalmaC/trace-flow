@@ -47,7 +47,6 @@ export function FlowNodeShape({
   const rect = (
     <g filter="url(#tf-shadow)">
       <rect x={x} y={y} width={w} height={h} rx={12} fill={C.surface} stroke={isFg ? C.green : "#ffffff"} strokeOpacity={isFg ? 0.22 : 0.1} />
-      <line x1={x + 16} y1={y + 1.3} x2={x + w - 16} y2={y + 1.3} stroke="#ffffff" strokeOpacity={0.1} strokeWidth={1} />
     </g>
   );
 
@@ -58,7 +57,6 @@ export function FlowNodeShape({
       <g>
         <g filter="url(#tf-shadow)">
           <rect x={x} y={y} width={w} height={h} rx={14} fill={C.surface} stroke={C.green} strokeOpacity={0.34} />
-          <line x1={x + 16} y1={y + 1.3} x2={x + w - 16} y2={y + 1.3} stroke="#ffffff" strokeOpacity={0.1} strokeWidth={1} />
         </g>
         <text x={cx} y={y + 18} fontSize={11} fontWeight={600} fill={C.green} textAnchor="middle" opacity={0.85}>
           Trace engine

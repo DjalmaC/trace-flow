@@ -2,7 +2,11 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { ProposalSetup, ProposalType, TraceRep } from "@/flow-tool/data/schema";
-import { detectLogoPlate, normalizeLogo, removeBackground } from "@/flow-tool/lib/logo";
+import { normalizeLogo } from "@/flow-tool/lib/logo";
+
+// Logo treatment for the dark canvas: Auto (decide), White/Mint (force recolor
+// of a one-colour mark), Card (keep brand colours on a white chip).
+type Treatment = "auto" | "white" | "mint" | "card";
 import { defaultProposalDate, saveSetup } from "@/flow-tool/lib/setup";
 import { loadRep } from "@/flow-tool/lib/rep-session";
 
@@ -35,9 +39,10 @@ export default function NewProposalPage() {
   const [rep, setRep] = useState<TraceRep | null>(null);
   const [company, setCompany] = useState("");
   const [companyRep, setCompanyRep] = useState("");
+  const [origLogo, setOrigLogo] = useState<string>();
   const [logoUrl, setLogoUrl] = useState<string | undefined>();
   const [logoPlate, setLogoPlate] = useState<"light" | "none">("none");
-  const [bgWorking, setBgWorking] = useState(false);
+  const [treatment, setTreatment] = useState<Treatment>("auto");
   const [proposalType, setProposalType] = useState<ProposalType>("standard");
   const [ym, setYm] = useState(defaultYearMonth());
 
@@ -48,29 +53,26 @@ export default function NewProposalPage() {
     else setRep(r);
   }, [router]);
 
+  // Re-run the normalizer on the original upload with the chosen treatment, so
+  // switching White/Mint/Card is reversible and never compounds.
+  async function applyTreatment(t: Treatment, base = origLogo) {
+    if (!base) return;
+    setTreatment(t);
+    const r = await normalizeLogo(base, { mark: t === "card" ? "keep" : t });
+    setLogoUrl(r.url);
+    setLogoPlate(t === "card" ? "light" : r.plate);
+  }
+
   function onLogo(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = async () => {
-      // normalize for the dark canvas: cut the background and recolor a
-      // monochrome low-contrast mark to white (keeps multi-colour logos as-is).
-      const r = await normalizeLogo(String(reader.result));
-      setLogoUrl(r.url);
-      setLogoPlate(r.plate);
+      const raw = String(reader.result);
+      setOrigLogo(raw);
+      await applyTreatment("auto", raw); // cut bg + auto-decide on insert
     };
     reader.readAsDataURL(file);
-  }
-
-  async function onRemoveBg() {
-    if (!logoUrl) return;
-    setBgWorking(true);
-    const cut = await removeBackground(logoUrl);
-    if (cut) {
-      setLogoUrl(cut);
-      setLogoPlate(await detectLogoPlate(cut));
-    }
-    setBgWorking(false);
   }
 
   function start() {
@@ -138,36 +140,38 @@ export default function NewProposalPage() {
                 <input type="file" accept="image/*" onChange={onLogo} className="hidden" />
               </label>
               {logoUrl && (
-                <>
-                  <span
-                    className={`flex h-10 items-center rounded-md px-3 ${logoPlate === "light" ? "bg-white" : "bg-node-fill"}`}
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={logoUrl} alt="logo preview" className="h-7 w-auto max-w-[140px] object-contain" />
-                  </span>
-                  <button
-                    onClick={onRemoveBg}
-                    disabled={bgWorking}
-                    className="rounded-lg border border-node-stroke px-3 py-2 text-xs font-medium text-subtitle transition hover:text-title disabled:opacity-60"
-                  >
-                    {bgWorking ? "Removing…" : "Remove background ✂"}
-                  </button>
-                  <div className="flex gap-1 rounded-lg bg-node-fill p-1">
-                    {(["none", "light"] as const).map((m) => (
-                      <button
-                        key={m}
-                        onClick={() => setLogoPlate(m)}
-                        className={`rounded-md px-2.5 py-1.5 text-xs font-medium capitalize transition ${
-                          logoPlate === m ? "bg-green-accent text-[#06120c]" : "text-subtitle hover:text-title"
-                        }`}
-                      >
-                        {m === "none" ? "On dark" : "White card"}
-                      </button>
-                    ))}
-                  </div>
-                </>
+                <span
+                  className={`flex h-10 items-center rounded-md px-3 ${logoPlate === "light" ? "bg-white" : ""}`}
+                  style={logoPlate === "light" ? undefined : { background: "radial-gradient(70% 70% at 50% 50%, #15392d 0%, #0b1714 75%)" }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={logoUrl} alt="logo preview" className="h-7 w-auto max-w-[140px] object-contain" />
+                </span>
               )}
             </div>
+            {logoUrl && (
+              <>
+                <div className="mt-2 inline-flex gap-1 rounded-lg bg-node-fill p-1">
+                  {([["auto", "Auto"], ["white", "White"], ["mint", "Mint"], ["card", "Card"]] as [Treatment, string][]).map(
+                    ([t, label]) => (
+                      <button
+                        key={t}
+                        onClick={() => applyTreatment(t)}
+                        className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition ${
+                          treatment === t ? "bg-green-accent text-[#06120c]" : "text-subtitle hover:text-title"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ),
+                  )}
+                </div>
+                <p className="mt-1.5 text-[11px] leading-snug text-muted">
+                  Background is removed automatically. <b className="text-subtitle">White</b>/<b className="text-subtitle">Mint</b> repaint a
+                  one-colour mark so it reads on dark; <b className="text-subtitle">Card</b> keeps brand colours on a white chip.
+                </p>
+              </>
+            )}
           </Field>
 
           {/* Proposal type */}

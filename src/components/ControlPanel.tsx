@@ -6,7 +6,7 @@ import { TRACE_REPS, getRep } from "@/flow-tool/data/reps";
 import { QUESTIONS, type IntakeAnswers } from "@/flow-tool/intake/questions";
 import { resolve, NO_MATCH_MESSAGE } from "@/flow-tool/intake/resolver";
 import { createShareLink, isShareConfigured } from "@/flow-tool/lib/share";
-import { detectLogoPlate, normalizeLogo, removeBackground } from "@/flow-tool/lib/logo";
+import { normalizeLogo } from "@/flow-tool/lib/logo";
 import { downloadProposalPdf } from "@/flow-tool/lib/proposal";
 import { defaultProposalDate, saveSetup } from "@/flow-tool/lib/setup";
 
@@ -15,7 +15,9 @@ const PROPOSAL_LABELS: Record<ProposalType, string> = {
   "brazil-market": "Brazil-market",
 };
 
-type PlateMode = "auto" | "light" | "none";
+// Logo treatment for the dark canvas: Auto (decide), White/Mint (force recolor
+// of a one-colour mark), Card (keep brand colours on a white chip).
+type LogoTreatment = "auto" | "white" | "mint" | "card";
 
 type Mode = "intake" | "manual";
 
@@ -55,9 +57,9 @@ export function ControlPanel({
   const [answers, setAnswers] = useState<IntakeAnswers>({});
   const [share, setShare] = useState<{ status: "idle" | "loading" | "done" | "error"; url?: string; msg?: string; copied?: boolean }>({ status: "idle" });
   const [pdf, setPdf] = useState<"idle" | "working" | "error">("idle");
-  const [plateMode, setPlateMode] = useState<PlateMode>("auto");
-  // background removal: keep the pre-cutout logo so we can revert
-  const [bg, setBg] = useState<{ status: "idle" | "working" | "done" | "error"; orig?: string; msg?: string }>({ status: "idle" });
+  // logo treatment for the dark canvas (recompute from the original each time)
+  const [origLogo, setOrigLogo] = useState<string>();
+  const [treatment, setTreatment] = useState<LogoTreatment>("auto");
 
   const flows = proposalFlows ?? [];
   const proposalType: ProposalType = setup?.proposalType ?? "standard";
@@ -156,6 +158,15 @@ export function ControlPanel({
     }
   }
 
+  // Re-run the normalizer on the ORIGINAL upload with the chosen treatment, so
+  // switching White/Mint/Card is reversible and never compounds.
+  async function applyTreatment(t: LogoTreatment, base = origLogo) {
+    if (!base) return;
+    setTreatment(t);
+    const r = await normalizeLogo(base, { mark: t === "card" ? "keep" : t });
+    patch({ clientLogoUrl: r.url, clientLogoPlate: t === "card" ? "light" : r.plate });
+  }
+
   function onLogo(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -163,46 +174,11 @@ export function ControlPanel({
     // from createObjectURL would not survive being stored/sent)
     const reader = new FileReader();
     reader.onload = async () => {
-      // normalize for the dark canvas: cut the background and recolor a
-      // monochrome low-contrast mark to white (keeps multi-colour logos as-is).
-      const r = await normalizeLogo(String(reader.result));
-      const plate = plateMode === "auto" ? r.plate : plateMode === "light" ? "light" : "none";
-      setBg({ status: "idle" }); // fresh upload — drop any prior cutout state
-      patch({ clientLogoUrl: r.url, clientLogoPlate: plate });
+      const raw = String(reader.result);
+      setOrigLogo(raw);
+      await applyTreatment("auto", raw); // cut bg + auto-decide on insert
     };
     reader.readAsDataURL(file);
-  }
-
-  // strip the background from the current logo (edge cut-out, fully in-browser)
-  async function removeLogoBackground() {
-    if (!config.clientLogoUrl) return;
-    const orig = config.clientLogoUrl;
-    setBg({ status: "working" });
-    const cut = await removeBackground(orig);
-    if (!cut) {
-      setBg({ status: "error", msg: "No clear background to remove — try a logo on a solid backdrop." });
-      return;
-    }
-    const plate = plateMode === "auto" ? await detectLogoPlate(cut) : plateMode === "light" ? "light" : "none";
-    setBg({ status: "done", orig });
-    patch({ clientLogoUrl: cut, clientLogoPlate: plate });
-  }
-
-  // restore the logo as it was before the cutout
-  async function revertLogoBackground() {
-    if (!bg.orig) return;
-    const orig = bg.orig;
-    const plate = plateMode === "auto" ? await detectLogoPlate(orig) : plateMode === "light" ? "light" : "none";
-    setBg({ status: "idle" });
-    patch({ clientLogoUrl: orig, clientLogoPlate: plate });
-  }
-
-  // re-resolve the logo backing when the override changes
-  async function setBackdrop(mode: PlateMode) {
-    setPlateMode(mode);
-    if (!config.clientLogoUrl) return;
-    const plate = mode === "auto" ? await detectLogoPlate(config.clientLogoUrl) : mode === "light" ? "light" : "none";
-    patch({ clientLogoPlate: plate });
   }
 
   async function copyLink() {
@@ -324,50 +300,31 @@ export function ControlPanel({
             </Field>
 
             {config.clientLogoUrl && (
-              <Field label="Background">
-                <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={removeLogoBackground}
-                    disabled={bg.status === "working"}
-                    className="flex-1 rounded-md border border-node-stroke bg-node-fill px-2 py-1.5 text-xs font-medium text-subtitle transition hover:border-green-accent hover:text-title disabled:opacity-60"
-                  >
-                    {bg.status === "working" ? "Removing…" : bg.status === "done" ? "Background removed ✓" : "Remove background ✂"}
-                  </button>
-                  {bg.status === "done" && (
-                    <button
-                      onClick={revertLogoBackground}
-                      className="shrink-0 rounded-md border border-node-stroke px-2.5 py-1.5 text-xs font-medium text-muted transition hover:text-title"
-                    >
-                      Undo
-                    </button>
+              <Field label="Logo on dark">
+                <div
+                  className={`mb-2 flex h-11 items-center justify-center rounded-md px-3 ${config.clientLogoPlate === "light" ? "bg-white" : ""}`}
+                  style={config.clientLogoPlate === "light" ? undefined : { background: "radial-gradient(70% 70% at 50% 50%, #15392d 0%, #0b1714 75%)" }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={config.clientLogoUrl} alt="logo preview" className="h-8 w-auto max-w-[160px] object-contain" />
+                </div>
+                <div className="grid grid-cols-4 gap-1 rounded-lg bg-node-fill p-1">
+                  {([["auto", "Auto"], ["white", "White"], ["mint", "Mint"], ["card", "Card"]] as [LogoTreatment, string][]).map(
+                    ([t, label]) => (
+                      <button
+                        key={t}
+                        onClick={() => applyTreatment(t)}
+                        className={`rounded-md px-1 py-1.5 text-xs font-medium transition ${
+                          treatment === t ? "bg-green-accent text-[#06120c]" : "text-subtitle hover:text-title"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ),
                   )}
                 </div>
-                {bg.status === "error" && <p className="mt-1 text-[10px] leading-snug text-[#e6b566]">⚑ {bg.msg}</p>}
-                {bg.status !== "error" && (
-                  <p className="mt-1 text-[10px] leading-snug text-muted">
-                    Removes a solid/near-solid backdrop and trims to the logo. Best for logos on a flat background.
-                  </p>
-                )}
-              </Field>
-            )}
-
-            {config.clientLogoUrl && (
-              <Field label="Logo backdrop">
-                <div className="grid grid-cols-3 gap-1 rounded-lg bg-node-fill p-1">
-                  {(["auto", "light", "none"] as PlateMode[]).map((m) => (
-                    <button
-                      key={m}
-                      onClick={() => setBackdrop(m)}
-                      className={`rounded-md px-2 py-1.5 text-xs font-medium capitalize transition ${
-                        plateMode === m ? "bg-green-accent text-[#06120c]" : "text-subtitle hover:text-title"
-                      }`}
-                    >
-                      {m}
-                    </button>
-                  ))}
-                </div>
                 <p className="mt-1 text-[10px] leading-snug text-muted">
-                  Dark logos sit on a light card for legibility. Auto detects it; override if needed.
+                  Background removed automatically. White/Mint repaint a one-colour mark to read on dark; Card keeps brand colours on a white chip.
                 </p>
               </Field>
             )}

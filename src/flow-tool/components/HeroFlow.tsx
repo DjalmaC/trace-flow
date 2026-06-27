@@ -65,8 +65,6 @@ function ElevatedNode({
   return (
     <g filter="url(#tf-shadow)">
       <rect x={x} y={398} width={w} height={118} rx={16} fill={C.surface} stroke={green ? C.green : "#ffffff"} strokeOpacity={green ? 0.22 : 0.1} />
-      {/* 1px top rim-light just inside the top edge */}
-      <line x1={x + 20} y1={399.3} x2={x + w - 20} y2={399.3} stroke="#ffffff" strokeOpacity={0.1} strokeWidth={1} />
       {children}
     </g>
   );
