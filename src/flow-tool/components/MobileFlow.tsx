@@ -109,24 +109,42 @@ export function MobileFlow({ flow, config }: { flow: Flow; config: FlowConfig })
     if (d >= 1) return travelDown ? 360 : -360;
     return ((d + 1) / 2) * (travelDown ? 360 : -360);
   });
-  // the coin's currency label crossfades across the hub: foreign above, BRL below
+  // the swap is staged: the incoming currency shrinks and VANISHES into the hub
+  // (a dead-zone where nothing shows), then the new one POPS back out the far
+  // side. Foreign sits above the hub, BRL below; HUB_G is the invisible gap.
+  const HUB_W = 0.06; // fade/scale distance either side of the hub
+  const HUB_G = 0.022; // half the dead-zone where the coin is fully gone
   const aboveOpacity = useTransform(progress, (p) => {
     const hf = hubFracRef.current;
     if (hf == null) return 1;
     const f = travelDown ? p : 1 - p;
-    const W = 0.045;
-    if (f <= hf - W) return 1;
-    if (f >= hf + W) return 0;
-    return (hf + W - f) / (2 * W);
+    if (f <= hf - HUB_W) return 1;
+    if (f >= hf - HUB_G) return 0;
+    return (hf - HUB_G - f) / (HUB_W - HUB_G);
+  });
+  const aboveScale = useTransform(progress, (p) => {
+    const hf = hubFracRef.current;
+    if (hf == null) return 1;
+    const f = travelDown ? p : 1 - p;
+    if (f <= hf - HUB_W) return 1;
+    if (f >= hf - HUB_G) return 0.5;
+    return 0.5 + 0.5 * ((hf - HUB_G - f) / (HUB_W - HUB_G));
   });
   const belowOpacity = useTransform(progress, (p) => {
     const hf = hubFracRef.current;
     if (hf == null) return 0;
     const f = travelDown ? p : 1 - p;
-    const W = 0.045;
-    if (f <= hf - W) return 0;
-    if (f >= hf + W) return 1;
-    return (f - (hf - W)) / (2 * W);
+    if (f >= hf + HUB_W) return 1;
+    if (f <= hf + HUB_G) return 0;
+    return (f - (hf + HUB_G)) / (HUB_W - HUB_G);
+  });
+  const belowScale = useTransform(progress, (p) => {
+    const hf = hubFracRef.current;
+    if (hf == null) return 1;
+    const f = travelDown ? p : 1 - p;
+    if (f >= hf + HUB_W) return 1;
+    if (f <= hf + HUB_G) return 0.5;
+    return 0.5 + 0.5 * ((f - (hf + HUB_G)) / (HUB_W - HUB_G));
   });
 
   return (
@@ -141,10 +159,10 @@ export function MobileFlow({ flow, config }: { flow: Flow; config: FlowConfig })
           style={{ top: coinTop, opacity: coinOpacity }}
         >
           <span className="grid place-items-center">
-            <motion.span style={{ gridArea: "1 / 1", opacity: aboveOpacity }}>
+            <motion.span style={{ gridArea: "1 / 1", opacity: aboveOpacity, scale: aboveScale }}>
               <CoinChip currency={aboveDisp} config={config} accent={accent} />
             </motion.span>
-            <motion.span style={{ gridArea: "1 / 1", opacity: belowOpacity }}>
+            <motion.span style={{ gridArea: "1 / 1", opacity: belowOpacity, scale: belowScale }}>
               <CoinChip currency={belowDisp} config={config} accent={accent} />
             </motion.span>
           </span>
