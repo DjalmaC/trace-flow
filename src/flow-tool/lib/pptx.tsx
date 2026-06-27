@@ -101,10 +101,15 @@ function titleSlide(config: FlowConfig) {
   return (
     <Frame>
       {config.clientLogoUrl ? (
-        <>
-          <rect x={cx} y={cy} width={cw} height={ch} rx={18} fill="#ffffff" />
-          <image href={config.clientLogoUrl} x={cx + 42} y={cy + 38} width={cw - 84} height={ch - 76} preserveAspectRatio="xMidYMid meet" />
-        </>
+        config.clientLogoPlate === "light" ? (
+          <>
+            <rect x={cx} y={cy} width={cw} height={ch} rx={18} fill="#ffffff" />
+            <image href={config.clientLogoUrl} x={cx + 42} y={cy + 38} width={cw - 84} height={ch - 76} preserveAspectRatio="xMidYMid meet" />
+          </>
+        ) : (
+          // light/transparent logo straight on the dark deck (no white card)
+          <image href={config.clientLogoUrl} x={cx + 20} y={cy + 16} width={cw - 40} height={ch - 32} preserveAspectRatio="xMidYMid meet" />
+        )
       ) : (
         <text x={DW / 2} y={cy + ch / 2 + 14} fontSize={46} fontWeight={700} fill={TITLE} textAnchor="middle">
           {config.clientName}

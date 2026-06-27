@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { motion, LayoutGroup } from "framer-motion";
 import { FlowExperience } from "@/flow-tool/components/FlowExperience";
 import { ASSETS, C, TRACE_LOGO_AR } from "@/flow-tool/components/tokens";
 import { loadSharedFlow } from "@/flow-tool/lib/share";
@@ -19,11 +20,13 @@ type State =
   | { status: "ready"; config: SharedConfig };
 
 // intro choreography after a private link opens:
-//   loading → welcome (held) → fadeout → done (the flow underneath is revealed)
+//   loading → welcome (held) → fadeout → done. On fadeout the client logo
+//   "magic-moves" (layoutId) from the centred welcome to its header slot, while
+//   the welcome backdrop + text fade and the flow is revealed underneath.
 type Intro = "loading" | "welcome" | "fadeout" | "done";
 const MIN_LOAD_MS = 1500;
 const WELCOME_HOLD_MS = 2300;
-const FADE_MS = 900;
+const FADE_MS = 950;
 
 export function SharedFlowView({ code }: { code: string }) {
   const [state, setState] = useState<State>({ status: "loading" });
@@ -109,115 +112,133 @@ export function SharedFlowView({ code }: { code: string }) {
   }, [state.status]);
 
   const hasVariants = !!variants && variants.length > 1;
+  const showWelcomeLogo = intro === "welcome";
+  const showChrome = intro === "fadeout" || intro === "done"; // header + downloads settle in
 
   return (
-    <main className="relative bg-[#07090b]">
-      {/* the flow (revealed as the intro overlay fades out) */}
-      {config && (
-        <>
-          {/* top-left: client identity + (when there's more than one) the flow switch.
-              Fixed so it stays available through the "Beneath the surface" scroll. */}
-          <div className="no-print fixed left-6 top-4 z-40 flex flex-col items-start gap-3">
-            <div className="flex items-center gap-3">
-              {config.clientLogoUrl ? (
-                config.clientLogoPlate === "light" ? (
-                  <span className="flex items-center rounded-md bg-white px-1.5 py-1">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={config.clientLogoUrl} alt={config.clientName} className="h-6 max-w-[110px] object-contain" />
-                  </span>
-                ) : (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={config.clientLogoUrl} alt={config.clientName} className="h-7 max-w-[120px] object-contain" />
-                )
-              ) : null}
-              <div className="leading-tight">
-                <div className="text-sm font-semibold text-title">{config.clientName}</div>
-                {config.clientRep && <div className="text-[11px] text-muted">Prepared for {config.clientRep}</div>}
-              </div>
+    <LayoutGroup>
+      <main className="relative bg-[#07090b]">
+        {config && (
+          <>
+            {/* top-left: client identity + flow switch. z above the intro so the
+                logo's magic-move is visible as the backdrop fades. */}
+            <div className="no-print fixed left-6 top-4 z-[55] flex flex-col items-start gap-3">
+              {showChrome && (
+                <>
+                  <div className="flex items-center gap-3">
+                    <ClientLogo config={config} size="header" />
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.3 }} className="leading-tight">
+                      <div className="text-sm font-semibold text-title">{config.clientName}</div>
+                      {config.clientRep && <div className="text-[11px] text-muted">Prepared for {config.clientRep}</div>}
+                    </motion.div>
+                  </div>
+                  {hasVariants && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.42 }} className="flex flex-col gap-1.5">
+                      <span className="pl-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">Flows</span>
+                      <FlowSwitch variants={variants!} activeId={flowId} onChange={setActiveFlowId} />
+                    </motion.div>
+                  )}
+                </>
+              )}
             </div>
-            {hasVariants && (
-              <div className="flex flex-col gap-1.5">
-                <span className="pl-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">Flows</span>
-                <FlowSwitch variants={variants!} activeId={flowId} onChange={setActiveFlowId} />
+
+            <FlowExperience
+              config={(() => {
+                const { variants: _v, ...base } = config;
+                return { ...base, flowId, direction };
+              })()}
+              presentation
+              onDirectionChange={setDirection}
+            />
+
+            {/* downloads — bottom-left. PDF (primary) or the same deck as PowerPoint. */}
+            {showChrome && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.38 }}
+                className="fixed bottom-6 left-6 z-40 flex items-center gap-2"
+              >
+                <button
+                  onClick={onPdf}
+                  disabled={pdf === "working"}
+                  className="flex items-center gap-2 rounded-xl border border-green-accent/40 bg-[#0e1410]/85 px-5 py-3 text-sm font-semibold text-[#bfe8d4] shadow-xl backdrop-blur transition hover:border-green-accent hover:bg-[#13201a] disabled:opacity-60"
+                >
+                  {pdf === "working" ? "Building deck…" : pdf === "error" ? "Try again" : "Download PDF ↓"}
+                </button>
+                <button
+                  onClick={onPptx}
+                  disabled={ppt === "working"}
+                  className="rounded-xl border border-white/10 bg-[#0e1410]/85 px-4 py-3 text-sm font-medium text-subtitle shadow-xl backdrop-blur transition hover:border-green-accent/40 hover:text-title disabled:opacity-60"
+                >
+                  {ppt === "working" ? "Building…" : ppt === "error" ? "Try again" : "PowerPoint"}
+                </button>
+              </motion.div>
+            )}
+          </>
+        )}
+
+        {/* intro overlay: opaque backdrop + welcome text, fading out on reveal */}
+        {intro !== "done" && (
+          <div
+            className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#07090b] px-6 text-center"
+            style={{ transition: `opacity ${FADE_MS}ms cubic-bezier(.4,0,.2,1)`, opacity: intro === "fadeout" ? 0 : 1, pointerEvents: intro === "fadeout" ? "none" : "auto" }}
+          >
+            {state.status === "ready" ? (
+              <div className="flex flex-col items-center gap-5">
+                <Brandmark size="lg" />
+                {showWelcomeLogo && <ClientLogo config={config!} size="hero" />}
+                <h1 className="text-3xl font-bold tracking-tight text-title md:text-4xl">
+                  Welcome{repName ? `, ${repName}` : ""}
+                </h1>
+                <p className="max-w-md text-sm text-subtitle">
+                  {hasVariants
+                    ? `Here are the cross-border payment flows we’ve prepared for ${config!.clientName}.`
+                    : `Here’s the cross-border payment flow we’ve prepared for ${config!.clientName}.`}
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-3">
+                <Brandmark />
+                <p className="text-sm text-subtitle">
+                  {state.status === "loading" && "Loading the flow…"}
+                  {state.status === "notfound" && "This link is invalid or has expired."}
+                  {state.status === "unconfigured" && "Sharing isn’t configured yet."}
+                  {state.status === "error" && state.msg}
+                </p>
               </div>
             )}
           </div>
+        )}
+      </main>
+    </LayoutGroup>
+  );
+}
 
-          <FlowExperience
-            config={(() => {
-              const { variants: _v, ...base } = config;
-              return { ...base, flowId, direction };
-            })()}
-            presentation
-            onDirectionChange={setDirection}
-          />
-
-          {/* downloads — bottom-left. The personalised deck as PDF (primary) or
-              the same deck as an editable PowerPoint (secondary). Rendered live. */}
-          <div className="fixed bottom-6 left-6 z-40 flex items-center gap-2">
-            <button
-              onClick={onPdf}
-              disabled={pdf === "working"}
-              className="flex items-center gap-2 rounded-xl border border-green-accent/40 bg-[#0e1410]/85 px-5 py-3 text-sm font-semibold text-[#bfe8d4] shadow-xl backdrop-blur transition hover:border-green-accent hover:bg-[#13201a] disabled:opacity-60"
-            >
-              {pdf === "working" ? "Building deck…" : pdf === "error" ? "Try again" : "Download PDF ↓"}
-            </button>
-            <button
-              onClick={onPptx}
-              disabled={ppt === "working"}
-              className="rounded-xl border border-white/10 bg-[#0e1410]/85 px-4 py-3 text-sm font-medium text-subtitle shadow-xl backdrop-blur transition hover:border-green-accent/40 hover:text-title disabled:opacity-60"
-            >
-              {ppt === "working" ? "Building…" : ppt === "error" ? "Try again" : "PowerPoint"}
-            </button>
-          </div>
-        </>
-      )}
-
-      {/* intro overlay: opaque, covers the flow, then fades out */}
-      {intro !== "done" && (
-        <div
-          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#07090b] px-6 text-center"
-          style={{ transition: `opacity ${FADE_MS}ms cubic-bezier(.4,0,.2,1)`, opacity: intro === "fadeout" ? 0 : 1, pointerEvents: intro === "fadeout" ? "none" : "auto" }}
-        >
-          {state.status === "ready" ? (
-            <div key="welcome" className="tf-rise flex flex-col items-center gap-5">
-              <Brandmark size="lg" />
-              {config!.clientLogoUrl ? (
-                config!.clientLogoPlate === "light" ? (
-                  <span className="flex items-center justify-center rounded-2xl bg-white px-6 py-4">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={config!.clientLogoUrl} alt={config!.clientName} className="h-14 max-w-[260px] object-contain" />
-                  </span>
-                ) : (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={config!.clientLogoUrl} alt={config!.clientName} className="h-16 max-w-[280px] object-contain" />
-                )
-              ) : (
-                <div className="text-2xl font-semibold text-title">{config!.clientName}</div>
-              )}
-              <h1 className="text-3xl font-bold tracking-tight text-title md:text-4xl">
-                Welcome{repName ? `, ${repName}` : ""}
-              </h1>
-              <p className="max-w-md text-sm text-subtitle">
-                {hasVariants
-                  ? `Here are the cross-border payment flows we’ve prepared for ${config!.clientName}.`
-                  : `Here’s the cross-border payment flow we’ve prepared for ${config!.clientName}.`}
-              </p>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center gap-3">
-              <Brandmark />
-              <p className="text-sm text-subtitle">
-                {state.status === "loading" && "Loading the flow…"}
-                {state.status === "notfound" && "This link is invalid or has expired."}
-                {state.status === "unconfigured" && "Sharing isn’t configured yet."}
-                {state.status === "error" && state.msg}
-              </p>
-            </div>
-          )}
-        </div>
-      )}
-    </main>
+// The client logo, as a single layoutId element so it can "magic-move" between
+// the centred welcome and its header slot. Honours the logo plate (a dark logo
+// rides a white card; a light/transparent logo sits straight on the deck).
+function ClientLogo({ config, size }: { config: SharedConfig; size: "header" | "hero" }) {
+  if (!config.clientLogoUrl) {
+    if (size === "header") return null;
+    return <div className="text-2xl font-semibold text-title">{config.clientName}</div>;
+  }
+  const t = { layout: { duration: 0.78, ease: [0.4, 0, 0.2, 1] as [number, number, number, number] } };
+  const light = config.clientLogoPlate === "light";
+  if (light) {
+    const wrap = size === "header" ? "px-1.5 py-1 rounded-md" : "px-6 py-4 rounded-2xl";
+    const img = size === "header" ? "h-6 max-w-[110px]" : "h-14 max-w-[260px]";
+    return (
+      <motion.span layoutId="client-logo" transition={t} className={`flex items-center justify-center bg-white ${wrap}`}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={config.clientLogoUrl} alt={config.clientName} className={`${img} object-contain`} />
+      </motion.span>
+    );
+  }
+  const img = size === "header" ? "h-7 max-w-[120px]" : "h-16 max-w-[280px]";
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <motion.img layoutId="client-logo" transition={t} src={config.clientLogoUrl} alt={config.clientName} className={`${img} object-contain`} />
   );
 }
 

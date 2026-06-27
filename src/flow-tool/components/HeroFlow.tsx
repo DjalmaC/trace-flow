@@ -184,7 +184,8 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
               <image href={config.clientLogoUrl} x={236} y={429} width={220} height={56} preserveAspectRatio="xMidYMid meet" />
             </>
           ) : (
-            <image href={config.clientLogoUrl} x={202} y={405} width={288} height={104} preserveAspectRatio="xMidYMid meet" />
+            // light/transparent logo sits straight on the deck, padded to breathe
+            <image href={config.clientLogoUrl} x={236} y={429} width={220} height={56} preserveAspectRatio="xMidYMid meet" />
           )
         ) : (
           <>
