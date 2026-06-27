@@ -19,7 +19,10 @@ export function MobileFlow({ flow, config }: { flow: Flow; config: FlowConfig })
   const reduced = useReducedMotion();
   const layout = computeLayout(flow, config);
   const accent = accentFor(config.direction);
-  const down = config.direction === "collection"; // value flows top->bottom on Pay-in
+  // Currency/conversion semantics follow the real direction; the ON-SCREEN travel
+  // is inverted by request: Pay-in rises UP the stack, Pay-out descends.
+  const semanticDown = config.direction === "collection";
+  const travelDown = config.direction === "disbursement";
   const nodes = layout.nodes; // authored order; direction is shown via arrows + token
   const legFor = (aId: string, bId: string): LegLayout | undefined =>
     layout.legs.find((l) => (l.from === aId && l.to === bId) || (l.from === bId && l.to === aId));
@@ -54,7 +57,8 @@ export function MobileFlow({ flow, config }: { flow: Flow; config: FlowConfig })
                 config={config}
                 accent={accent}
                 reduced={!!reduced}
-                down={down}
+                semanticDown={semanticDown}
+                travelDown={travelDown}
                 ord={ord}
                 segCount={segCount}
                 cycle={cycle}
@@ -118,7 +122,8 @@ function Connector({
   config,
   accent,
   reduced,
-  down,
+  semanticDown,
+  travelDown,
   ord,
   segCount,
   cycle,
@@ -129,21 +134,23 @@ function Connector({
   config: FlowConfig;
   accent: string;
   reduced: boolean;
-  down: boolean;
+  semanticDown: boolean;
+  travelDown: boolean;
   ord: number;
   segCount: number;
   cycle: number;
 }) {
   const isConv = !!leg.convertsTo;
   // currency in the value-flow direction (Pay-in: carries -> convertsTo)
-  const fromCur: Currency = isConv ? (down ? leg.carries : leg.convertsTo!) : leg.carries;
-  const toCur: Currency = isConv ? (down ? leg.convertsTo! : leg.carries) : leg.carries;
+  const fromCur: Currency = isConv ? (semanticDown ? leg.carries : leg.convertsTo!) : leg.carries;
+  const toCur: Currency = isConv ? (semanticDown ? leg.convertsTo! : leg.carries) : leg.carries;
   const crossing = topLane !== botLane;
-  const intoLane = (down ? botLane : topLane) === "brazil" ? "Brasil 🇧🇷" : "Abroad";
+  const intoLane = (semanticDown ? botLane : topLane) === "brazil" ? "Brasil 🇧🇷" : "Abroad";
 
-  // Relay timing: the token enters this connector when value reaches it. On
-  // Pay-in the top connector (ord 0) fires first; on Pay-out the bottom one does.
-  const fireDelay = (down ? ord : segCount - 1 - ord) * SEG;
+  // Relay timing: the token enters this connector when value reaches it. Whichever
+  // end the travel starts from fires first (Pay-in rises, so the bottom connector
+  // leads; Pay-out descends, so the top one does).
+  const fireDelay = (travelDown ? ord : segCount - 1 - ord) * SEG;
   const tokenTransition = {
     duration: SEG,
     times: [0, 0.18, 0.82, 1],
@@ -168,8 +175,8 @@ function Connector({
         <motion.span
           className="pointer-events-none absolute left-1/2 z-20"
           style={{ transform: "translateX(-50%)" }}
-          initial={{ opacity: 0, top: down ? "-8%" : "108%" }}
-          animate={{ top: down ? ["-8%", "108%"] : ["108%", "-8%"], opacity: [0, 1, 1, 0] }}
+          initial={{ opacity: 0, top: travelDown ? "-8%" : "108%" }}
+          animate={{ top: travelDown ? ["-8%", "108%"] : ["108%", "-8%"], opacity: [0, 1, 1, 0] }}
           transition={tokenTransition}
         >
           <MovingToken currency={displayCurrency(fromCur, config)} config={config} accent={accent} />
@@ -190,7 +197,7 @@ function Connector({
                 className="flex h-6 w-6 items-center justify-center rounded-full"
                 style={{ background: "#0b110d", border: `1px solid ${accent}55` }}
                 initial={{ rotate: 0 }}
-                animate={{ rotate: down ? 360 : -360 }}
+                animate={{ rotate: travelDown ? 360 : -360 }}
                 transition={spinTransition}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -233,12 +240,13 @@ function MovingToken({ currency, config, accent }: { currency: Currency; config:
   return <span className="block rounded-full" style={{ height: 12, width: 12, background: accent, boxShadow: `0 0 16px 3px ${accent}` }} />;
 }
 
-// The real Trace arrow (mark-half), pointing down (Pay-in) / up (Pay-out) — it
-// rotates + colour-tweens on toggle (the +90° wrapper turns right/left into
-// down/up; TraceArrow animates the inner rotation/fill).
+// The real Trace arrow (mark-half), pointing UP (Pay-in) / down (Pay-out) — it
+// rotates + colour-tweens on toggle. The -90° wrapper + TraceArrow's own inner
+// rotation (0° collection / 180° disbursement) net out to up / down, and the
+// inner 0°↔180° tween animates the swing on toggle.
 function VArrow({ direction, accent }: { direction: FlowConfig["direction"]; accent: string }) {
   return (
-    <span className="inline-flex" style={{ transform: "rotate(90deg)" }}>
+    <span className="inline-flex" style={{ transform: "rotate(-90deg)" }}>
       <TraceArrow cx={9} cy={9} size={16} direction={direction} color={accent} />
     </span>
   );
