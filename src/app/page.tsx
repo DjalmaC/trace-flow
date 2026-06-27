@@ -1,69 +1,43 @@
 "use client";
 import { useEffect, useState } from "react";
-import { FlowExperience } from "@/flow-tool/components/FlowExperience";
-import { ControlPanel } from "@/components/ControlPanel";
-import { defaultConfig } from "@/flow-tool/data";
-import type { FlowConfig } from "@/flow-tool/data/schema";
+import { RepLogin } from "@/components/RepLogin";
+import { WelcomeSplash } from "@/components/WelcomeSplash";
+import { Dashboard } from "@/components/Dashboard";
+import type { TraceRep } from "@/flow-tool/data/schema";
+import { clearRepId, loadRep, saveRepId } from "@/flow-tool/lib/rep-session";
 
-export default function Page() {
-  const [config, setConfig] = useState<FlowConfig>(() => defaultConfig("flow-1", "Your Client"));
-  const [present, setPresent] = useState(false);
-  const [only, setOnly] = useState<"surface" | "depth" | undefined>(undefined);
+type Phase = "init" | "login" | "welcome" | "dashboard";
 
-  // Deep links for screen-share: ?flow=flow-7 preloads a flow, ?present=1 opens
-  // straight into presentation mode.
+// The rep-facing home: pick who you are (once, remembered), get welcomed, then
+// land on your client/proposal dashboard. The flow generator lives at /build.
+export default function Home() {
+  const [phase, setPhase] = useState<Phase>("init");
+  const [rep, setRep] = useState<TraceRep | null>(null);
+
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const flowId = params.get("flow");
-    if (flowId) setConfig((c) => ({ ...c, flowId }));
-    if (params.get("present") === "1") setPresent(true);
-    const stage = params.get("stage");
-    if (stage === "surface" || stage === "depth") setOnly(stage);
-    const coin = params.get("coin");
-    if (coin === "USDC" || coin === "USDT" || coin === "both") setConfig((c) => ({ ...c, stablecoin: coin }));
-    const d = params.get("dir");
-    if (d === "collection" || d === "disbursement") setConfig((c) => ({ ...c, direction: d }));
-    const dv = params.get("delivered");
-    if (dv === "USD/EUR" || dv === "USD" || dv === "EUR") setConfig((c) => ({ ...c, delivered: dv }));
-    // QA hook: ?y=0.4 jumps to that fraction of the dive scroll (for previews).
-    const y = params.get("y");
-    if (y) {
-      const f = Math.max(0, Math.min(1, parseFloat(y)));
-      setTimeout(() => {
-        const max = document.documentElement.scrollHeight - window.innerHeight;
-        window.scrollTo(0, f * max);
-      }, 450);
+    const saved = loadRep();
+    if (saved) {
+      setRep(saved);
+      setPhase("dashboard"); // returning rep skips the welcome
+    } else {
+      setPhase("login");
     }
   }, []);
 
-  if (only) {
-    return (
-      <main className="relative">
-        <FlowExperience config={config} only={only} />
-      </main>
-    );
+  function pick(r: TraceRep) {
+    saveRepId(r.id);
+    setRep(r);
+    setPhase("welcome");
+  }
+  function switchRep() {
+    clearRepId();
+    setRep(null);
+    setPhase("login");
   }
 
-  const setDirection = (direction: typeof config.direction) => setConfig((c) => ({ ...c, direction }));
-
-  if (present) {
-    return (
-      <main className="relative">
-        <FlowExperience config={config} presentation onDirectionChange={setDirection} />
-        <button
-          onClick={() => setPresent(false)}
-          className="fixed left-4 top-4 z-50 rounded-lg border border-node-stroke bg-[#0c110f]/90 px-3 py-1.5 text-sm text-subtitle backdrop-blur transition hover:text-title"
-        >
-          ✕ Exit present
-        </button>
-      </main>
-    );
-  }
-
-  return (
-    <main className="relative">
-      <ControlPanel config={config} onConfigChange={setConfig} onPresent={() => setPresent(true)} />
-      <FlowExperience config={config} onDirectionChange={setDirection} />
-    </main>
-  );
+  if (phase === "init") return <main className="min-h-screen bg-[#07090b]" />;
+  if (phase === "login" || !rep) return <RepLogin onPick={pick} />;
+  if (phase === "welcome")
+    return <WelcomeSplash name={rep.name} onDone={() => setPhase("dashboard")} />;
+  return <Dashboard rep={rep} onSwitch={switchRep} />;
 }

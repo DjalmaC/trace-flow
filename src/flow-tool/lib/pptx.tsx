@@ -1,7 +1,7 @@
 import { computeLayout, CONT_Y, CONT_H } from "../components/layout";
 import { Defs } from "../components/FlowSvg";
 import { MachineryStage } from "../components/MachineryStage";
-import { ASSETS, TRACE_LOGO_AR } from "../components/tokens";
+import { ASSETS } from "../components/tokens";
 import { getFlow, defaultConfig } from "../data";
 import type { Flow, FlowConfig } from "../data/schema";
 
@@ -67,13 +67,17 @@ function rasterize(svg: string, w: number, h: number): Promise<string> {
 
 // ── deck composition (JSX → static SVG) ──────────────────────────────────────
 
+// Match the bottom-right lockup baked into the proposal templates EXACTLY, so it
+// doesn't shift between template pages and inserted flow slides. Template values
+// (960×540): mark in a 44.6 box right-edge ~804.2, centred at y≈509; "Trace
+// Finance" Inter-Bold 20, left x≈808.6, baseline y≈516.2.
 function Lockup() {
-  const mh = 22;
-  const mw = mh * TRACE_LOGO_AR;
+  // Exact template rect: square mark at (759.6, 486.7) 44.6×44.6, "Trace Finance"
+  // Inter-Bold 20 left at x≈808.6, baseline y≈516.2.
   return (
     <>
-      <image href={ASSETS.traceLogo} x={775} y={503} width={mw} height={mh} />
-      <text x={930} y={520} fontSize={15} fontWeight={600} fill={TITLE} textAnchor="end">
+      <image href={ASSETS.traceLockupMark} x={759.6} y={486.7} width={44.6} height={44.6} />
+      <text x={808.6} y={516.2} fontSize={20} fontWeight={700} fill={TITLE}>
         Trace Finance
       </text>
     </>
@@ -125,7 +129,13 @@ function titleSlide(config: FlowConfig) {
   );
 }
 
-function flowSlide(config: FlowConfig, flow: Flow, name: string, support?: string) {
+// The client-facing flow label is POSITIONAL — "what flow is this to the client":
+// Flow 1, Flow 2, … by order in the proposal, or "The Flow" if there's only one.
+function deckFlowLabel(index: number, total: number): string {
+  return total <= 1 ? "The Flow" : `Flow ${index + 1}`;
+}
+
+function flowSlide(config: FlowConfig, flow: Flow, name: string, label: string, support?: string) {
   const layout = computeLayout(flow, config);
   const mw = layout.width;
   const mh = CONT_H + 30;
@@ -147,7 +157,7 @@ function flowSlide(config: FlowConfig, flow: Flow, name: string, support?: strin
         BENEATH THE SURFACE
       </text>
       <text x={48} y={86} fontSize={24} fontWeight={700} fill={TITLE}>
-        {name}
+        {`${label} - ${name}`}
       </text>
       {support && (
         <text x={48} y={108} fontSize={12.5} fill={SUB}>
@@ -164,13 +174,15 @@ function flowSlide(config: FlowConfig, flow: Flow, name: string, support?: strin
 async function renderDeckPng(node: React.ReactElement): Promise<string> {
   const { renderToStaticMarkup } = await import("react-dom/server");
   let markup = renderToStaticMarkup(node);
-  const [trace, usdc, usdt, style] = await Promise.all([
+  const [trace, lockup, usdc, usdt, style] = await Promise.all([
     dataUri(ASSETS.traceLogo),
+    dataUri(ASSETS.traceLockupMark),
     dataUri(ASSETS.usdc),
     dataUri(ASSETS.usdt),
     interStyle(),
   ]);
   markup = markup
+    .split(ASSETS.traceLockupMark).join(lockup)
     .split(ASSETS.traceLogo).join(trace)
     .split(ASSETS.usdc).join(usdc)
     .split(ASSETS.usdt).join(usdt)
@@ -178,11 +190,32 @@ async function renderDeckPng(node: React.ReactElement): Promise<string> {
   return rasterize(markup, DW, DH);
 }
 
+/** Render just the flow slides (no title slide), as 960×540 PNG data URLs — used
+ *  by the proposal builder to insert deck pages into a template PDF. */
+export async function renderProposalFlowPngs(
+  config: FlowConfig,
+  variants?: { flowId: string; name: string }[],
+): Promise<string[]> {
+  const items =
+    variants && variants.length
+      ? variants
+      : [{ flowId: config.flowId, name: getFlow(config.flowId)?.title ?? "Flow" }];
+  const valid = items.filter((it) => getFlow(it.flowId));
+  const out: string[] = [];
+  for (let i = 0; i < valid.length; i++) {
+    const it = valid[i];
+    const flow = getFlow(it.flowId)!;
+    const support = flow.heroSupport ? flow.heroSupport[config.direction] : undefined;
+    out.push(await renderDeckPng(flowSlide({ ...config, flowId: it.flowId }, flow, it.name, deckFlowLabel(i, valid.length), support)));
+  }
+  return out;
+}
+
 /** QA hook: render one deck slide to a PNG data URL. */
 export async function previewDeckPng(flowId: string, kind: "title" | "flow"): Promise<string> {
   const flow = getFlow(flowId)!;
   const config: FlowConfig = { ...defaultConfig(flowId, "ARQ"), clientRep: "Victor Medeiros", clientLogoPlate: "none" };
-  return renderDeckPng(kind === "title" ? titleSlide(config) : flowSlide(config, flow, "With Arq IP", flow.heroSupport?.collection));
+  return renderDeckPng(kind === "title" ? titleSlide(config) : flowSlide(config, flow, "With Arq IP", deckFlowLabel(0, 1), flow.heroSupport?.collection));
 }
 
 type Variant = { flowId: string; name: string };
@@ -212,12 +245,13 @@ async function renderDeckSlides(config: FlowConfig, variants?: Variant[]): Promi
     variants && variants.length
       ? variants
       : [{ flowId: config.flowId, name: getFlow(config.flowId)?.title ?? "Flow" }];
+  const valid = items.filter((it) => getFlow(it.flowId));
   const slides = [await renderDeckPng(titleSlide(config))];
-  for (const it of items) {
-    const flow = getFlow(it.flowId);
-    if (!flow) continue;
+  for (let i = 0; i < valid.length; i++) {
+    const it = valid[i];
+    const flow = getFlow(it.flowId)!;
     const support = flow.heroSupport ? flow.heroSupport[config.direction] : undefined;
-    slides.push(await renderDeckPng(flowSlide({ ...config, flowId: it.flowId }, flow, it.name, support)));
+    slides.push(await renderDeckPng(flowSlide({ ...config, flowId: it.flowId }, flow, it.name, deckFlowLabel(i, valid.length), support)));
   }
   return slides;
 }
@@ -245,13 +279,14 @@ export async function downloadFlowPptx(config: FlowConfig, variants?: Variant[])
       ? variants
       : [{ flowId: config.flowId, name: getFlow(config.flowId)?.title ?? "Flow" }];
 
+  const valid = items.filter((it) => getFlow(it.flowId));
   const titlePng = await renderDeckPng(titleSlide(config));
   const flowPngs: string[] = [];
-  for (const it of items) {
-    const flow = getFlow(it.flowId);
-    if (!flow) continue;
+  for (let i = 0; i < valid.length; i++) {
+    const it = valid[i];
+    const flow = getFlow(it.flowId)!;
     const support = flow.heroSupport ? flow.heroSupport[config.direction] : undefined;
-    flowPngs.push(await renderDeckPng(flowSlide({ ...config, flowId: it.flowId }, flow, it.name, support)));
+    flowPngs.push(await renderDeckPng(flowSlide({ ...config, flowId: it.flowId }, flow, it.name, deckFlowLabel(i, valid.length), support)));
   }
 
   const pptx = new PptxGenJS();

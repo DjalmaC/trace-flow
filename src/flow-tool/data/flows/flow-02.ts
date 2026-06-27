@@ -5,7 +5,7 @@ import type { Flow } from "../schema";
 export const flow02: Flow = {
   id: "flow-2",
   displayId: "2",
-  title: "eFX and NRA — Settlement in a Non Resident Account held by Partner Bank",
+  title: "eFX · deliver stablecoin (client's account)",
   blurb: "eFX + third-party NRA; the virtual asset is delivered to the NRA holder's wallet abroad.",
   dials: { model: "eFX+NRA", rail: "VA-delivery", nraOwnership: "third-party", pixRole: "settler", localLp: false },
   traceRole: ["VASP", "Correspondente Cambial"],

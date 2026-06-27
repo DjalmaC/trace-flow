@@ -5,7 +5,7 @@ import type { Flow } from "../schema";
 export const flow07: Flow = {
   id: "flow-7",
   displayId: "7",
-  title: "eFX and NRA — NRA held by Partner Bank, Pix Inc as Liquidity Provider (Treasury)",
+  title: "eFX · fiat settlement (client's account)",
   blurb: "eFX + third-party NRA; Pix Inc funds the NRA holder as LP (two nodes), treasury FX.",
   dials: { model: "eFX+NRA", rail: "treasury-fiat", nraOwnership: "third-party", pixRole: "liquidity-provider", localLp: false },
   traceRole: ["Correspondente Cambial"],

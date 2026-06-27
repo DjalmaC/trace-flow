@@ -1,0 +1,117 @@
+{
+  "name": "standard",
+  "pageW": 960,
+  "pageH": 540,
+  "closingPage": 2,
+  "flowsInsertAt": 2,
+  "logo": {
+    "page": 0,
+    "box": [
+      79.2,
+      14.0,
+      232.0,
+      48.0
+    ]
+  },
+  "fields": [
+    {
+      "key": "headline",
+      "page": 0,
+      "template": "for {company}",
+      "x": 79.2,
+      "baseline": 291.12,
+      "size": 52.0,
+      "color": "#e8ecf0",
+      "font": "bold",
+      "align": "left"
+    },
+    {
+      "key": "repCompany",
+      "page": 0,
+      "template": "{rep} \u2014 {company}",
+      "x": 93.6,
+      "baseline": 456.12,
+      "size": 13.0,
+      "color": "#e8ecf0",
+      "font": "bold",
+      "align": "left"
+    },
+    {
+      "key": "date",
+      "page": 0,
+      "template": "{date}",
+      "x": 808.28,
+      "baseline": 456.12,
+      "size": 13.0,
+      "color": "#e8ecf0",
+      "font": "bold",
+      "align": "right"
+    },
+    {
+      "key": "footer",
+      "page": 1,
+      "template": "Confidential \u2014 prepared for {company} \u00b7 {date}",
+      "x": 36.0,
+      "baseline": 514.8,
+      "size": 9.0,
+      "color": "#8f98a3",
+      "font": "regular",
+      "align": "left"
+    },
+    {
+      "key": "repName",
+      "page": 2,
+      "template": "{repName}",
+      "x": 680.0,
+      "baseline": 248.0,
+      "size": 22.0,
+      "color": "#e8ecf0",
+      "font": "bold",
+      "align": "left"
+    },
+    {
+      "key": "repTitle",
+      "page": 2,
+      "template": "{repTitle}",
+      "x": 680.0,
+      "baseline": 270.0,
+      "size": 12.0,
+      "color": "#8f98a3",
+      "font": "regular",
+      "align": "left"
+    },
+    {
+      "key": "repEmail",
+      "page": 2,
+      "template": "{repEmail}",
+      "x": 680.0,
+      "baseline": 338.0,
+      "size": 13.0,
+      "color": "#e8ecf0",
+      "font": "regular",
+      "align": "left"
+    },
+    {
+      "key": "repPhone",
+      "page": 2,
+      "template": "{repPhone}",
+      "x": 680.0,
+      "baseline": 388.0,
+      "size": 13.0,
+      "color": "#e8ecf0",
+      "font": "regular",
+      "align": "left"
+    },
+    {
+      "key": "repLinkedIn",
+      "page": 2,
+      "template": "{repLinkedIn}",
+      "x": 680.0,
+      "baseline": 438.0,
+      "size": 13.0,
+      "color": "#e8ecf0",
+      "font": "regular",
+      "align": "left"
+    }
+  ]
+}

@@ -5,7 +5,7 @@ import type { Flow } from "../schema";
 export const flow01: Flow = {
   id: "flow-1",
   displayId: "1",
-  title: "eFX — Settlement directly with Bank Partner (no PSP as Treasury HUB abroad)",
+  title: "eFX · direct bank FX",
   blurb: "eFX provider, FX executed at Trace's partner bank. The baseline flow.",
   dials: { model: "eFX-only", rail: "direct-fiat", nraOwnership: "none", pixRole: "none", localLp: false },
   traceRole: ["Correspondente Cambial"],

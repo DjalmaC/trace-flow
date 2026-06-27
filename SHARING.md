@@ -32,7 +32,18 @@ create policy "anon insert shared flows"
 -- …and open one by its code
 create policy "anon read shared flows"
   on public.shared_flows for select to anon using (true);
+
+-- …and delete one from the rep dashboard
+create policy "anon delete shared flows"
+  on public.shared_flows for delete to anon using (true);
 ```
+
+> If the table already exists from an earlier setup, run just the **delete**
+> policy on its own to enable removing proposals from the dashboard:
+> ```sql
+> create policy "anon delete shared flows"
+>   on public.shared_flows for delete to anon using (true);
+> ```
 
 ### 2. Add the public anon key
 

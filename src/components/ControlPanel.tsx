@@ -1,11 +1,19 @@
 "use client";
 import { useMemo, useState } from "react";
-import type { Currency, Direction, FlowConfig, Stablecoin } from "@/flow-tool/data/schema";
+import type { Currency, Direction, FlowConfig, ProposalSetup, ProposalType, Stablecoin } from "@/flow-tool/data/schema";
 import { FLOWS, getFlow } from "@/flow-tool/data";
+import { TRACE_REPS, getRep } from "@/flow-tool/data/reps";
 import { QUESTIONS, type IntakeAnswers } from "@/flow-tool/intake/questions";
 import { resolve, NO_MATCH_MESSAGE } from "@/flow-tool/intake/resolver";
 import { createShareLink, isShareConfigured } from "@/flow-tool/lib/share";
-import { detectLogoPlate, removeBackground } from "@/flow-tool/lib/logo";
+import { detectLogoPlate, normalizeLogo, removeBackground } from "@/flow-tool/lib/logo";
+import { downloadProposalPdf } from "@/flow-tool/lib/proposal";
+import { defaultProposalDate, saveSetup } from "@/flow-tool/lib/setup";
+
+const PROPOSAL_LABELS: Record<ProposalType, string> = {
+  standard: "Standard",
+  "brazil-market": "Brazil-market",
+};
 
 type PlateMode = "auto" | "light" | "none";
 
@@ -29,18 +37,108 @@ export function ControlPanel({
   config,
   onConfigChange,
   onPresent,
+  setup,
+  onSetupChange,
+  proposalFlows,
+  onProposalFlowsChange,
 }: {
   config: FlowConfig;
   onConfigChange: (next: FlowConfig) => void;
   onPresent: () => void;
+  setup?: ProposalSetup | null;
+  onSetupChange?: (next: ProposalSetup) => void;
+  proposalFlows?: { flowId: string; name: string }[];
+  onProposalFlowsChange?: (next: { flowId: string; name: string }[]) => void;
 }) {
   const [open, setOpen] = useState(true);
   const [mode, setMode] = useState<Mode>("intake");
   const [answers, setAnswers] = useState<IntakeAnswers>({});
   const [share, setShare] = useState<{ status: "idle" | "loading" | "done" | "error"; url?: string; msg?: string; copied?: boolean }>({ status: "idle" });
+  const [pdf, setPdf] = useState<"idle" | "working" | "error">("idle");
   const [plateMode, setPlateMode] = useState<PlateMode>("auto");
   // background removal: keep the pre-cutout logo so we can revert
   const [bg, setBg] = useState<{ status: "idle" | "working" | "done" | "error"; orig?: string; msg?: string }>({ status: "idle" });
+
+  const flows = proposalFlows ?? [];
+  const proposalType: ProposalType = setup?.proposalType ?? "standard";
+  const proposalDate = setup?.date ?? defaultProposalDate();
+  const traceRepId = setup?.traceRepId ?? TRACE_REPS[0]?.id;
+
+  // Edit the proposal setup in place (creating it from the live config if the
+  // salesperson skipped the intro page), and persist it for this session.
+  function patchSetup(p: Partial<ProposalSetup>) {
+    const next: ProposalSetup = {
+      proposalType,
+      date: proposalDate,
+      traceRepId,
+      company: setup?.company ?? config.clientName,
+      companyRep: setup?.companyRep ?? config.clientRep,
+      companyLogoUrl: setup?.companyLogoUrl ?? config.clientLogoUrl,
+      companyLogoPlate: setup?.companyLogoPlate ?? config.clientLogoPlate,
+      ...p,
+    };
+    onSetupChange?.(next);
+    saveSetup(next);
+  }
+
+  function addCurrentFlow() {
+    const f = getFlow(config.flowId);
+    if (!f || flows.some((x) => x.flowId === f.id)) return;
+    onProposalFlowsChange?.([...flows, { flowId: f.id, name: f.title }]);
+  }
+  function removeFlow(id: string) {
+    onProposalFlowsChange?.(flows.filter((x) => x.flowId !== id));
+  }
+
+  // The flows that go into the deck: those explicitly added, else the live one.
+  function proposalFlowList() {
+    return flows.length
+      ? flows
+      : [{ flowId: config.flowId, name: getFlow(config.flowId)?.title ?? "Flow" }];
+  }
+
+  async function generateProposal() {
+    setShare({ status: "loading" });
+    try {
+      const list = proposalFlowList();
+      const shareConfig = {
+        ...config,
+        variants: list.length > 1 ? list : undefined,
+        proposalType,
+        date: proposalDate,
+        traceRepId,
+      };
+      const { code } = await createShareLink(shareConfig as FlowConfig);
+      const url = `${window.location.origin}/f/${code}`;
+      setShare({ status: "done", url });
+    } catch (err) {
+      setShare({ status: "error", msg: err instanceof Error ? err.message : "Something went wrong." });
+    }
+  }
+
+  async function downloadPdf() {
+    setPdf("working");
+    try {
+      await downloadProposalPdf({
+        proposalType,
+        company: config.clientName,
+        companyRep: config.clientRep,
+        date: proposalDate,
+        companyLogoUrl: config.clientLogoUrl,
+        companyLogoPlate: config.clientLogoPlate,
+        flows: proposalFlowList(),
+        direction: config.direction,
+        stablecoin: config.stablecoin,
+        collected: config.collected,
+        delivered: config.delivered,
+        rep: getRep(traceRepId),
+      });
+      setPdf("idle");
+    } catch {
+      setPdf("error");
+      setTimeout(() => setPdf("idle"), 3000);
+    }
+  }
 
   const resolution = useMemo(() => resolve(answers, config.clientName), [answers, config.clientName]);
 
@@ -65,10 +163,12 @@ export function ControlPanel({
     // from createObjectURL would not survive being stored/sent)
     const reader = new FileReader();
     reader.onload = async () => {
-      const url = String(reader.result);
-      const plate = plateMode === "auto" ? await detectLogoPlate(url) : plateMode === "light" ? "light" : "none";
+      // normalize for the dark canvas: cut the background and recolor a
+      // monochrome low-contrast mark to white (keeps multi-colour logos as-is).
+      const r = await normalizeLogo(String(reader.result));
+      const plate = plateMode === "auto" ? r.plate : plateMode === "light" ? "light" : "none";
       setBg({ status: "idle" }); // fresh upload — drop any prior cutout state
-      patch({ clientLogoUrl: url, clientLogoPlate: plate });
+      patch({ clientLogoUrl: r.url, clientLogoPlate: plate });
     };
     reader.readAsDataURL(file);
   }
@@ -105,17 +205,6 @@ export function ControlPanel({
     patch({ clientLogoPlate: plate });
   }
 
-  async function generateLink() {
-    setShare({ status: "loading" });
-    try {
-      const { code } = await createShareLink(config);
-      const url = `${window.location.origin}/f/${code}`;
-      setShare({ status: "done", url });
-    } catch (err) {
-      setShare({ status: "error", msg: err instanceof Error ? err.message : "Something went wrong." });
-    }
-  }
-
   async function copyLink() {
     if (!share.url) return;
     await navigator.clipboard.writeText(share.url);
@@ -125,9 +214,17 @@ export function ControlPanel({
 
   return (
     <div className="fixed left-4 top-4 z-50 w-[340px] max-w-[calc(100vw-2rem)] rounded-xl border border-node-stroke bg-[#0c110f]/95 text-node-text shadow-2xl backdrop-blur">
+      {/* back to the rep's proposals dashboard (lives in the panel so it never
+          collides with the Pay-in / Pay-out toggle in the top-right corner) */}
+      <a
+        href="/"
+        className="flex items-center gap-1 rounded-t-xl border-b border-node-stroke px-4 py-2 text-[11px] font-medium text-green-accent/80 transition hover:text-green-accent"
+      >
+        ← Proposals
+      </a>
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between rounded-t-xl px-4 py-3 text-left"
+        className="flex w-full items-center justify-between px-4 py-3 text-left"
       >
         <span className="text-sm font-semibold text-title">Trace Flow — configure</span>
         <span className="text-muted">{open ? "▾" : "▸"}</span>
@@ -155,6 +252,48 @@ export function ControlPanel({
           ) : (
             <ManualPicker selected={config.flowId} onSelect={(flowId) => patch({ flowId })} />
           )}
+
+          {/* Proposal flows — add the flow on screen straight into the deck, right
+              here so you never scroll to the bottom to stack flows. */}
+          <div className="mt-4 rounded-lg border border-node-stroke bg-node-fill/40 p-2.5">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+                Proposal flows{flows.length ? ` · ${flows.length}` : ""}
+              </span>
+              {(() => {
+                const added = flows.some((x) => x.flowId === config.flowId);
+                return (
+                  <button
+                    onClick={addCurrentFlow}
+                    disabled={added}
+                    className="shrink-0 rounded-md bg-green-accent px-2.5 py-1 text-[11px] font-semibold text-[#06120c] transition hover:brightness-110 disabled:cursor-default disabled:bg-green-fill disabled:text-green-accent"
+                  >
+                    {added ? "Added ✓" : "+ Add this flow"}
+                  </button>
+                );
+              })()}
+            </div>
+            {flows.length === 0 ? (
+              <p className="text-[10px] leading-snug text-muted">
+                Empty → the deck uses the flow on screen. Add flows to stack several.
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-1.5">
+                {flows.map((f, i) => (
+                  <span
+                    key={f.flowId}
+                    className="flex items-center gap-1.5 rounded-md border border-node-stroke bg-node-fill px-2 py-1 text-[11px] text-title"
+                  >
+                    <span className="text-muted">{i + 1}</span>
+                    <span className="max-w-[150px] truncate">{f.name}</span>
+                    <button onClick={() => removeFlow(f.flowId)} className="text-muted transition hover:text-title">
+                      ✕
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* client fields */}
           <div className="mt-5 space-y-3 border-t border-node-stroke pt-4">
@@ -284,48 +423,89 @@ export function ControlPanel({
             Present ▶
           </button>
 
-          {/* Share: a locked, view-only link for the client (just this flow). */}
+          {/* ── Generate: proposal type + Trace rep, then link + PDF ── */}
           <div className="mt-4 border-t border-node-stroke pt-4">
-            <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted">Send to client</div>
-            {isShareConfigured() ? (
-              <>
-                <button
-                  onClick={generateLink}
-                  disabled={share.status === "loading"}
-                  className="w-full rounded-lg border border-green-accent/50 px-3 py-2 text-sm font-medium text-green-accent transition hover:bg-green-fill disabled:opacity-60"
+            <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted">Generate proposal</div>
+
+            {/* type + rep pickers */}
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-1 rounded-lg bg-node-fill p-1">
+                {(["standard", "brazil-market"] as ProposalType[]).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => patchSetup({ proposalType: t })}
+                    className={`rounded-md px-2 py-1.5 text-xs font-medium transition ${
+                      proposalType === t ? "bg-green-accent text-[#06120c]" : "text-subtitle hover:text-title"
+                    }`}
+                  >
+                    {PROPOSAL_LABELS[t]}
+                  </button>
+                ))}
+              </div>
+
+              <Field label="Trace representative">
+                <select
+                  value={traceRepId}
+                  onChange={(e) => patchSetup({ traceRepId: e.target.value })}
+                  className="w-full rounded-md border border-node-stroke bg-node-fill px-2 py-1.5 text-sm text-title outline-none focus:border-green-accent"
                 >
-                  {share.status === "loading" ? "Generating…" : "Generate client link 🔗"}
-                </button>
-                {share.status === "done" && share.url && (
-                  <div className="mt-2 space-y-1.5">
-                    <div className="flex items-center gap-1.5">
-                      <input
-                        readOnly
-                        value={share.url}
-                        onFocus={(e) => e.target.select()}
-                        className="w-full rounded-md border border-node-stroke bg-node-fill px-2 py-1.5 text-[11px] text-subtitle outline-none"
-                      />
-                      <button
-                        onClick={copyLink}
-                        className="shrink-0 rounded-md bg-green-accent px-2.5 py-1.5 text-xs font-semibold text-[#06120c] transition hover:brightness-110"
-                      >
-                        {share.copied ? "✓" : "Copy"}
-                      </button>
+                  {TRACE_REPS.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+
+            {/* generate */}
+            <div className="mt-4 space-y-2">
+              <button
+                onClick={downloadPdf}
+                disabled={pdf === "working"}
+                className="w-full rounded-lg bg-green-accent px-3 py-2 text-sm font-semibold text-[#06120c] transition hover:brightness-110 disabled:opacity-60"
+              >
+                {pdf === "working" ? "Building proposal…" : pdf === "error" ? "Try again" : "Download proposal PDF ↓"}
+              </button>
+
+              {isShareConfigured() ? (
+                <>
+                  <button
+                    onClick={generateProposal}
+                    disabled={share.status === "loading"}
+                    className="w-full rounded-lg border border-green-accent/50 px-3 py-2 text-sm font-medium text-green-accent transition hover:bg-green-fill disabled:opacity-60"
+                  >
+                    {share.status === "loading" ? "Generating…" : "Generate client link 🔗"}
+                  </button>
+                  {share.status === "done" && share.url && (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          readOnly
+                          value={share.url}
+                          onFocus={(e) => e.target.select()}
+                          className="w-full rounded-md border border-node-stroke bg-node-fill px-2 py-1.5 text-[11px] text-subtitle outline-none"
+                        />
+                        <button
+                          onClick={copyLink}
+                          className="shrink-0 rounded-md bg-green-accent px-2.5 py-1.5 text-xs font-semibold text-[#06120c] transition hover:brightness-110"
+                        >
+                          {share.copied ? "✓" : "Copy"}
+                        </button>
+                      </div>
+                      <p className="text-[10px] leading-snug text-muted">
+                        View-only proposal for {config.clientName} — flows, pricing and your contact card.
+                      </p>
                     </div>
-                    <p className="text-[10px] leading-snug text-muted">
-                      View-only. Opens just this flow for {config.clientName}, with no access to the rest of the tool.
-                    </p>
-                  </div>
-                )}
-                {share.status === "error" && (
-                  <p className="mt-2 text-[11px] text-[#e6b566]">⚑ {share.msg}</p>
-                )}
-              </>
-            ) : (
-              <p className="text-[11px] leading-snug text-muted">
-                Sharing isn’t configured yet — add <code className="text-subtitle">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> to enable client links.
-              </p>
-            )}
+                  )}
+                  {share.status === "error" && <p className="text-[11px] text-[#e6b566]">⚑ {share.msg}</p>}
+                </>
+              ) : (
+                <p className="text-[11px] leading-snug text-muted">
+                  Client links need <code className="text-subtitle">NEXT_PUBLIC_SUPABASE_ANON_KEY</code>. The PDF works without it.
+                </p>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -403,10 +583,11 @@ function ManualPicker({ selected, onSelect }: { selected: string; onSelect: (id:
           }`}
         >
           <div className="flex items-baseline gap-2">
-            <span className="text-xs font-semibold text-title">Flow {f.displayId}</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted">Flow {f.displayId}</span>
             <span className="text-[10px] text-muted">{f.dials.model}</span>
           </div>
-          <div className="mt-0.5 text-[11px] leading-snug text-subtitle">{f.blurb}</div>
+          <div className="mt-0.5 text-xs font-semibold text-title">{f.title}</div>
+          <div className="mt-0.5 text-[11px] leading-snug text-muted">{f.blurb}</div>
         </button>
       ))}
     </div>

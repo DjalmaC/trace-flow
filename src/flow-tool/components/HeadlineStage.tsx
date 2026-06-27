@@ -76,7 +76,7 @@ export function HeadlineStage({
       {showChrome && (
         <>
           <text x={34} y={50} fontSize={15} fontWeight={600} fill={C.title}>
-            What the client wants
+            What {config.clientName} wants
           </text>
           <text x={layout.width - 34} y={42} fontSize={12} fill={C.muted} textAnchor="end">
             {flowTag}

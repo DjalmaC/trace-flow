@@ -1,0 +1,150 @@
+{
+  "name": "brazil-market",
+  "pageW": 960,
+  "pageH": 540,
+  "closingPage": 6,
+  "flowsInsertAt": 6,
+  "logo": {
+    "page": 0,
+    "box": [
+      79.2,
+      14.0,
+      232.0,
+      48.0
+    ]
+  },
+  "fields": [
+    {
+      "key": "repCompany",
+      "page": 0,
+      "template": "{rep} \u2014 {company}",
+      "x": 93.6,
+      "baseline": 456.1,
+      "size": 13.0,
+      "color": "#e8ecf0",
+      "font": "bold",
+      "align": "left"
+    },
+    {
+      "key": "date",
+      "page": 0,
+      "template": "{date}",
+      "x": 880.89,
+      "baseline": 456.1,
+      "size": 13.0,
+      "color": "#e8ecf0",
+      "font": "bold",
+      "align": "right"
+    },
+    {
+      "key": "footer",
+      "page": 1,
+      "template": "Confidential \u2014 prepared for {company} \u00b7 {date}",
+      "x": 36.0,
+      "baseline": 514.8,
+      "size": 9.0,
+      "color": "#8f98a3",
+      "font": "regular",
+      "align": "left"
+    },
+    {
+      "key": "footer",
+      "page": 2,
+      "template": "Confidential \u2014 prepared for {company} \u00b7 {date}",
+      "x": 36.0,
+      "baseline": 514.8,
+      "size": 9.0,
+      "color": "#8f98a3",
+      "font": "regular",
+      "align": "left"
+    },
+    {
+      "key": "footer",
+      "page": 3,
+      "template": "Confidential \u2014 prepared for {company} \u00b7 {date}",
+      "x": 36.0,
+      "baseline": 514.8,
+      "size": 9.0,
+      "color": "#8f98a3",
+      "font": "regular",
+      "align": "left"
+    },
+    {
+      "key": "footer",
+      "page": 4,
+      "template": "Confidential \u2014 prepared for {company} \u00b7 {date}",
+      "x": 36.0,
+      "baseline": 514.8,
+      "size": 9.0,
+      "color": "#8f98a3",
+      "font": "regular",
+      "align": "left"
+    },
+    {
+      "key": "footer",
+      "page": 5,
+      "template": "Confidential \u2014 prepared for {company} \u00b7 {date}",
+      "x": 36.0,
+      "baseline": 514.8,
+      "size": 9.0,
+      "color": "#8f98a3",
+      "font": "regular",
+      "align": "left"
+    },
+    {
+      "key": "repName",
+      "page": 6,
+      "template": "{repName}",
+      "x": 680.0,
+      "baseline": 248.0,
+      "size": 22.0,
+      "color": "#e8ecf0",
+      "font": "bold",
+      "align": "left"
+    },
+    {
+      "key": "repTitle",
+      "page": 6,
+      "template": "{repTitle}",
+      "x": 680.0,
+      "baseline": 270.0,
+      "size": 12.0,
+      "color": "#8f98a3",
+      "font": "regular",
+      "align": "left"
+    },
+    {
+      "key": "repEmail",
+      "page": 6,
+      "template": "{repEmail}",
+      "x": 680.0,
+      "baseline": 338.0,
+      "size": 13.0,
+      "color": "#e8ecf0",
+      "font": "regular",
+      "align": "left"
+    },
+    {
+      "key": "repPhone",
+      "page": 6,
+      "template": "{repPhone}",
+      "x": 680.0,
+      "baseline": 388.0,
+      "size": 13.0,
+      "color": "#e8ecf0",
+      "font": "regular",
+      "align": "left"
+    },
+    {
+      "key": "repLinkedIn",
+      "page": 6,
+      "template": "{repLinkedIn}",
+      "x": 680.0,
+      "baseline": 438.0,
+      "size": 13.0,
+      "color": "#e8ecf0",
+      "font": "regular",
+      "align": "left"
+    }
+  ]
+}

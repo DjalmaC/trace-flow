@@ -79,3 +79,54 @@ export async function loadSharedFlow(code: string): Promise<FlowConfig | null> {
   if (!data) return null;
   return data.config as FlowConfig;
 }
+
+// ── Dashboard: list + delete past proposals ─────────────────────────────────
+// Each "Generate client link" persists a row; the dashboard reads them back,
+// grouped by client. A proposal is one generated link.
+
+export interface ProposalRecord {
+  code: string;
+  clientName: string;
+  clientRep: string | null;
+  clientLogoUrl?: string;
+  clientLogoPlate?: "light" | "none";
+  proposalType?: string;
+  date?: string;
+  traceRepId?: string;
+  createdAt: string;
+}
+
+/** All saved proposals, newest first. Optionally scoped to one Trace rep. */
+export async function listProposals(traceRepId?: string): Promise<ProposalRecord[]> {
+  const sb = client();
+  if (!sb) return [];
+  const { data, error } = await sb
+    .from(TABLE)
+    .select("code, config, client_name, client_rep, created_at")
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message || "Could not load proposals.");
+  const rows = (data ?? []).map((r): ProposalRecord => {
+    const cfg = (r.config ?? {}) as Record<string, unknown>;
+    return {
+      code: r.code as string,
+      clientName: (r.client_name as string) || (cfg.clientName as string) || "Untitled",
+      clientRep: (r.client_rep as string) ?? null,
+      clientLogoUrl: cfg.clientLogoUrl as string | undefined,
+      clientLogoPlate: cfg.clientLogoPlate as "light" | "none" | undefined,
+      proposalType: cfg.proposalType as string | undefined,
+      date: cfg.date as string | undefined,
+      traceRepId: cfg.traceRepId as string | undefined,
+      createdAt: r.created_at as string,
+    };
+  });
+  return traceRepId ? rows.filter((r) => r.traceRepId === traceRepId) : rows;
+}
+
+/** Delete one proposal by its code. Requires the anon delete RLS policy (see
+ *  SHARING.md); without it the row simply isn't removed. */
+export async function deleteProposal(code: string): Promise<void> {
+  const sb = client();
+  if (!sb) throw new Error("Sharing is not configured.");
+  const { error } = await sb.from(TABLE).delete().eq("code", code);
+  if (error) throw new Error(error.message || "Could not delete this proposal.");
+}

@@ -5,7 +5,7 @@ import type { Flow } from "../schema";
 export const flow03: Flow = {
   id: "flow-3",
   displayId: "3",
-  title: "eFX and NRA — Pix Inc NRA held by Partner Bank with Stablecoin Sandwich",
+  title: "eFX · stablecoin bridge (Pix account)",
   blurb: "eFX + Pix Inc's own NRA; crypto bridges the border, fiat settles the merchant.",
   dials: { model: "eFX+NRA", rail: "stablecoin-sandwich", nraOwnership: "pix-own", pixRole: "settler", localLp: false },
   traceRole: ["VASP"],

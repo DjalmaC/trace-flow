@@ -5,7 +5,7 @@ import type { Flow } from "../schema";
 export const flow091: Flow = {
   id: "flow-9.1",
   displayId: "9.1",
-  title: "VA — Pix Inc / Finance LTDA account with Local Liquidity Provider, fiat settlement abroad via Stablecoin Sandwich",
+  title: "Local buyer · stablecoin bridge to fiat",
   blurb: "Twin of #9 — delivers fiat abroad, using the stablecoin only as the bridge.",
   dials: { model: "VA", rail: "stablecoin-sandwich", nraOwnership: "none", pixRole: "settler", localLp: true },
   traceRole: ["VASP"],

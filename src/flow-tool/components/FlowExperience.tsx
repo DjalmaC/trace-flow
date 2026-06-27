@@ -144,6 +144,7 @@ export function FlowExperience({
       <h2 className="text-2xl font-semibold tracking-tight text-title md:text-4xl">
         How Trace makes it happen
       </h2>
+      <p className="mt-2.5 text-sm font-medium text-[#5fd3a0] md:text-base">{flow.title}</p>
     </div>
   );
 

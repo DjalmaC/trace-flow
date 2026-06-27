@@ -6,7 +6,7 @@ import type { Flow } from "../schema";
 export const flow10: Flow = {
   id: "flow-10",
   displayId: "10",
-  title: "VA and NRA — NRA held by Partner Bank and a Local Liquidity Provider, Virtual Asset settlement abroad",
+  title: "Foreign collector · deliver stablecoin",
   blurb: "Foreign NRA holder collects from Brazil; bank-held NRA + local LP; asset delivered abroad.",
   // NOTE: matches flow_10_dark.svg, which diverged from Architecture Spec §10
   // (the separate Pix Inc US node was dropped; the NRA became Pix Inc NRA; the

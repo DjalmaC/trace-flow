@@ -5,7 +5,7 @@ import type { Flow } from "../schema";
 export const flow08: Flow = {
   id: "flow-8",
   displayId: "8",
-  title: "eFX and NRA — NRA held by Partner Bank, Pix Inc as Liquidity Provider (Stablecoin Sandwich)",
+  title: "eFX · stablecoin bridge (client's account)",
   blurb: "Twin of #7; Pix Inc as LP, the sandwich's two conversions split across its two nodes.",
   dials: { model: "eFX+NRA", rail: "stablecoin-sandwich", nraOwnership: "third-party", pixRole: "liquidity-provider", localLp: false },
   traceRole: ["VASP"],

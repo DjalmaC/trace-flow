@@ -5,7 +5,7 @@ import type { Flow } from "../schema";
 export const flow05: Flow = {
   id: "flow-5",
   displayId: "5",
-  title: "NRA — Direct pay-in/pay-out in Pix Inc NRA held by Partner Bank with fiat settlement",
+  title: "Pix-direct · fiat settlement",
   blurb: "No eFX; Pix Inc intermediates directly for an international counterparty, treasury FX.",
   dials: { model: "NRA-direct", rail: "treasury-fiat", nraOwnership: "pix-own", pixRole: "treasury", localLp: false },
   traceRole: ["Correspondente Cambial"],
