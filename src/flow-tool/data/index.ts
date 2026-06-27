@@ -32,7 +32,7 @@ export const INTAKE_FLOWS: Flow[] = [
 ];
 
 // Everything selectable in the manual picker: the canonical eleven plus the
-// Arq Argentina pair (#11 / #11.1), which are picked manually, not via intake.
+// Foreigner-to-BR pair (#11 / #11.1), which are picked manually, not via intake.
 export const FLOWS: Flow[] = [...INTAKE_FLOWS, flow11, flow111];
 
 export const FLOW_BY_ID: Record<string, Flow> = Object.fromEntries(

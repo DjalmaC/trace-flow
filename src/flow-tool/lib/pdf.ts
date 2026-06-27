@@ -4,7 +4,7 @@ import type { FlowConfig } from "../data/schema";
 
 // A pre-designed deck SVG (public/flows/flow_0X_dark.svg) exists only for the
 // canonical eleven flows — so PDF export is available for those, not for flows
-// that are rendered purely by the live engine (e.g. the Arq Argentina pair).
+// that are rendered purely by the live engine (e.g. the Foreigner-to-BR pair).
 const DECK_FLOW_IDS = new Set(INTAKE_FLOWS.map((f) => f.id));
 export function pdfDeckAvailable(flowId: string): boolean {
   return DECK_FLOW_IDS.has(flowId);

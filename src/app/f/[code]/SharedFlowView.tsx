@@ -7,7 +7,7 @@ import { loadSharedFlow } from "@/flow-tool/lib/share";
 import { getRep } from "@/flow-tool/data/reps";
 import type { Direction, FlowConfig, ProposalType } from "@/flow-tool/data/schema";
 
-// A shared link may carry more than one flow "variant" (e.g. ARQ's With-Arq-IP
+// A shared link may carry more than one flow "variant" (e.g. a With-IP
 // vs Direct structures). The viewer switches between them with a left-side
 // toggle that mirrors the Pay-in / Pay-out control on the right.
 type Variant = { flowId: string; name: string };

@@ -86,7 +86,7 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
   const partyB = flow.nodes.find((n) => n.id === flow.headline.partyB);
   const clientSub = sentenceCase(partyA?.label ?? "Client");
   const merchantName = sentenceCase(partyB?.label ?? "Beneficiary");
-  // the beneficiary isn't always abroad (the Arq Argentina flow settles in Brazil)
+  // the beneficiary isn't always abroad (the Foreigner-to-BR flow settles in Brazil)
   const merchantWhere = partyB?.lane === "brazil" ? "in Brazil" : "abroad";
 
   useEffect(() => {

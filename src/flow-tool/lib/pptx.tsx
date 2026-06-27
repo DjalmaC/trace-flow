@@ -214,8 +214,8 @@ export async function renderProposalFlowPngs(
 /** QA hook: render one deck slide to a PNG data URL. */
 export async function previewDeckPng(flowId: string, kind: "title" | "flow"): Promise<string> {
   const flow = getFlow(flowId)!;
-  const config: FlowConfig = { ...defaultConfig(flowId, "ARQ"), clientRep: "Victor Medeiros", clientLogoPlate: "none" };
-  return renderDeckPng(kind === "title" ? titleSlide(config) : flowSlide(config, flow, "With Arq IP", deckFlowLabel(0, 1), flow.heroSupport?.collection));
+  const config: FlowConfig = { ...defaultConfig(flowId, "Acme"), clientRep: "Jane Doe", clientLogoPlate: "none" };
+  return renderDeckPng(kind === "title" ? titleSlide(config) : flowSlide(config, flow, flow.title, deckFlowLabel(0, 1), flow.heroSupport?.collection));
 }
 
 type Variant = { flowId: string; name: string };

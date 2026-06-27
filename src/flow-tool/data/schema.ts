@@ -10,7 +10,7 @@
 // "USD/EUR" is the semantic delivered-fiat token used in flow DATA; the
 // client-facing display can resolve it to the combined label or a specific
 // "USD" / "EUR" via FlowConfig.delivered.
-// "USD/USDT" is a combined cash-or-stablecoin token used by the Arq Argentina
+// "USD/USDT" is a combined cash-or-stablecoin token used by the Foreigner-to-BR
 // flow (foreign value funded as USD or USDT); it renders as a labelled pill.
 export type Currency = "BRL" | "USD" | "EUR" | "USD/EUR" | "USDC/USDT" | "USD/USDT";
 export type Stablecoin = "USDC" | "USDT" | "both";
@@ -25,7 +25,7 @@ export type Direction = "collection" | "disbursement";
  */
 export interface DialCoordinate {
   /** D1 — the human-facing model label. */
-  model: "eFX-only" | "eFX+NRA" | "NRA-direct" | "VA" | "VA+NRA" | "Arq Argentina";
+  model: "eFX-only" | "eFX+NRA" | "NRA-direct" | "VA" | "VA+NRA" | "Foreigner-to-BR";
   /** D3 — the one real conduit input. */
   rail: "direct-fiat" | "treasury-fiat" | "stablecoin-sandwich" | "VA-delivery";
   /** D2 (decomposed) — where/whose value sits offshore. */

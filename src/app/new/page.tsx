@@ -118,7 +118,7 @@ export default function NewProposalPage() {
               <input
                 value={company}
                 onChange={(e) => setCompany(e.target.value)}
-                placeholder="e.g. Arqu"
+                placeholder="e.g. Acme"
                 className="w-full rounded-lg border border-node-stroke bg-node-fill px-3 py-2.5 text-sm outline-none placeholder:text-muted focus:border-green-accent"
               />
             </Field>
