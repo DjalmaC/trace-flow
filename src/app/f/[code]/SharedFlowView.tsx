@@ -4,7 +4,8 @@ import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { FlowExperience, useIsMobile } from "@/flow-tool/components/FlowExperience";
 import { ASSETS, C, TRACE_LOGO_AR } from "@/flow-tool/components/tokens";
 import { loadSharedFlow } from "@/flow-tool/lib/share";
-import type { Direction, FlowConfig } from "@/flow-tool/data/schema";
+import { getRep } from "@/flow-tool/data/reps";
+import type { Direction, FlowConfig, ProposalType } from "@/flow-tool/data/schema";
 
 // A shared link may carry more than one flow "variant" (e.g. ARQ's With-Arq-IP
 // vs Direct structures). The viewer switches between them with a left-side
@@ -18,7 +19,17 @@ type PriceCard = { badge: string; tone?: "green" | "cyan"; title: string; sub?: 
 type Pricing = { region: string; flag?: string; subtitle?: string; cards: PriceCard[]; footer?: string };
 // `salesperson` (optional) renders the closing "last deck" of the proposal.
 type Salesperson = { name: string; title?: string; email?: string; phone?: string; photo?: string; bio?: string; bookingUrl?: string };
-type SharedConfig = FlowConfig & { variants?: Variant[]; proposalUrl?: string; pricing?: Pricing; salesperson?: Salesperson };
+// `proposalType`/`date`/`traceRepId` (optional, set by the proposal generator)
+// let "Download Proposal" assemble the full templated PDF on the fly.
+type SharedConfig = FlowConfig & {
+  variants?: Variant[];
+  proposalUrl?: string;
+  pricing?: Pricing;
+  salesperson?: Salesperson;
+  proposalType?: ProposalType;
+  date?: string;
+  traceRepId?: string;
+};
 
 type State =
   | { status: "loading" }
@@ -50,8 +61,10 @@ export function SharedFlowView({ code }: { code: string }) {
   const flowId = activeFlowId ?? config?.flowId ?? "";
   const repName = config?.clientRep?.split(",")[0]?.trim();
 
-  // "Download Proposal": serve the curated proposal PDF when one is attached,
-  // otherwise fall back to a live-generated deck (title slide + one per flow).
+  // "Download Proposal", in order of preference:
+  //   1. a curated proposal PDF attached to the link (proposalUrl),
+  //   2. the full templated proposal assembled on the fly (proposalType),
+  //   3. the live-generated flow deck (title slide + one per flow).
   async function onProposal() {
     if (!config) return;
     if (config.proposalUrl) {
@@ -65,9 +78,27 @@ export function SharedFlowView({ code }: { code: string }) {
     }
     setPdf("working");
     try {
-      const { variants: _v, proposalUrl: _p, ...base } = config;
-      const { downloadFlowDeckPdf } = await import("@/flow-tool/lib/pptx");
-      await downloadFlowDeckPdf({ ...base, direction }, variants);
+      if (config.proposalType) {
+        const { downloadProposalPdf } = await import("@/flow-tool/lib/proposal");
+        await downloadProposalPdf({
+          proposalType: config.proposalType,
+          company: config.clientName,
+          companyRep: config.clientRep,
+          date: config.date ?? "",
+          companyLogoUrl: config.clientLogoUrl,
+          companyLogoPlate: config.clientLogoPlate,
+          flows: variants ?? [{ flowId, name: "Flow" }],
+          direction,
+          stablecoin: config.stablecoin,
+          collected: config.collected,
+          delivered: config.delivered,
+          rep: getRep(config.traceRepId),
+        });
+      } else {
+        const { variants: _v, proposalUrl: _p, ...base } = config;
+        const { downloadFlowDeckPdf } = await import("@/flow-tool/lib/pptx");
+        await downloadFlowDeckPdf({ ...base, direction }, variants);
+      }
       setPdf("idle");
     } catch {
       setPdf("error");
@@ -151,7 +182,10 @@ export function SharedFlowView({ code }: { code: string }) {
 
   return (
     <LayoutGroup>
-      <main className="relative overflow-x-hidden bg-[#07090b]">
+      {/* overflow-x:clip (not hidden) contains horizontal overflow WITHOUT
+          making <main> a scroll container — `hidden` would promote overflow-y
+          to auto and break the desktop scroll-dive's position:sticky. */}
+      <main className="relative overflow-x-clip bg-[#07090b]">
         {config && fxConfig && (
           isMobile ? (
             /* ── phone: sticky top bar + inline controls + vertical flow ── */
@@ -159,6 +193,9 @@ export function SharedFlowView({ code }: { code: string }) {
               <header className="sticky top-0 z-40 border-b border-white/5 bg-[#07090b]/90 px-4 pb-2.5 pt-3 backdrop-blur">
                 {showChrome && (
                   <div className="tf-fade">
+                    <div className="mb-2 text-[9.5px] font-semibold uppercase tracking-[0.2em] text-[#6f8a7f]">
+                      A Trace Finance Proposal
+                    </div>
                     <div className="flex items-center gap-3">
                       <ClientLogo config={config} size="header" />
                       <div className="min-w-0 flex-1 leading-tight">
@@ -212,6 +249,9 @@ export function SharedFlowView({ code }: { code: string }) {
               <div className="no-print fixed left-6 top-4 z-[55] flex flex-col items-start gap-3">
                 {showChrome && (
                   <>
+                    <div className="tf-fade text-[10.5px] font-semibold uppercase tracking-[0.2em] text-[#6f8a7f]">
+                      A Trace Finance Proposal
+                    </div>
                     <div className="flex items-center gap-3">
                       <ClientLogo config={config} size="header" />
                       <div className="tf-fade leading-tight">
