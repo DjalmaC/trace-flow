@@ -32,3 +32,7 @@ body {
   to { opacity: 1; transform: none; }
 }
 .tf-rise { animation: tf-rise 0.7s cubic-bezier(.4,0,.2,1) both; }
+
+/* Chrome settling in as the intro resolves (defaults visible if unanimated). */
+@keyframes tf-fade { from { opacity: 0; } to { opacity: 1; } }
+.tf-fade { animation: tf-fade 0.55s cubic-bezier(.4,0,.2,1); }

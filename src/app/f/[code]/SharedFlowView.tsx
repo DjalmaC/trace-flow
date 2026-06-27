@@ -141,12 +141,12 @@ export function SharedFlowView({ code }: { code: string }) {
                 <>
                   <div className="flex items-center gap-3">
                     <ClientLogo config={config} size="header" />
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.3 }} className="leading-tight">
+                    <div className="tf-fade leading-tight">
                       <div className="text-sm font-semibold text-title">{config.clientName}</div>
                       {config.clientRep && <div className="text-[11px] text-muted">Prepared for {config.clientRep}</div>}
-                    </motion.div>
+                    </div>
                   </div>
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.42 }} className="flex flex-col gap-1.5">
+                  <div className="tf-fade flex flex-col gap-1.5">
                     {hasPricing && <ViewSwitch view={view} onChange={setView} />}
                     <AnimatePresence initial={false}>
                       {(!hasPricing || view === "flow") && hasVariants && (
@@ -163,7 +163,7 @@ export function SharedFlowView({ code }: { code: string }) {
                         </motion.div>
                       )}
                     </AnimatePresence>
-                  </motion.div>
+                  </div>
                 </>
               )}
             </div>
@@ -183,12 +183,7 @@ export function SharedFlowView({ code }: { code: string }) {
 
             {/* downloads — bottom-left. PDF (primary) or the same deck as PowerPoint. */}
             {showChrome && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.5, delay: 0.38 }}
-                className="fixed bottom-6 left-6 z-40 flex items-center gap-2"
-              >
+              <div className="tf-fade fixed bottom-6 left-6 z-40 flex items-center gap-2">
                 <button
                   onClick={onProposal}
                   disabled={pdf === "working"}
@@ -203,7 +198,7 @@ export function SharedFlowView({ code }: { code: string }) {
                 >
                   {ppt === "working" ? "Building…" : ppt === "error" ? "Try again" : "PowerPoint"}
                 </button>
-              </motion.div>
+              </div>
             )}
 
           </>
