@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { motion, LayoutGroup } from "framer-motion";
+import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { FlowExperience } from "@/flow-tool/components/FlowExperience";
 import { ASSETS, C, TRACE_LOGO_AR } from "@/flow-tool/components/tokens";
 import { loadSharedFlow } from "@/flow-tool/lib/share";
@@ -37,7 +37,7 @@ export function SharedFlowView({ code }: { code: string }) {
   const [activeFlowId, setActiveFlowId] = useState<string | null>(null);
   const [pdf, setPdf] = useState<"idle" | "working" | "error">("idle");
   const [ppt, setPpt] = useState<"idle" | "working" | "error">("idle");
-  const [viewer, setViewer] = useState(false); // in-page proposal viewer (pricing visible)
+  const [view, setView] = useState<"flow" | "pricing">("flow"); // top-left Flow | Pricing tab
 
   const config = state.status === "ready" ? state.config : null;
   const variants = config?.variants;
@@ -112,16 +112,6 @@ export function SharedFlowView({ code }: { code: string }) {
     };
   }, [code]);
 
-  // close the proposal viewer on Escape
-  useEffect(() => {
-    if (!viewer) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setViewer(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [viewer]);
-
   // once loaded, run the welcome → fadeout → done sequence
   useEffect(() => {
     if (state.status !== "ready") return;
@@ -135,6 +125,7 @@ export function SharedFlowView({ code }: { code: string }) {
   }, [state.status]);
 
   const hasVariants = !!variants && variants.length > 1;
+  const hasPricing = !!config?.proposalUrl;
   const showWelcomeLogo = intro === "welcome";
   const showChrome = intro === "fadeout" || intro === "done"; // header + downloads settle in
 
@@ -155,24 +146,40 @@ export function SharedFlowView({ code }: { code: string }) {
                       {config.clientRep && <div className="text-[11px] text-muted">Prepared for {config.clientRep}</div>}
                     </motion.div>
                   </div>
-                  {hasVariants && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.42 }} className="flex flex-col gap-1.5">
-                      <span className="pl-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">Flows</span>
-                      <FlowSwitch variants={variants!} activeId={flowId} onChange={setActiveFlowId} />
-                    </motion.div>
-                  )}
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.42 }} className="flex flex-col gap-1.5">
+                    {hasPricing && <ViewSwitch view={view} onChange={setView} />}
+                    <AnimatePresence initial={false}>
+                      {(!hasPricing || view === "flow") && hasVariants && (
+                        <motion.div
+                          key="variants"
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
+                          className="flex flex-col gap-1.5 overflow-hidden"
+                        >
+                          <span className="pl-1 pt-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">Flows</span>
+                          <FlowSwitch variants={variants!} activeId={flowId} onChange={setActiveFlowId} />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
                 </>
               )}
             </div>
 
-            <FlowExperience
-              config={(() => {
-                const { variants: _v, proposalUrl: _p, ...base } = config;
-                return { ...base, flowId, direction };
-              })()}
-              presentation
-              onDirectionChange={setDirection}
-            />
+            {hasPricing && view === "pricing" ? (
+              <PricingView proposalUrl={config.proposalUrl!} clientName={config.clientName} />
+            ) : (
+              <FlowExperience
+                config={(() => {
+                  const { variants: _v, proposalUrl: _p, ...base } = config;
+                  return { ...base, flowId, direction };
+                })()}
+                presentation
+                onDirectionChange={setDirection}
+              />
+            )}
 
             {/* downloads — bottom-left. PDF (primary) or the same deck as PowerPoint. */}
             {showChrome && (
@@ -183,17 +190,11 @@ export function SharedFlowView({ code }: { code: string }) {
                 className="fixed bottom-6 left-6 z-40 flex items-center gap-2"
               >
                 <button
-                  onClick={config.proposalUrl ? () => setViewer(true) : onProposal}
+                  onClick={onProposal}
                   disabled={pdf === "working"}
                   className="flex items-center gap-2 rounded-xl border border-green-accent/40 bg-[#0e1410]/85 px-5 py-3 text-sm font-semibold text-[#bfe8d4] shadow-xl backdrop-blur transition hover:border-green-accent hover:bg-[#13201a] disabled:opacity-60"
                 >
-                  {config.proposalUrl
-                    ? "View Proposal"
-                    : pdf === "working"
-                      ? "Building deck…"
-                      : pdf === "error"
-                        ? "Try again"
-                        : "Download Proposal ↓"}
+                  {pdf === "working" ? "Building deck…" : pdf === "error" ? "Try again" : "Download Proposal ↓"}
                 </button>
                 <button
                   onClick={onPptx}
@@ -205,38 +206,6 @@ export function SharedFlowView({ code }: { code: string }) {
               </motion.div>
             )}
 
-            {/* in-page proposal viewer — the full proposal (incl. pricing) embedded */}
-            {viewer && config.proposalUrl && (
-              <div
-                className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm md:p-8"
-                onClick={() => setViewer(false)}
-              >
-                <div
-                  className="flex h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0c110f] shadow-2xl"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-                    <div className="text-sm font-semibold text-title">Proposal — {config.clientName}</div>
-                    <div className="flex items-center gap-2">
-                      <a
-                        href={config.proposalUrl}
-                        download={`Trace Finance - ${config.clientName} - Proposal.pdf`}
-                        className="rounded-lg border border-green-accent/40 px-3 py-1.5 text-xs font-semibold text-[#bfe8d4] transition hover:bg-green-fill"
-                      >
-                        Download ↓
-                      </a>
-                      <button
-                        onClick={() => setViewer(false)}
-                        className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-medium text-subtitle transition hover:text-title"
-                      >
-                        Close ✕
-                      </button>
-                    </div>
-                  </div>
-                  <iframe src={`${config.proposalUrl}#view=FitH`} title={`Proposal — ${config.clientName}`} className="h-full w-full bg-white" />
-                </div>
-              </div>
-            )}
           </>
         )}
 
@@ -301,6 +270,39 @@ function ClientLogo({ config, size }: { config: SharedConfig; size: "header" | "
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <motion.img layoutId="client-logo" transition={t} src={config.clientLogoUrl} alt={config.clientName} className={`${img} object-contain`} />
+  );
+}
+
+// Horizontal Flow | Pricing tab — sits above the variant toggle. Selecting Flow
+// drops the variant lines down; Pricing swaps the main view to the proposal.
+function ViewSwitch({ view, onChange }: { view: "flow" | "pricing"; onChange: (v: "flow" | "pricing") => void }) {
+  return (
+    <div className="flex gap-0.5 rounded-[11px] border border-white/10 bg-[#0e1410]/70 p-[3px] backdrop-blur">
+      {(["flow", "pricing"] as const).map((v) => (
+        <button
+          key={v}
+          onClick={() => onChange(v)}
+          className={`rounded-lg px-[15px] py-[6px] text-[12.5px] font-medium tracking-[0.2px] capitalize transition ${
+            view === v ? "bg-[#46d39a24] text-[#bfe8d4]" : "text-[#8b948f] hover:text-[#bfe8d4]"
+          }`}
+        >
+          {v}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// Pricing view — the proposal PDF (which carries the pricing) embedded full-bleed.
+function PricingView({ proposalUrl, clientName }: { proposalUrl: string; clientName: string }) {
+  return (
+    <div className="fixed inset-0 z-10 flex items-stretch justify-center bg-[#07090b] px-4 pb-6 pt-28 md:px-10">
+      <iframe
+        src={`${proposalUrl}#view=FitH`}
+        title={`Proposal — ${clientName}`}
+        className="h-full w-full max-w-5xl rounded-xl border border-white/10 bg-white shadow-2xl"
+      />
+    </div>
   );
 }
 
