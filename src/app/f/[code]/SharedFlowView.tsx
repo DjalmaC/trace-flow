@@ -311,25 +311,25 @@ function PricingView({ pricing }: { pricing: Pricing }) {
       style={{ background: "radial-gradient(62% 60% at 50% 28%, #15392d40 0%, rgba(7,9,11,0) 70%), #07090b" }}
     >
       <div className="mx-auto flex min-h-full w-full max-w-5xl flex-col justify-center px-5 pb-16 pt-28 md:px-10">
-        <div className="mb-7 flex items-center gap-3">
-          {pricing.flag && <span className="shrink-0 text-4xl leading-none">{pricing.flag}</span>}
-          <div className="min-w-0">
+        <div className="mb-7">
+          <div className="flex items-center gap-3">
+            {pricing.flag && <span className="shrink-0 text-4xl leading-none">{pricing.flag}</span>}
             <h2 className="text-3xl font-bold tracking-tight text-title md:text-4xl">{pricing.region}</h2>
-            {pricing.subtitle && <p className="mt-1 text-sm text-green-accent md:text-[15px]">{pricing.subtitle}</p>}
           </div>
+          {pricing.subtitle && <p className="mt-1.5 text-sm text-green-accent md:text-[15px]">{pricing.subtitle}</p>}
         </div>
 
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+        <div className="grid w-full grid-cols-1 gap-5 md:grid-cols-2">
           {pricing.cards.map((card, i) => (
-            <div key={i} className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 shadow-xl">
+            <div key={i} className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.02] p-5 shadow-xl md:p-6">
               <div className="flex items-center gap-3">
                 <div
-                  className="flex h-11 w-11 items-center justify-center rounded-full text-lg font-bold text-[#06120c]"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-lg font-bold text-[#06120c]"
                   style={{ background: card.tone === "cyan" ? "#2bd4c0" : "#46d39a" }}
                 >
                   {card.badge}
                 </div>
-                <div>
+                <div className="min-w-0">
                   <div className="text-xl font-bold text-title">{card.title}</div>
                   {card.sub && <div className="text-[13px] text-subtitle">{card.sub}</div>}
                 </div>
