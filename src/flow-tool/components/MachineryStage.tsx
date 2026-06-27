@@ -358,9 +358,16 @@ export function MachineryStage({
         </g>
       ))}
 
-      {/* directional indicators — one per rail segment, in the flow direction */}
+      {/* directional indicators — one per rail segment, sat just ahead of where
+          the token emerges (the source end, which flips with direction). */}
       {layout.legs.map((l) => (
-        <TraceArrow key={l.index} cx={Math.min(l.x1, l.x2) + 22} cy={railY} size={22} direction={config.direction} />
+        <TraceArrow
+          key={l.index}
+          cx={config.direction === "collection" ? Math.min(l.x1, l.x2) + 22 : Math.max(l.x1, l.x2) - 22}
+          cy={railY}
+          size={22}
+          direction={config.direction}
+        />
       ))}
     </g>
   );

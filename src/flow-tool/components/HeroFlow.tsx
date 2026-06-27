@@ -165,10 +165,11 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
       <rect x={488} y={441} width={172} height={32} rx={11} fill={tubeTint(dir)} stroke={accent} strokeOpacity={0.42} style={tubeTransition} />
       <rect x={700} y={441} width={172} height={32} rx={11} fill={tubeTint(dir)} stroke={accent} strokeOpacity={0.42} style={tubeTransition} />
 
-      {/* directional indicators — the actual Trace mark-half, one at the start of
-          each rail segment (one per tube), pointing in the flow direction */}
-      <TraceArrow cx={524} cy={Y} size={26} direction={dir} />
-      <TraceArrow cx={736} cy={Y} size={26} direction={dir} />
+      {/* directional indicators — the Trace mark-half on each tube, sat at the END
+          the token emerges from (flips with direction) and pointing in flow.
+          left tube [488,660], right tube [700,872], inset 36 from the source end. */}
+      <TraceArrow cx={dir === "collection" ? 524 : 624} cy={Y} size={26} direction={dir} />
+      <TraceArrow cx={dir === "collection" ? 736 : 836} cy={Y} size={26} direction={dir} />
 
       {/* client station — once a logo is uploaded it fills nearly the whole
           block (the client's identity); otherwise show an initial + name + role */}

@@ -87,6 +87,12 @@ export default function BuildPage() {
         proposalFlows={proposalFlows}
         onProposalFlowsChange={setProposalFlows}
       />
+      <a
+        href="/"
+        className="fixed bottom-4 left-4 z-50 rounded-lg border border-node-stroke bg-[#0c110f]/90 px-3 py-1.5 text-sm text-subtitle backdrop-blur transition hover:text-title"
+      >
+        ← Proposals
+      </a>
       <FlowExperience config={config} onDirectionChange={setDirection} />
     </main>
   );

@@ -190,17 +190,9 @@ export function ControlPanel({
 
   return (
     <div className="fixed left-4 top-4 z-50 w-[340px] max-w-[calc(100vw-2rem)] rounded-xl border border-node-stroke bg-[#0c110f]/95 text-node-text shadow-2xl backdrop-blur">
-      {/* back to the rep's proposals dashboard (lives in the panel so it never
-          collides with the Pay-in / Pay-out toggle in the top-right corner) */}
-      <a
-        href="/"
-        className="flex items-center gap-1 rounded-t-xl border-b border-node-stroke px-4 py-2 text-[11px] font-medium text-green-accent/80 transition hover:text-green-accent"
-      >
-        ← Proposals
-      </a>
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between px-4 py-3 text-left"
+        className="flex w-full items-center justify-between rounded-t-xl px-4 py-3 text-left"
       >
         <span className="text-sm font-semibold text-title">Trace Flow — configure</span>
         <span className="text-muted">{open ? "▾" : "▸"}</span>

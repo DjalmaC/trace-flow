@@ -202,7 +202,7 @@ export function FlowExperience({
         )}
         {/* flow tag, bottom-left — internal only; hidden in presentation/client views */}
         {!presentation && (
-          <div className="absolute bottom-5 left-6 z-30 text-xs text-muted">{flowTag} · client view</div>
+          <div className="absolute bottom-5 left-44 z-30 text-xs text-muted">{flowTag} · client view</div>
         )}
 
         {/* DEPTH — behind */}
