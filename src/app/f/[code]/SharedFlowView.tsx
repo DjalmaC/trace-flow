@@ -307,13 +307,13 @@ function ViewSwitch({ view, onChange }: { view: "flow" | "pricing"; onChange: (v
 function PricingView({ pricing }: { pricing: Pricing }) {
   return (
     <div
-      className="fixed inset-0 z-10 overflow-y-auto"
+      className="fixed inset-0 z-10 overflow-y-auto overflow-x-hidden"
       style={{ background: "radial-gradient(62% 60% at 50% 28%, #15392d40 0%, rgba(7,9,11,0) 70%), #07090b" }}
     >
-      <div className="mx-auto flex min-h-full max-w-5xl flex-col justify-center px-6 pb-16 pt-28 md:px-10">
+      <div className="mx-auto flex min-h-full w-full max-w-5xl flex-col justify-center px-5 pb-16 pt-28 md:px-10">
         <div className="mb-7 flex items-center gap-3">
-          {pricing.flag && <span className="text-4xl leading-none">{pricing.flag}</span>}
-          <div>
+          {pricing.flag && <span className="shrink-0 text-4xl leading-none">{pricing.flag}</span>}
+          <div className="min-w-0">
             <h2 className="text-3xl font-bold tracking-tight text-title md:text-4xl">{pricing.region}</h2>
             {pricing.subtitle && <p className="mt-1 text-sm text-green-accent md:text-[15px]">{pricing.subtitle}</p>}
           </div>
@@ -337,13 +337,13 @@ function PricingView({ pricing }: { pricing: Pricing }) {
               <div className="my-4 h-px bg-white/10" />
               <div className="space-y-2.5">
                 {card.rows.map((r, j) => (
-                  <div key={j} className="flex items-center justify-between gap-4">
-                    <span className="flex items-center gap-2 text-sm text-subtitle">
+                  <div key={j} className="flex items-center justify-between gap-3">
+                    <span className="flex min-w-0 items-center gap-2 text-sm text-subtitle">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={ASSETS.traceLogo} alt="" style={{ height: 12, width: 12 * TRACE_LOGO_AR }} />
-                      {r.label}
+                      <img src={ASSETS.traceLogo} alt="" className="shrink-0" style={{ height: 12, width: 12 * TRACE_LOGO_AR }} />
+                      <span className="truncate">{r.label}</span>
                     </span>
-                    <span className="font-mono text-sm font-semibold text-green-accent">{r.value}</span>
+                    <span className="shrink-0 font-mono text-sm font-semibold text-green-accent">{r.value}</span>
                   </div>
                 ))}
               </div>

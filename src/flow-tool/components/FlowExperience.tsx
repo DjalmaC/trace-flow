@@ -124,7 +124,7 @@ export function FlowExperience({
       : "Fund from abroad, pay out into Brazil, in one move.";
 
   const SurfaceHeading = (
-    <div className="mb-5 text-center">
+    <div className="mx-auto mb-5 w-full max-w-[36rem] text-center">
       <div className="mb-2 text-[10px] font-medium uppercase tracking-[0.18em] text-[#6f8a7f] md:text-[13px] md:tracking-[0.34em]">
         The desired transaction
       </div>
@@ -136,7 +136,7 @@ export function FlowExperience({
   );
 
   const DepthHeading = (
-    <div className="mb-5 text-center">
+    <div className="mx-auto mb-5 w-full max-w-[36rem] text-center">
       <div className="mb-2 text-[10px] font-medium uppercase tracking-[0.18em] text-muted md:text-[11px] md:tracking-[0.32em]">
         Beneath the surface
       </div>
