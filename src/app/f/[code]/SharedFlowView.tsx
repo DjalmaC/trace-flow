@@ -12,7 +12,11 @@ import type { Direction, FlowConfig } from "@/flow-tool/data/schema";
 type Variant = { flowId: string; name: string };
 // `proposalUrl` (optional) points to a curated proposal PDF to serve on
 // "Download Proposal"; without it we fall back to the live-generated deck.
-type SharedConfig = FlowConfig & { variants?: Variant[]; proposalUrl?: string };
+// `pricing` (optional) drives the native Pricing tab (rendered as web content).
+type PriceRow = { label: string; value: string };
+type PriceCard = { badge: string; tone?: "green" | "cyan"; title: string; sub?: string; rows: PriceRow[] };
+type Pricing = { region: string; flag?: string; subtitle?: string; cards: PriceCard[]; footer?: string };
+type SharedConfig = FlowConfig & { variants?: Variant[]; proposalUrl?: string; pricing?: Pricing };
 
 type State =
   | { status: "loading" }
@@ -112,6 +116,11 @@ export function SharedFlowView({ code }: { code: string }) {
     };
   }, [code]);
 
+  // deep-link straight to the pricing tab with ?view=pricing
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("view") === "pricing") setView("pricing");
+  }, []);
+
   // once loaded, run the welcome → fadeout → done sequence
   useEffect(() => {
     if (state.status !== "ready") return;
@@ -125,7 +134,7 @@ export function SharedFlowView({ code }: { code: string }) {
   }, [state.status]);
 
   const hasVariants = !!variants && variants.length > 1;
-  const hasPricing = !!config?.proposalUrl;
+  const hasPricing = !!config?.pricing;
   const showWelcomeLogo = intro === "welcome";
   const showChrome = intro === "fadeout" || intro === "done"; // header + downloads settle in
 
@@ -169,7 +178,7 @@ export function SharedFlowView({ code }: { code: string }) {
             </div>
 
             {hasPricing && view === "pricing" ? (
-              <PricingView proposalUrl={config.proposalUrl!} clientName={config.clientName} />
+              <PricingView pricing={config.pricing!} />
             ) : (
               <FlowExperience
                 config={(() => {
@@ -288,15 +297,57 @@ function ViewSwitch({ view, onChange }: { view: "flow" | "pricing"; onChange: (v
   );
 }
 
-// Pricing view — the proposal PDF (which carries the pricing) embedded full-bleed.
-function PricingView({ proposalUrl, clientName }: { proposalUrl: string; clientName: string }) {
+// Pricing view — the pricing slide rebuilt as native, deck-styled web content
+// (selectable, responsive) from config.pricing.
+function PricingView({ pricing }: { pricing: Pricing }) {
   return (
-    <div className="fixed inset-0 z-10 flex items-stretch justify-center bg-[#07090b] px-4 pb-6 pt-28 md:px-10">
-      <iframe
-        src={`${proposalUrl}#view=FitH`}
-        title={`Proposal — ${clientName}`}
-        className="h-full w-full max-w-5xl rounded-xl border border-white/10 bg-white shadow-2xl"
-      />
+    <div
+      className="fixed inset-0 z-10 overflow-y-auto"
+      style={{ background: "radial-gradient(62% 60% at 50% 28%, #15392d40 0%, rgba(7,9,11,0) 70%), #07090b" }}
+    >
+      <div className="mx-auto flex min-h-full max-w-5xl flex-col justify-center px-6 pb-16 pt-28 md:px-10">
+        <div className="mb-7 flex items-center gap-3">
+          {pricing.flag && <span className="text-4xl leading-none">{pricing.flag}</span>}
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight text-title md:text-4xl">{pricing.region}</h2>
+            {pricing.subtitle && <p className="mt-1 text-sm text-green-accent md:text-[15px]">{pricing.subtitle}</p>}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+          {pricing.cards.map((card, i) => (
+            <div key={i} className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 shadow-xl">
+              <div className="flex items-center gap-3">
+                <div
+                  className="flex h-11 w-11 items-center justify-center rounded-full text-lg font-bold text-[#06120c]"
+                  style={{ background: card.tone === "cyan" ? "#2bd4c0" : "#46d39a" }}
+                >
+                  {card.badge}
+                </div>
+                <div>
+                  <div className="text-xl font-bold text-title">{card.title}</div>
+                  {card.sub && <div className="text-[13px] text-subtitle">{card.sub}</div>}
+                </div>
+              </div>
+              <div className="my-4 h-px bg-white/10" />
+              <div className="space-y-2.5">
+                {card.rows.map((r, j) => (
+                  <div key={j} className="flex items-center justify-between gap-4">
+                    <span className="flex items-center gap-2 text-sm text-subtitle">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={ASSETS.traceLogo} alt="" style={{ height: 12, width: 12 * TRACE_LOGO_AR }} />
+                      {r.label}
+                    </span>
+                    <span className="font-mono text-sm font-semibold text-green-accent">{r.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {pricing.footer && <p className="mt-8 text-[11px] text-muted">{pricing.footer}</p>}
+      </div>
     </div>
   );
 }
