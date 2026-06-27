@@ -37,6 +37,7 @@ export function SharedFlowView({ code }: { code: string }) {
   const [activeFlowId, setActiveFlowId] = useState<string | null>(null);
   const [pdf, setPdf] = useState<"idle" | "working" | "error">("idle");
   const [ppt, setPpt] = useState<"idle" | "working" | "error">("idle");
+  const [viewer, setViewer] = useState(false); // in-page proposal viewer (pricing visible)
 
   const config = state.status === "ready" ? state.config : null;
   const variants = config?.variants;
@@ -111,6 +112,16 @@ export function SharedFlowView({ code }: { code: string }) {
     };
   }, [code]);
 
+  // close the proposal viewer on Escape
+  useEffect(() => {
+    if (!viewer) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setViewer(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [viewer]);
+
   // once loaded, run the welcome → fadeout → done sequence
   useEffect(() => {
     if (state.status !== "ready") return;
@@ -172,11 +183,17 @@ export function SharedFlowView({ code }: { code: string }) {
                 className="fixed bottom-6 left-6 z-40 flex items-center gap-2"
               >
                 <button
-                  onClick={onProposal}
+                  onClick={config.proposalUrl ? () => setViewer(true) : onProposal}
                   disabled={pdf === "working"}
                   className="flex items-center gap-2 rounded-xl border border-green-accent/40 bg-[#0e1410]/85 px-5 py-3 text-sm font-semibold text-[#bfe8d4] shadow-xl backdrop-blur transition hover:border-green-accent hover:bg-[#13201a] disabled:opacity-60"
                 >
-                  {pdf === "working" ? "Building deck…" : pdf === "error" ? "Try again" : "Download Proposal ↓"}
+                  {config.proposalUrl
+                    ? "View Proposal"
+                    : pdf === "working"
+                      ? "Building deck…"
+                      : pdf === "error"
+                        ? "Try again"
+                        : "Download Proposal ↓"}
                 </button>
                 <button
                   onClick={onPptx}
@@ -186,6 +203,39 @@ export function SharedFlowView({ code }: { code: string }) {
                   {ppt === "working" ? "Building…" : ppt === "error" ? "Try again" : "PowerPoint"}
                 </button>
               </motion.div>
+            )}
+
+            {/* in-page proposal viewer — the full proposal (incl. pricing) embedded */}
+            {viewer && config.proposalUrl && (
+              <div
+                className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm md:p-8"
+                onClick={() => setViewer(false)}
+              >
+                <div
+                  className="flex h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0c110f] shadow-2xl"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+                    <div className="text-sm font-semibold text-title">Proposal — {config.clientName}</div>
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={config.proposalUrl}
+                        download={`Trace Finance - ${config.clientName} - Proposal.pdf`}
+                        className="rounded-lg border border-green-accent/40 px-3 py-1.5 text-xs font-semibold text-[#bfe8d4] transition hover:bg-green-fill"
+                      >
+                        Download ↓
+                      </a>
+                      <button
+                        onClick={() => setViewer(false)}
+                        className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-medium text-subtitle transition hover:text-title"
+                      >
+                        Close ✕
+                      </button>
+                    </div>
+                  </div>
+                  <iframe src={`${config.proposalUrl}#view=FitH`} title={`Proposal — ${config.clientName}`} className="h-full w-full bg-white" />
+                </div>
+              </div>
             )}
           </>
         )}
