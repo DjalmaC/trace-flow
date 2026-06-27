@@ -39,24 +39,32 @@ export function TraceArrow({
   const deg = direction === "collection" ? 0 : 180;
   const h = size;
   const w = h * (SHAPE.vw / SHAPE.vh);
-  // nested <svg> keeps the mark's own viewBox while we position it at the
-  // segment start inside the parent flow <svg>
+  // Outer <g> carries the POSITION as a CSS transform so it SLIDES along the rail
+  // when cx changes on toggle (the nested <svg> x/y attributes wouldn't animate);
+  // the inner <g> SPINS (rotation) + colour-tweens. Both run together over .55s.
   return (
-    <svg x={cx - w / 2} y={cy - h / 2} width={w} height={h} viewBox={`0 0 ${SHAPE.vw} ${SHAPE.vh}`} overflow="visible">
-      <g
-        style={{
-          fill,
-          transform: `rotate(${deg}deg)`,
-          transformBox: "fill-box",
-          transformOrigin: "center",
-          transition: reduced ? undefined : `transform .55s ${EASE}, fill .55s ${EASE}`,
-        }}
-      >
-        {SHAPE.rects.map((r, i) => (
-          <rect key={i} {...r} />
-        ))}
-      </g>
-    </svg>
+    <g
+      style={{
+        transform: `translate(${cx}px, ${cy}px)`,
+        transition: reduced ? undefined : `transform .55s ${EASE}`,
+      }}
+    >
+      <svg x={-w / 2} y={-h / 2} width={w} height={h} viewBox={`0 0 ${SHAPE.vw} ${SHAPE.vh}`} overflow="visible">
+        <g
+          style={{
+            fill,
+            transform: `rotate(${deg}deg)`,
+            transformBox: "fill-box",
+            transformOrigin: "center",
+            transition: reduced ? undefined : `transform .55s ${EASE}, fill .55s ${EASE}`,
+          }}
+        >
+          {SHAPE.rects.map((r, i) => (
+            <rect key={i} {...r} />
+          ))}
+        </g>
+      </svg>
+    </g>
   );
 }
 
