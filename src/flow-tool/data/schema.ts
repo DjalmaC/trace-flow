@@ -10,9 +10,9 @@
 // "USD/EUR" is the semantic delivered-fiat token used in flow DATA; the
 // client-facing display can resolve it to the combined label or a specific
 // "USD" / "EUR" via FlowConfig.delivered.
-// "USD/USDC" is a combined cash-or-stablecoin token used by the Arq Argentina
-// flow (foreign value funded as USD or USDC); it renders as a labelled pill.
-export type Currency = "BRL" | "USD" | "EUR" | "USD/EUR" | "USDC/USDT" | "USD/USDC";
+// "USD/USDT" is a combined cash-or-stablecoin token used by the Arq Argentina
+// flow (foreign value funded as USD or USDT); it renders as a labelled pill.
+export type Currency = "BRL" | "USD" | "EUR" | "USD/EUR" | "USDC/USDT" | "USD/USDT";
 export type Stablecoin = "USDC" | "USDT" | "both";
 export type Lane = "brazil" | "abroad";
 export type NodeKind = "client" | "trace" | "operational" | "merchant";
