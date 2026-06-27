@@ -319,7 +319,7 @@ function PricingView({ pricing }: { pricing: Pricing }) {
           {pricing.subtitle && <p className="mt-1.5 text-sm text-green-accent md:text-[15px]">{pricing.subtitle}</p>}
         </div>
 
-        <div className="grid w-full grid-cols-1 gap-5 md:grid-cols-2">
+        <div className="space-y-5 md:grid md:grid-cols-2 md:gap-5 md:space-y-0">
           {pricing.cards.map((card, i) => (
             <div key={i} className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.02] p-5 shadow-xl md:p-6">
               <div className="flex items-center gap-3">
