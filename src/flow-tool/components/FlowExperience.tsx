@@ -11,7 +11,7 @@ import {
 // Phones get a simpler stacked layout with swipeable diagrams instead of the
 // scroll-dive; desktop is unchanged. (Resolves before the flow is revealed,
 // behind the welcome overlay, so there's no visible switch.)
-function useIsMobile() {
+export function useIsMobile() {
   const [mobile, setMobile] = useState(false);
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");
@@ -29,6 +29,7 @@ import { Defs } from "./FlowSvg";
 import { HeroFlow } from "./HeroFlow";
 import { MachineryStage } from "./MachineryStage";
 import { ASSETS, C, TRACE_LOGO_AR } from "./tokens";
+import { MobileFlow } from "./MobileFlow";
 import type { Direction } from "../data/schema";
 
 // Public surface of the flow-tool module (build brief §8).
@@ -178,20 +179,12 @@ export function FlowExperience({
     );
   }
 
-  // ── phones: stacked sections, diagrams swipe horizontally (no dive) ───────
+  // ── phones: the flow re-laid-out VERTICALLY (no dive, no horizontal scroll) ──
   if (isMobile) {
     return (
-      <div className="w-full overflow-x-hidden" style={{ background: C.base }}>
-        <div className="fixed left-0 top-0 z-30 h-[3px] w-full" style={{ background: C.rule }} />
-        {onDirectionChange && <DirectionToggle direction={config.direction} onChange={onDirectionChange} fixed />}
-        <section className="flex min-h-[88vh] flex-col items-center justify-center px-4 pb-12 pt-24" style={{ background: deckGlow }}>
-          {SurfaceHeading}
-          <SwipeDiagram width={1040}>{SurfaceSvg}</SwipeDiagram>
-        </section>
-        <section className="flex min-h-[88vh] flex-col items-center justify-center px-4 pb-28 pt-12" style={{ background: deckGlow }}>
-          {DepthHeading}
-          <SwipeDiagram width={layout.width}>{MachinerySvg}</SwipeDiagram>
-        </section>
+      <div className="w-full overflow-x-hidden px-4 pb-8 pt-2" style={{ background: deckGlow }}>
+        {SurfaceHeading}
+        <MobileFlow flow={flow} config={config} />
       </div>
     );
   }
@@ -249,19 +242,6 @@ export function FlowExperience({
 
         <Lockup />
       </div>
-    </div>
-  );
-}
-
-// A diagram rendered at a legible fixed width inside a horizontal-scroll box,
-// with a soft right-edge fade hinting there's more to swipe.
-function SwipeDiagram({ width, children }: { width: number; children: React.ReactNode }) {
-  return (
-    <div className="relative mx-auto w-full" style={{ maxWidth: "calc(100vw - 2rem)" }}>
-      <div className="w-full overflow-x-auto">
-        <div style={{ width, minWidth: width }}>{children}</div>
-      </div>
-      <div className="pointer-events-none absolute inset-y-0 right-0 w-10" style={{ background: "linear-gradient(90deg, rgba(7,9,11,0) 0%, #07090b 92%)" }} />
     </div>
   );
 }

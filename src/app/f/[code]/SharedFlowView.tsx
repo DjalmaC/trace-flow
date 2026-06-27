@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
-import { FlowExperience } from "@/flow-tool/components/FlowExperience";
+import { FlowExperience, useIsMobile } from "@/flow-tool/components/FlowExperience";
 import { ASSETS, C, TRACE_LOGO_AR } from "@/flow-tool/components/tokens";
 import { loadSharedFlow } from "@/flow-tool/lib/share";
 import type { Direction, FlowConfig } from "@/flow-tool/data/schema";
@@ -135,87 +135,141 @@ export function SharedFlowView({ code }: { code: string }) {
     };
   }, [state.status]);
 
+  const isMobile = useIsMobile();
   const hasVariants = !!variants && variants.length > 1;
   const hasPricing = !!config?.pricing;
   const showWelcomeLogo = intro === "welcome";
   const showChrome = intro === "fadeout" || intro === "done"; // header + downloads settle in
 
+  // the FlowConfig handed to the flow renderer (strip the proposal-only extras)
+  const fxConfig: FlowConfig | null = config
+    ? (() => {
+        const { variants: _v, proposalUrl: _p, pricing: _pr, salesperson: _s, ...base } = config;
+        return { ...base, flowId, direction };
+      })()
+    : null;
+
   return (
     <LayoutGroup>
       <main className="relative overflow-x-hidden bg-[#07090b]">
-        {config && (
-          <>
-            {/* top-left: client identity + flow switch. z above the intro so the
-                logo's magic-move is visible as the backdrop fades. */}
-            <div className="no-print fixed left-4 top-3 z-[55] flex flex-col items-start gap-2.5 md:left-6 md:top-4 md:gap-3">
-              {showChrome && (
-                <>
-                  <div className="flex items-center gap-3">
-                    <ClientLogo config={config} size="header" />
-                    <div className="tf-fade leading-tight">
-                      <div className="text-sm font-semibold text-title">{config.clientName}</div>
-                      {config.clientRep && <div className="text-[11px] text-muted">Prepared for {config.clientRep}</div>}
+        {config && fxConfig && (
+          isMobile ? (
+            /* ── phone: sticky top bar + inline controls + vertical flow ── */
+            <>
+              <header className="sticky top-0 z-40 border-b border-white/5 bg-[#07090b]/90 px-4 pb-2.5 pt-3 backdrop-blur">
+                {showChrome && (
+                  <div className="tf-fade">
+                    <div className="flex items-center gap-3">
+                      <ClientLogo config={config} size="header" />
+                      <div className="min-w-0 flex-1 leading-tight">
+                        <div className="truncate text-sm font-semibold text-title">{config.clientName}</div>
+                        {config.clientRep && <div className="truncate text-[11px] text-muted">Prepared for {config.clientRep}</div>}
+                      </div>
+                    </div>
+                    <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                      {hasPricing && (
+                        <SegToggle value={view} onChange={setView} options={[{ value: "flow", label: "Flow" }, { value: "pricing", label: "Pricing" }]} />
+                      )}
+                      {view === "flow" && (
+                        <SegToggle value={direction} onChange={setDirection} options={[{ value: "collection", label: "Pay-in" }, { value: "disbursement", label: "Pay-out" }]} />
+                      )}
+                      {view === "flow" && hasVariants && (
+                        <SegToggle full value={flowId} onChange={setActiveFlowId} options={variants!.map((v) => ({ value: v.flowId, label: v.name }))} />
+                      )}
                     </div>
                   </div>
-                  <div className="tf-fade flex flex-col gap-1.5">
-                    {hasPricing && <ViewSwitch view={view} onChange={setView} />}
-                    <AnimatePresence initial={false}>
-                      {(!hasPricing || view === "flow") && hasVariants && (
-                        <motion.div
-                          key="variants"
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
-                          className="flex flex-col gap-1.5 overflow-hidden"
-                        >
-                          <span className="pl-1 pt-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">Flows</span>
-                          <FlowSwitch variants={variants!} activeId={flowId} onChange={setActiveFlowId} />
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                )}
+              </header>
+
+              {hasPricing && view === "pricing" ? (
+                <PricingView pricing={config.pricing!} inline />
+              ) : (
+                <>
+                  <FlowExperience config={fxConfig} presentation onDirectionChange={setDirection} />
+                  <div className="flex flex-col gap-2 px-4 pb-10 pt-1">
+                    <button
+                      onClick={onProposal}
+                      disabled={pdf === "working"}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl border border-green-accent/40 bg-[#0e1410] px-5 py-3 text-sm font-semibold text-[#bfe8d4] transition hover:bg-[#13201a] disabled:opacity-60"
+                    >
+                      {pdf === "working" ? "Building deck…" : pdf === "error" ? "Try again" : "Download Proposal ↓"}
+                    </button>
+                    <button
+                      onClick={onPptx}
+                      disabled={ppt === "working"}
+                      className="w-full rounded-xl border border-white/10 bg-[#0e1410] px-4 py-2.5 text-sm font-medium text-subtitle transition hover:text-title disabled:opacity-60"
+                    >
+                      {ppt === "working" ? "Building…" : ppt === "error" ? "Try again" : "PowerPoint"}
+                    </button>
                   </div>
+                  {config.salesperson && <SalespersonClosing sp={config.salesperson} />}
                 </>
               )}
-            </div>
-
-            {hasPricing && view === "pricing" ? (
-              <PricingView pricing={config.pricing!} />
-            ) : (
-              <>
-                <FlowExperience
-                  config={(() => {
-                    const { variants: _v, proposalUrl: _p, ...base } = config;
-                    return { ...base, flowId, direction };
-                  })()}
-                  presentation
-                  onDirectionChange={setDirection}
-                />
-                {config.salesperson && <SalespersonClosing sp={config.salesperson} />}
-              </>
-            )}
-
-            {/* downloads — bottom-left. PDF (primary) or the same deck as PowerPoint. */}
-            {showChrome && (
-              <div className="tf-fade fixed bottom-4 left-4 right-4 z-40 flex items-center gap-2 md:bottom-6 md:left-6 md:right-auto">
-                <button
-                  onClick={onProposal}
-                  disabled={pdf === "working"}
-                  className="flex items-center gap-2 rounded-xl border border-green-accent/40 bg-[#0e1410]/85 px-4 py-2.5 text-[13px] font-semibold text-[#bfe8d4] shadow-xl backdrop-blur transition hover:border-green-accent hover:bg-[#13201a] disabled:opacity-60 md:px-5 md:py-3 md:text-sm"
-                >
-                  {pdf === "working" ? "Building deck…" : pdf === "error" ? "Try again" : "Download Proposal ↓"}
-                </button>
-                <button
-                  onClick={onPptx}
-                  disabled={ppt === "working"}
-                  className="rounded-xl border border-white/10 bg-[#0e1410]/85 px-3.5 py-2.5 text-[13px] font-medium text-subtitle shadow-xl backdrop-blur transition hover:border-green-accent/40 hover:text-title disabled:opacity-60 md:px-4 md:py-3 md:text-sm"
-                >
-                  {ppt === "working" ? "Building…" : ppt === "error" ? "Try again" : "PowerPoint"}
-                </button>
+            </>
+          ) : (
+            /* ── desktop: fixed-corner chrome + scroll-dive (unchanged) ── */
+            <>
+              <div className="no-print fixed left-6 top-4 z-[55] flex flex-col items-start gap-3">
+                {showChrome && (
+                  <>
+                    <div className="flex items-center gap-3">
+                      <ClientLogo config={config} size="header" />
+                      <div className="tf-fade leading-tight">
+                        <div className="text-sm font-semibold text-title">{config.clientName}</div>
+                        {config.clientRep && <div className="text-[11px] text-muted">Prepared for {config.clientRep}</div>}
+                      </div>
+                    </div>
+                    <div className="tf-fade flex flex-col gap-1.5">
+                      {hasPricing && <ViewSwitch view={view} onChange={setView} />}
+                      <AnimatePresence initial={false}>
+                        {(!hasPricing || view === "flow") && hasVariants && (
+                          <motion.div
+                            key="variants"
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
+                            className="flex flex-col gap-1.5 overflow-hidden"
+                          >
+                            <span className="pl-1 pt-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">Flows</span>
+                            <FlowSwitch variants={variants!} activeId={flowId} onChange={setActiveFlowId} />
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </>
+                )}
               </div>
-            )}
 
-          </>
+              {hasPricing && view === "pricing" ? (
+                <PricingView pricing={config.pricing!} />
+              ) : (
+                <>
+                  <FlowExperience config={fxConfig} presentation onDirectionChange={setDirection} />
+                  {config.salesperson && <SalespersonClosing sp={config.salesperson} />}
+                </>
+              )}
+
+              {showChrome && (
+                <div className="tf-fade fixed bottom-6 left-6 z-40 flex items-center gap-2">
+                  <button
+                    onClick={onProposal}
+                    disabled={pdf === "working"}
+                    className="flex items-center gap-2 rounded-xl border border-green-accent/40 bg-[#0e1410]/85 px-5 py-3 text-sm font-semibold text-[#bfe8d4] shadow-xl backdrop-blur transition hover:border-green-accent hover:bg-[#13201a] disabled:opacity-60"
+                  >
+                    {pdf === "working" ? "Building deck…" : pdf === "error" ? "Try again" : "Download Proposal ↓"}
+                  </button>
+                  <button
+                    onClick={onPptx}
+                    disabled={ppt === "working"}
+                    className="rounded-xl border border-white/10 bg-[#0e1410]/85 px-4 py-3 text-sm font-medium text-subtitle shadow-xl backdrop-blur transition hover:border-green-accent/40 hover:text-title disabled:opacity-60"
+                  >
+                    {ppt === "working" ? "Building…" : ppt === "error" ? "Try again" : "PowerPoint"}
+                  </button>
+                </div>
+              )}
+            </>
+          )
         )}
 
         {/* intro overlay: opaque backdrop + welcome text, fading out on reveal */}
@@ -302,15 +356,45 @@ function ViewSwitch({ view, onChange }: { view: "flow" | "pricing"; onChange: (v
   );
 }
 
+// Horizontal segmented toggle used by the mobile header (Flow/Pricing, Pay-in/out,
+// variant). Same pill styling as the desktop controls.
+function SegToggle<T extends string>({
+  options,
+  value,
+  onChange,
+  full,
+}: {
+  options: { value: T; label: string }[];
+  value: T;
+  onChange: (v: T) => void;
+  full?: boolean;
+}) {
+  return (
+    <div className={`flex gap-0.5 rounded-[11px] border border-white/10 bg-[#0e1410]/70 p-[3px] ${full ? "w-full" : ""}`}>
+      {options.map((o) => (
+        <button
+          key={o.value}
+          onClick={() => onChange(o.value)}
+          className={`rounded-lg px-3 py-[6px] text-[12.5px] font-medium tracking-[0.2px] transition ${full ? "flex-1" : ""} ${
+            value === o.value ? "bg-[#46d39a24] text-[#bfe8d4]" : "text-[#8b948f]"
+          }`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 // Pricing view — the pricing slide rebuilt as native, deck-styled web content
 // (selectable, responsive) from config.pricing.
-function PricingView({ pricing }: { pricing: Pricing }) {
+function PricingView({ pricing, inline }: { pricing: Pricing; inline?: boolean }) {
   return (
     <div
-      className="fixed inset-0 z-10 overflow-y-auto overflow-x-hidden"
+      className={inline ? "w-full overflow-x-hidden" : "fixed inset-0 z-10 overflow-y-auto overflow-x-hidden"}
       style={{ background: "radial-gradient(62% 60% at 50% 28%, #15392d40 0%, rgba(7,9,11,0) 70%), #07090b" }}
     >
-      <div className="mx-auto flex min-h-full flex-col justify-center px-5 pb-16 pt-28 md:px-10" style={{ width: "min(64rem, 100vw)" }}>
+      <div className={`mx-auto flex flex-col ${inline ? "px-4 pb-12 pt-4" : "min-h-full justify-center px-5 pb-16 pt-28 md:px-10"}`} style={{ width: "min(64rem, 100vw)" }}>
         <div className="mb-7">
           <div className="flex items-center gap-3">
             {pricing.flag && <span className="shrink-0 text-4xl leading-none">{pricing.flag}</span>}
