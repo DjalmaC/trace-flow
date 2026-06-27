@@ -10,7 +10,9 @@ import type { Direction, FlowConfig } from "@/flow-tool/data/schema";
 // vs Direct structures). The viewer switches between them with a left-side
 // toggle that mirrors the Pay-in / Pay-out control on the right.
 type Variant = { flowId: string; name: string };
-type SharedConfig = FlowConfig & { variants?: Variant[] };
+// `proposalUrl` (optional) points to a curated proposal PDF to serve on
+// "Download Proposal"; without it we fall back to the live-generated deck.
+type SharedConfig = FlowConfig & { variants?: Variant[]; proposalUrl?: string };
 
 type State =
   | { status: "loading" }
@@ -41,12 +43,22 @@ export function SharedFlowView({ code }: { code: string }) {
   const flowId = activeFlowId ?? config?.flowId ?? "";
   const repName = config?.clientRep?.split(",")[0]?.trim();
 
-  // personalised deck as a multi-page PDF (title slide + one slide per flow)
-  async function onPdf() {
+  // "Download Proposal": serve the curated proposal PDF when one is attached,
+  // otherwise fall back to a live-generated deck (title slide + one per flow).
+  async function onProposal() {
     if (!config) return;
+    if (config.proposalUrl) {
+      const a = document.createElement("a");
+      a.href = config.proposalUrl;
+      a.download = `Trace Finance - ${config.clientName} - Proposal.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      return;
+    }
     setPdf("working");
     try {
-      const { variants: _v, ...base } = config;
+      const { variants: _v, proposalUrl: _p, ...base } = config;
       const { downloadFlowDeckPdf } = await import("@/flow-tool/lib/pptx");
       await downloadFlowDeckPdf({ ...base, direction }, variants);
       setPdf("idle");
@@ -61,7 +73,7 @@ export function SharedFlowView({ code }: { code: string }) {
     if (!config) return;
     setPpt("working");
     try {
-      const { variants: _v, ...base } = config;
+      const { variants: _v, proposalUrl: _p, ...base } = config;
       const { downloadFlowPptx } = await import("@/flow-tool/lib/pptx");
       await downloadFlowPptx({ ...base, direction }, variants);
       setPpt("idle");
@@ -144,7 +156,7 @@ export function SharedFlowView({ code }: { code: string }) {
 
             <FlowExperience
               config={(() => {
-                const { variants: _v, ...base } = config;
+                const { variants: _v, proposalUrl: _p, ...base } = config;
                 return { ...base, flowId, direction };
               })()}
               presentation
@@ -160,11 +172,11 @@ export function SharedFlowView({ code }: { code: string }) {
                 className="fixed bottom-6 left-6 z-40 flex items-center gap-2"
               >
                 <button
-                  onClick={onPdf}
+                  onClick={onProposal}
                   disabled={pdf === "working"}
                   className="flex items-center gap-2 rounded-xl border border-green-accent/40 bg-[#0e1410]/85 px-5 py-3 text-sm font-semibold text-[#bfe8d4] shadow-xl backdrop-blur transition hover:border-green-accent hover:bg-[#13201a] disabled:opacity-60"
                 >
-                  {pdf === "working" ? "Building deck…" : pdf === "error" ? "Try again" : "Download PDF ↓"}
+                  {pdf === "working" ? "Building deck…" : pdf === "error" ? "Try again" : "Download Proposal ↓"}
                 </button>
                 <button
                   onClick={onPptx}
