@@ -1,5 +1,5 @@
 "use client";
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   motion,
   useMotionTemplate,
@@ -7,6 +7,21 @@ import {
   useScroll,
   useTransform,
 } from "framer-motion";
+
+// Phones get a simpler stacked layout with swipeable diagrams instead of the
+// scroll-dive; desktop is unchanged. (Resolves before the flow is revealed,
+// behind the welcome overlay, so there's no visible switch.)
+function useIsMobile() {
+  const [mobile, setMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const sync = () => setMobile(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+  return mobile;
+}
 import type { FlowConfig } from "../data/schema";
 import { getFlow } from "../data";
 import { computeLayout, CONT_Y, CONT_H } from "./layout";
@@ -43,6 +58,7 @@ export function FlowExperience({
   const flow = getFlow(config.flowId);
   const reduced = useReducedMotion();
   const animate = !reduced;
+  const isMobile = useIsMobile();
 
   const sectionRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress: p } = useScroll({
@@ -109,22 +125,22 @@ export function FlowExperience({
 
   const SurfaceHeading = (
     <div className="mb-5 text-center">
-      <div className="mb-2 text-[13px] font-medium uppercase tracking-[0.34em] text-[#6f8a7f]">
+      <div className="mb-2 text-[10px] font-medium uppercase tracking-[0.18em] text-[#6f8a7f] md:text-[13px] md:tracking-[0.34em]">
         The desired transaction
       </div>
-      <h1 className="text-4xl font-bold tracking-tight text-[#f2f5f3] md:text-5xl">
+      <h1 className="text-3xl font-bold tracking-tight text-[#f2f5f3] md:text-5xl">
         What <span className="text-[#5fd3a0]">{config.clientName}</span> wants
       </h1>
-      <p className="mt-3 text-base font-normal text-[#8b948f]">{support}</p>
+      <p className="mt-3 text-sm font-normal text-[#8b948f] md:text-base">{support}</p>
     </div>
   );
 
   const DepthHeading = (
     <div className="mb-5 text-center">
-      <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.32em] text-muted">
+      <div className="mb-2 text-[10px] font-medium uppercase tracking-[0.18em] text-muted md:text-[11px] md:tracking-[0.32em]">
         Beneath the surface
       </div>
-      <h2 className="text-3xl font-semibold tracking-tight text-title md:text-4xl">
+      <h2 className="text-2xl font-semibold tracking-tight text-title md:text-4xl">
         How Trace makes it happen
       </h2>
     </div>
@@ -158,6 +174,24 @@ export function FlowExperience({
           <div className="w-full max-w-[1500px]">{MachinerySvg}</div>
         </section>
         <Lockup />
+      </div>
+    );
+  }
+
+  // ── phones: stacked sections, diagrams swipe horizontally (no dive) ───────
+  if (isMobile) {
+    return (
+      <div className="w-full overflow-x-hidden" style={{ background: C.base }}>
+        <div className="fixed left-0 top-0 z-30 h-[3px] w-full" style={{ background: C.rule }} />
+        {onDirectionChange && <DirectionToggle direction={config.direction} onChange={onDirectionChange} fixed />}
+        <section className="flex min-h-[88vh] flex-col items-center justify-center px-4 pb-12 pt-24" style={{ background: deckGlow }}>
+          {SurfaceHeading}
+          <SwipeDiagram width={1040}>{SurfaceSvg}</SwipeDiagram>
+        </section>
+        <section className="flex min-h-[88vh] flex-col items-center justify-center px-4 pb-28 pt-12" style={{ background: deckGlow }}>
+          {DepthHeading}
+          <SwipeDiagram width={layout.width}>{MachinerySvg}</SwipeDiagram>
+        </section>
       </div>
     );
   }
@@ -219,6 +253,19 @@ export function FlowExperience({
   );
 }
 
+// A diagram rendered at a legible fixed width inside a horizontal-scroll box,
+// with a soft right-edge fade hinting there's more to swipe.
+function SwipeDiagram({ width, children }: { width: number; children: React.ReactNode }) {
+  return (
+    <div className="relative w-full">
+      <div className="w-full overflow-x-auto">
+        <div style={{ width, minWidth: width }}>{children}</div>
+      </div>
+      <div className="pointer-events-none absolute inset-y-0 right-0 w-10" style={{ background: "linear-gradient(90deg, rgba(7,9,11,0) 0%, #07090b 92%)" }} />
+    </div>
+  );
+}
+
 function Lockup() {
   return (
     <div className="absolute bottom-5 right-6 z-30 flex items-center gap-2">
@@ -232,12 +279,14 @@ function Lockup() {
 function DirectionToggle({
   direction,
   onChange,
+  fixed = false,
 }: {
   direction: Direction;
   onChange: (d: Direction) => void;
+  fixed?: boolean;
 }) {
   return (
-    <div className="absolute right-5 top-5 z-40 flex gap-0.5 rounded-[11px] border border-white/10 bg-[#0e1410]/70 p-[3px] backdrop-blur">
+    <div className={`${fixed ? "fixed" : "absolute"} right-4 top-4 z-40 flex gap-0.5 rounded-[11px] border border-white/10 bg-[#0e1410]/70 p-[3px] backdrop-blur md:right-5 md:top-5`}>
       {(["collection", "disbursement"] as Direction[]).map((d) => (
         <button
           key={d}

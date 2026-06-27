@@ -142,12 +142,12 @@ export function SharedFlowView({ code }: { code: string }) {
 
   return (
     <LayoutGroup>
-      <main className="relative bg-[#07090b]">
+      <main className="relative overflow-x-hidden bg-[#07090b]">
         {config && (
           <>
             {/* top-left: client identity + flow switch. z above the intro so the
                 logo's magic-move is visible as the backdrop fades. */}
-            <div className="no-print fixed left-6 top-4 z-[55] flex flex-col items-start gap-3">
+            <div className="no-print fixed left-4 top-3 z-[55] flex flex-col items-start gap-2.5 md:left-6 md:top-4 md:gap-3">
               {showChrome && (
                 <>
                   <div className="flex items-center gap-3">
@@ -197,18 +197,18 @@ export function SharedFlowView({ code }: { code: string }) {
 
             {/* downloads — bottom-left. PDF (primary) or the same deck as PowerPoint. */}
             {showChrome && (
-              <div className="tf-fade fixed bottom-6 left-6 z-40 flex items-center gap-2">
+              <div className="tf-fade fixed bottom-4 left-4 right-4 z-40 flex items-center gap-2 md:bottom-6 md:left-6 md:right-auto">
                 <button
                   onClick={onProposal}
                   disabled={pdf === "working"}
-                  className="flex items-center gap-2 rounded-xl border border-green-accent/40 bg-[#0e1410]/85 px-5 py-3 text-sm font-semibold text-[#bfe8d4] shadow-xl backdrop-blur transition hover:border-green-accent hover:bg-[#13201a] disabled:opacity-60"
+                  className="flex items-center gap-2 rounded-xl border border-green-accent/40 bg-[#0e1410]/85 px-4 py-2.5 text-[13px] font-semibold text-[#bfe8d4] shadow-xl backdrop-blur transition hover:border-green-accent hover:bg-[#13201a] disabled:opacity-60 md:px-5 md:py-3 md:text-sm"
                 >
                   {pdf === "working" ? "Building deck…" : pdf === "error" ? "Try again" : "Download Proposal ↓"}
                 </button>
                 <button
                   onClick={onPptx}
                   disabled={ppt === "working"}
-                  className="rounded-xl border border-white/10 bg-[#0e1410]/85 px-4 py-3 text-sm font-medium text-subtitle shadow-xl backdrop-blur transition hover:border-green-accent/40 hover:text-title disabled:opacity-60"
+                  className="rounded-xl border border-white/10 bg-[#0e1410]/85 px-3.5 py-2.5 text-[13px] font-medium text-subtitle shadow-xl backdrop-blur transition hover:border-green-accent/40 hover:text-title disabled:opacity-60 md:px-4 md:py-3 md:text-sm"
                 >
                   {ppt === "working" ? "Building…" : ppt === "error" ? "Try again" : "PowerPoint"}
                 </button>
