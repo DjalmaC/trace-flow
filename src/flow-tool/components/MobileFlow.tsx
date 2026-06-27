@@ -1,5 +1,6 @@
 "use client";
-import { motion, useReducedMotion } from "framer-motion";
+import { forwardRef, useEffect, useRef } from "react";
+import { animate, motion, useMotionValue, useReducedMotion, useTransform, type MotionValue } from "framer-motion";
 import { computeLayout, type NodeLayout, type LegLayout } from "./layout";
 import { displayCurrency } from "./FlowSvg/Tokens";
 import { TraceArrow } from "./FlowSvg/TraceArrow";
@@ -9,48 +10,123 @@ import type { Currency, Flow, FlowConfig } from "../data/schema";
 // Phone-native VERTICAL flow: the chain reads top -> bottom as full-width cards
 // with the currency on each connector and the conversion / border crossing as a
 // distinct moment. No horizontal scroll. Keeps the live details: the real Trace
-// arrows (rotate + colour-tween on Pay-in/Pay-out), plus a value token that
-// RELAYS down the rail one connector at a time and an FX hub that spins ONLY as
-// the token reaches it. Desktop uses the SVG dive instead.
-const SEG = 0.8; // seconds the token spends crossing one connector
-const PAUSE = 0.7; // beat between cycles
-
+// arrows (rotate + colour-tween on Pay-in/Pay-out), ONE value coin that glides
+// the whole stack at a uniform pace (bright in the gaps, dimmed as it passes
+// through a card), and an FX hub that spins exactly as the coin reaches it.
+// Pay-in (green) flows DOWN; Pay-out (blue) flows UP. Desktop uses the SVG dive.
 export function MobileFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
   const reduced = useReducedMotion();
   const layout = computeLayout(flow, config);
   const accent = accentFor(config.direction);
-  // Pay-in (green/collection) flows DOWN the stack; Pay-out (blue/disbursement)
-  // flows UP. Arrows + travel + currency semantics all follow this same sense.
+  // Currency/conversion semantics follow the real direction; on-screen the coin
+  // travels DOWN for Pay-in (collection) and UP for Pay-out (disbursement).
   const semanticDown = config.direction === "collection";
   const travelDown = config.direction === "collection";
-  const nodes = layout.nodes; // authored order; direction is shown via arrows + token
+  const nodes = layout.nodes; // authored order (abroad/top -> Brazil/bottom)
   const legFor = (aId: string, bId: string): LegLayout | undefined =>
     layout.legs.find((l) => (l.from === aId && l.to === bId) || (l.from === bId && l.to === aId));
 
-  // The connectors, in DOM (top->bottom) order — used to schedule the relay so
-  // the token hands off from one connector to the next with no gap.
+  // Connectors in DOM (top->bottom) order — their measured spans become the
+  // "bright" windows for the gliding coin.
   const connOrder: number[] = [];
   nodes.forEach((node, i) => {
     const next = nodes[i + 1];
     if (next && legFor(node.id, next.id)) connOrder.push(i);
   });
   const segCount = connOrder.length;
-  const cycle = segCount * SEG + PAUSE;
+
+  // ── the single coin: one looping progress drives position, brightness, spin ──
+  const containerRef = useRef<HTMLDivElement>(null);
+  const connRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const hubRef = useRef<HTMLSpanElement>(null);
+  const gapsRef = useRef<{ a: number; b: number }[]>([]); // connector spans as 0..1 fractions
+  const hubFracRef = useRef<number | null>(null); // hub centre as a 0..1 fraction
+  const progress = useMotionValue(0);
+
+  useEffect(() => {
+    const measure = () => {
+      const c = containerRef.current;
+      if (!c) return;
+      const cRect = c.getBoundingClientRect();
+      const H = cRect.height || 1;
+      gapsRef.current = connRefs.current
+        .filter((el): el is HTMLDivElement => !!el)
+        .map((el) => {
+          const r = el.getBoundingClientRect();
+          return { a: (r.top - cRect.top) / H, b: (r.bottom - cRect.top) / H };
+        });
+      hubFracRef.current = hubRef.current
+        ? (hubRef.current.getBoundingClientRect().top + hubRef.current.getBoundingClientRect().height / 2 - cRect.top) / H
+        : null;
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [config.flowId, config.direction]);
+
+  useEffect(() => {
+    if (reduced || segCount === 0) return;
+    const controls = animate(progress, 1, {
+      duration: Math.max(2.6, segCount * 0.72),
+      ease: "linear",
+      repeat: Infinity,
+      repeatType: "loop",
+      repeatDelay: 0.25,
+    });
+    return () => controls.stop();
+  }, [reduced, segCount, config.flowId, progress]);
+
+  // coin position: top->bottom on Pay-in, bottom->top on Pay-out
+  const coinTop = useTransform(progress, (p) => `${(travelDown ? p : 1 - p) * 100}%`);
+  // bright (1) inside a connector gap, dim (0.22) over a card; fade out at the ends
+  const coinOpacity = useTransform(progress, (p) => {
+    const f = travelDown ? p : 1 - p;
+    let inGap = 0;
+    const ramp = 0.02;
+    for (const g of gapsRef.current) {
+      if (f >= g.a && f <= g.b) { inGap = 1; break; }
+      if (f >= g.a - ramp && f < g.a) inGap = Math.max(inGap, (f - (g.a - ramp)) / ramp);
+      if (f > g.b && f <= g.b + ramp) inGap = Math.max(inGap, 1 - (f - g.b) / ramp);
+    }
+    const env = Math.min(1, Math.min(p, 1 - p) / 0.04); // fade in/out at the ends
+    return (0.22 + 0.78 * inGap) * env;
+  });
+  // hub spins one turn as the coin sweeps across it, then rests
+  const hubRotation = useTransform(progress, (p) => {
+    const hf = hubFracRef.current;
+    if (hf == null) return 0;
+    const f = travelDown ? p : 1 - p;
+    const W = 0.07;
+    const d = (f - hf) / W;
+    if (d <= -1) return 0;
+    if (d >= 1) return travelDown ? 360 : -360;
+    return ((d + 1) / 2) * (travelDown ? 360 : -360);
+  });
 
   return (
-    <div className="relative mx-auto w-full max-w-md">
+    <div ref={containerRef} className="relative mx-auto w-full max-w-md">
       {/* continuous rail behind the cards */}
       <span className="pointer-events-none absolute left-1/2 top-7 bottom-7 z-0 w-px -translate-x-1/2" style={{ background: "rgba(255,255,255,0.10)" }} />
+
+      {/* the single gliding value coin */}
+      {!reduced && segCount > 0 && (
+        <motion.span
+          className="pointer-events-none absolute left-1/2 z-30 -translate-x-1/2 rounded-full"
+          style={{ top: coinTop, opacity: coinOpacity, height: 12, width: 12, background: accent, boxShadow: `0 0 16px 3px ${accent}` }}
+        />
+      )}
 
       {nodes.map((node, i) => {
         const next = nodes[i + 1];
         const leg = next ? legFor(node.id, next.id) : undefined;
-        const ord = connOrder.indexOf(i); // this connector's place in the relay
+        const ord = connOrder.indexOf(i);
+        const isConv = !!leg?.convertsTo;
         return (
           <div key={node.id} className="relative z-10">
             <NodeCard node={node} primary={node.id === layout.primaryClientId} config={config} />
             {leg && next && (
               <Connector
+                ref={(el) => { connRefs.current[ord] = el; }}
                 leg={leg}
                 topLane={node.lane}
                 botLane={next.lane}
@@ -58,10 +134,8 @@ export function MobileFlow({ flow, config }: { flow: Flow; config: FlowConfig })
                 accent={accent}
                 reduced={!!reduced}
                 semanticDown={semanticDown}
-                travelDown={travelDown}
-                ord={ord}
-                segCount={segCount}
-                cycle={cycle}
+                hubRef={isConv ? hubRef : undefined}
+                hubRotation={isConv ? hubRotation : undefined}
               />
             )}
           </div>
@@ -115,31 +189,20 @@ function NodeCard({ node, primary, config }: { node: NodeLayout; primary: boolea
   );
 }
 
-function Connector({
-  leg,
-  topLane,
-  botLane,
-  config,
-  accent,
-  reduced,
-  semanticDown,
-  travelDown,
-  ord,
-  segCount,
-  cycle,
-}: {
-  leg: LegLayout;
-  topLane: string;
-  botLane: string;
-  config: FlowConfig;
-  accent: string;
-  reduced: boolean;
-  semanticDown: boolean;
-  travelDown: boolean;
-  ord: number;
-  segCount: number;
-  cycle: number;
-}) {
+const Connector = forwardRef<
+  HTMLDivElement,
+  {
+    leg: LegLayout;
+    topLane: string;
+    botLane: string;
+    config: FlowConfig;
+    accent: string;
+    reduced: boolean;
+    semanticDown: boolean;
+    hubRef?: React.Ref<HTMLSpanElement>;
+    hubRotation?: MotionValue<number>;
+  }
+>(function Connector({ leg, topLane, botLane, config, accent, reduced, semanticDown, hubRef, hubRotation }, ref) {
   const isConv = !!leg.convertsTo;
   // currency in the value-flow direction (Pay-in: carries -> convertsTo)
   const fromCur: Currency = isConv ? (semanticDown ? leg.carries : leg.convertsTo!) : leg.carries;
@@ -147,58 +210,22 @@ function Connector({
   const crossing = topLane !== botLane;
   const intoLane = (semanticDown ? botLane : topLane) === "brazil" ? "Brasil 🇧🇷" : "Abroad";
 
-  // Relay timing: the token enters this connector when value reaches it. Whichever
-  // end the travel starts from fires first (Pay-in rises, so the bottom connector
-  // leads; Pay-out descends, so the top one does).
-  const fireDelay = (travelDown ? ord : segCount - 1 - ord) * SEG;
-  const tokenTransition = {
-    duration: SEG,
-    times: [0, 0.18, 0.82, 1],
-    ease: "linear" as const,
-    repeat: Infinity,
-    repeatDelay: cycle - SEG,
-    delay: fireDelay,
-  };
-  // The hub spins exactly one turn as the token crosses it, then rests.
-  const spinTransition = {
-    duration: SEG,
-    ease: "easeInOut" as const,
-    repeat: Infinity,
-    repeatDelay: cycle - SEG,
-    delay: fireDelay,
-  };
-
   return (
-    <div className="relative flex flex-col items-center justify-center" style={{ minHeight: 58 }}>
-      {/* the value token, relaying down the rail (above the rail, in the gap) */}
-      {!reduced && (
-        <motion.span
-          className="pointer-events-none absolute left-1/2 z-20"
-          style={{ transform: "translateX(-50%)" }}
-          initial={{ opacity: 0, top: travelDown ? "-8%" : "108%" }}
-          animate={{ top: travelDown ? ["-8%", "108%"] : ["108%", "-8%"], opacity: [0, 1, 1, 0] }}
-          transition={tokenTransition}
-        >
-          <MovingToken currency={displayCurrency(fromCur, config)} config={config} accent={accent} />
-        </motion.span>
-      )}
-
+    <div ref={ref} className="relative flex flex-col items-center justify-center" style={{ minHeight: 58 }}>
       <div className="relative z-10 flex flex-col items-center py-2">
         <VArrow direction={config.direction} accent={accent} />
         {isConv ? (
           <div className="mt-1 flex items-center gap-2 rounded-xl px-3 py-1.5" style={{ background: "#0e1410", border: "1px solid rgba(70,211,154,0.30)" }}>
-            {reduced ? (
-              <span className="flex h-6 w-6 items-center justify-center rounded-full" style={{ background: "#0b110d", border: `1px solid ${accent}55` }}>
+            {reduced || !hubRotation ? (
+              <span ref={hubRef} className="flex h-6 w-6 items-center justify-center rounded-full" style={{ background: "#0b110d", border: `1px solid ${accent}55` }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={ASSETS.traceLogo} alt="" style={{ height: 12, width: 12 * TRACE_LOGO_AR }} />
               </span>
             ) : (
               <motion.span
+                ref={hubRef}
                 className="flex h-6 w-6 items-center justify-center rounded-full"
-                style={{ background: "#0b110d", border: `1px solid ${accent}55` }}
-                initial={{ rotate: 0 }}
-                animate={{ rotate: travelDown ? 360 : -360 }}
-                transition={spinTransition}
+                style={{ background: "#0b110d", border: `1px solid ${accent}55`, rotate: hubRotation }}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={ASSETS.traceLogo} alt="" style={{ height: 12, width: 12 * TRACE_LOGO_AR }} />
@@ -225,20 +252,7 @@ function Connector({
       </div>
     </div>
   );
-}
-
-// The travelling value: the actual stablecoin when the leg carries one, else a
-// glowing accent bead. Either way it visibly moves down the rail.
-function MovingToken({ currency, config, accent }: { currency: Currency; config: FlowConfig; accent: string }) {
-  if (currency === "USDC/USDT") {
-    const coin = config.stablecoin === "USDC" ? ASSETS.usdc : ASSETS.usdt;
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img src={coin} alt="" className="h-5 w-5 rounded-full" style={{ boxShadow: `0 0 14px 2px ${accent}` }} />
-    );
-  }
-  return <span className="block rounded-full" style={{ height: 12, width: 12, background: accent, boxShadow: `0 0 16px 3px ${accent}` }} />;
-}
+});
 
 // The real Trace arrow (mark-half), pointing DOWN (Pay-in) / up (Pay-out) — it
 // rotates + colour-tweens on toggle. The +90° wrapper + TraceArrow's own inner
