@@ -9,40 +9,56 @@ import type { Currency, Flow, FlowConfig } from "../data/schema";
 // Phone-native VERTICAL flow: the chain reads top -> bottom as full-width cards
 // with the currency on each connector and the conversion / border crossing as a
 // distinct moment. No horizontal scroll. Keeps the live details: the real Trace
-// arrows (rotate + colour-tween on Pay-in/Pay-out), a value token flowing down
-// the rail, and the FX hub spinning. Desktop uses the SVG dive instead.
+// arrows (rotate + colour-tween on Pay-in/Pay-out), plus a value token that
+// RELAYS down the rail one connector at a time and an FX hub that spins ONLY as
+// the token reaches it. Desktop uses the SVG dive instead.
+const SEG = 0.8; // seconds the token spends crossing one connector
+const PAUSE = 0.7; // beat between cycles
+
 export function MobileFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
   const reduced = useReducedMotion();
   const layout = computeLayout(flow, config);
   const accent = accentFor(config.direction);
   const down = config.direction === "collection"; // value flows top->bottom on Pay-in
-  const nodes = layout.nodes; // authored order; direction is shown via arrows + token, not reorder
+  const nodes = layout.nodes; // authored order; direction is shown via arrows + token
   const legFor = (aId: string, bId: string): LegLayout | undefined =>
     layout.legs.find((l) => (l.from === aId && l.to === bId) || (l.from === bId && l.to === aId));
+
+  // The connectors, in DOM (top->bottom) order — used to schedule the relay so
+  // the token hands off from one connector to the next with no gap.
+  const connOrder: number[] = [];
+  nodes.forEach((node, i) => {
+    const next = nodes[i + 1];
+    if (next && legFor(node.id, next.id)) connOrder.push(i);
+  });
+  const segCount = connOrder.length;
+  const cycle = segCount * SEG + PAUSE;
 
   return (
     <div className="relative mx-auto w-full max-w-md">
       {/* continuous rail behind the cards */}
       <span className="pointer-events-none absolute left-1/2 top-7 bottom-7 z-0 w-px -translate-x-1/2" style={{ background: "rgba(255,255,255,0.10)" }} />
-      {/* a value token flowing along the rail (hidden behind the cards, seen in the gaps) */}
-      {!reduced && (
-        <motion.span
-          className="pointer-events-none absolute left-1/2 z-0 -translate-x-1/2 rounded-full"
-          style={{ height: 9, width: 9, background: accent, boxShadow: `0 0 12px 1px ${accent}` }}
-          initial={false}
-          animate={{ top: down ? ["4%", "96%"] : ["96%", "4%"], opacity: [0, 1, 1, 0] }}
-          transition={{ duration: 3.6, times: [0, 0.1, 0.9, 1], ease: "linear", repeat: Infinity, repeatDelay: 0.2 }}
-        />
-      )}
 
       {nodes.map((node, i) => {
         const next = nodes[i + 1];
         const leg = next ? legFor(node.id, next.id) : undefined;
+        const ord = connOrder.indexOf(i); // this connector's place in the relay
         return (
           <div key={node.id} className="relative z-10">
             <NodeCard node={node} primary={node.id === layout.primaryClientId} config={config} />
             {leg && next && (
-              <Connector leg={leg} topLane={node.lane} botLane={next.lane} config={config} accent={accent} reduced={!!reduced} />
+              <Connector
+                leg={leg}
+                topLane={node.lane}
+                botLane={next.lane}
+                config={config}
+                accent={accent}
+                reduced={!!reduced}
+                down={down}
+                ord={ord}
+                segCount={segCount}
+                cycle={cycle}
+              />
             )}
           </div>
         );
@@ -102,6 +118,10 @@ function Connector({
   config,
   accent,
   reduced,
+  down,
+  ord,
+  segCount,
+  cycle,
 }: {
   leg: LegLayout;
   topLane: string;
@@ -109,56 +129,108 @@ function Connector({
   config: FlowConfig;
   accent: string;
   reduced: boolean;
+  down: boolean;
+  ord: number;
+  segCount: number;
+  cycle: number;
 }) {
   const isConv = !!leg.convertsTo;
-  const down = config.direction === "collection";
   // currency in the value-flow direction (Pay-in: carries -> convertsTo)
   const fromCur: Currency = isConv ? (down ? leg.carries : leg.convertsTo!) : leg.carries;
   const toCur: Currency = isConv ? (down ? leg.convertsTo! : leg.carries) : leg.carries;
   const crossing = topLane !== botLane;
   const intoLane = (down ? botLane : topLane) === "brazil" ? "Brasil 🇧🇷" : "Abroad";
 
+  // Relay timing: the token enters this connector when value reaches it. On
+  // Pay-in the top connector (ord 0) fires first; on Pay-out the bottom one does.
+  const fireDelay = (down ? ord : segCount - 1 - ord) * SEG;
+  const tokenTransition = {
+    duration: SEG,
+    times: [0, 0.18, 0.82, 1],
+    ease: "linear" as const,
+    repeat: Infinity,
+    repeatDelay: cycle - SEG,
+    delay: fireDelay,
+  };
+  // The hub spins exactly one turn as the token crosses it, then rests.
+  const spinTransition = {
+    duration: SEG,
+    ease: "easeInOut" as const,
+    repeat: Infinity,
+    repeatDelay: cycle - SEG,
+    delay: fireDelay,
+  };
+
   return (
-    <div className="relative flex flex-col items-center py-1.5">
-      <VArrow direction={config.direction} accent={accent} />
-      {isConv ? (
-        <div className="mt-1 flex items-center gap-2 rounded-xl px-3 py-1.5" style={{ background: "#0e1410", border: "1px solid rgba(70,211,154,0.30)" }}>
-          {reduced ? (
-            <span className="flex h-6 w-6 items-center justify-center rounded-full" style={{ background: "#0b110d", border: `1px solid ${accent}55` }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={ASSETS.traceLogo} alt="" style={{ height: 12, width: 12 * TRACE_LOGO_AR }} />
+    <div className="relative flex flex-col items-center justify-center" style={{ minHeight: 58 }}>
+      {/* the value token, relaying down the rail (above the rail, in the gap) */}
+      {!reduced && (
+        <motion.span
+          className="pointer-events-none absolute left-1/2 z-20"
+          style={{ transform: "translateX(-50%)" }}
+          initial={{ opacity: 0, top: down ? "-8%" : "108%" }}
+          animate={{ top: down ? ["-8%", "108%"] : ["108%", "-8%"], opacity: [0, 1, 1, 0] }}
+          transition={tokenTransition}
+        >
+          <MovingToken currency={displayCurrency(fromCur, config)} config={config} accent={accent} />
+        </motion.span>
+      )}
+
+      <div className="relative z-10 flex flex-col items-center py-2">
+        <VArrow direction={config.direction} accent={accent} />
+        {isConv ? (
+          <div className="mt-1 flex items-center gap-2 rounded-xl px-3 py-1.5" style={{ background: "#0e1410", border: "1px solid rgba(70,211,154,0.30)" }}>
+            {reduced ? (
+              <span className="flex h-6 w-6 items-center justify-center rounded-full" style={{ background: "#0b110d", border: `1px solid ${accent}55` }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={ASSETS.traceLogo} alt="" style={{ height: 12, width: 12 * TRACE_LOGO_AR }} />
+              </span>
+            ) : (
+              <motion.span
+                className="flex h-6 w-6 items-center justify-center rounded-full"
+                style={{ background: "#0b110d", border: `1px solid ${accent}55` }}
+                initial={{ rotate: 0 }}
+                animate={{ rotate: down ? 360 : -360 }}
+                transition={spinTransition}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={ASSETS.traceLogo} alt="" style={{ height: 12, width: 12 * TRACE_LOGO_AR }} />
+              </motion.span>
+            )}
+            <CurChip currency={displayCurrency(fromCur, config)} config={config} />
+            <span style={{ color: accent }}>→</span>
+            <CurChip currency={displayCurrency(toCur, config)} config={config} />
+          </div>
+        ) : (
+          <div className="mt-1">
+            <CurChip currency={displayCurrency(fromCur, config)} config={config} />
+          </div>
+        )}
+        {crossing && (
+          <div className="mt-1.5 flex w-full items-center gap-2 px-6">
+            <span className="h-px flex-1" style={{ background: "rgba(255,255,255,0.10)" }} />
+            <span className="text-[10px] font-medium uppercase tracking-wide" style={{ color: C.subtitle }}>
+              into {intoLane}
             </span>
-          ) : (
-            <motion.span
-              className="flex h-6 w-6 items-center justify-center rounded-full"
-              style={{ background: "#0b110d", border: `1px solid ${accent}55` }}
-              animate={{ rotate: 360 }}
-              transition={{ duration: 4, ease: "linear", repeat: Infinity }}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={ASSETS.traceLogo} alt="" style={{ height: 12, width: 12 * TRACE_LOGO_AR }} />
-            </motion.span>
-          )}
-          <CurChip currency={displayCurrency(fromCur, config)} config={config} />
-          <span style={{ color: accent }}>→</span>
-          <CurChip currency={displayCurrency(toCur, config)} config={config} />
-        </div>
-      ) : (
-        <div className="mt-1">
-          <CurChip currency={displayCurrency(fromCur, config)} config={config} />
-        </div>
-      )}
-      {crossing && (
-        <div className="mt-1.5 flex w-full items-center gap-2 px-6">
-          <span className="h-px flex-1" style={{ background: "rgba(255,255,255,0.10)" }} />
-          <span className="text-[10px] font-medium uppercase tracking-wide" style={{ color: C.subtitle }}>
-            into {intoLane}
-          </span>
-          <span className="h-px flex-1" style={{ background: "rgba(255,255,255,0.10)" }} />
-        </div>
-      )}
+            <span className="h-px flex-1" style={{ background: "rgba(255,255,255,0.10)" }} />
+          </div>
+        )}
+      </div>
     </div>
   );
+}
+
+// The travelling value: the actual stablecoin when the leg carries one, else a
+// glowing accent bead. Either way it visibly moves down the rail.
+function MovingToken({ currency, config, accent }: { currency: Currency; config: FlowConfig; accent: string }) {
+  if (currency === "USDC/USDT") {
+    const coin = config.stablecoin === "USDC" ? ASSETS.usdc : ASSETS.usdt;
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={coin} alt="" className="h-5 w-5 rounded-full" style={{ boxShadow: `0 0 14px 2px ${accent}` }} />
+    );
+  }
+  return <span className="block rounded-full" style={{ height: 12, width: 12, background: accent, boxShadow: `0 0 16px 3px ${accent}` }} />;
 }
 
 // The real Trace arrow (mark-half), pointing down (Pay-in) / up (Pay-out) — it
