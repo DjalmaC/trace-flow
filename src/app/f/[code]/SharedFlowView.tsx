@@ -16,7 +16,9 @@ type Variant = { flowId: string; name: string };
 type PriceRow = { label: string; value: string };
 type PriceCard = { badge: string; tone?: "green" | "cyan"; title: string; sub?: string; rows: PriceRow[] };
 type Pricing = { region: string; flag?: string; subtitle?: string; cards: PriceCard[]; footer?: string };
-type SharedConfig = FlowConfig & { variants?: Variant[]; proposalUrl?: string; pricing?: Pricing };
+// `salesperson` (optional) renders the closing "last deck" of the proposal.
+type Salesperson = { name: string; title?: string; email?: string; phone?: string; photo?: string; bio?: string; bookingUrl?: string };
+type SharedConfig = FlowConfig & { variants?: Variant[]; proposalUrl?: string; pricing?: Pricing; salesperson?: Salesperson };
 
 type State =
   | { status: "loading" }
@@ -180,14 +182,17 @@ export function SharedFlowView({ code }: { code: string }) {
             {hasPricing && view === "pricing" ? (
               <PricingView pricing={config.pricing!} />
             ) : (
-              <FlowExperience
-                config={(() => {
-                  const { variants: _v, proposalUrl: _p, ...base } = config;
-                  return { ...base, flowId, direction };
-                })()}
-                presentation
-                onDirectionChange={setDirection}
-              />
+              <>
+                <FlowExperience
+                  config={(() => {
+                    const { variants: _v, proposalUrl: _p, ...base } = config;
+                    return { ...base, flowId, direction };
+                  })()}
+                  presentation
+                  onDirectionChange={setDirection}
+                />
+                {config.salesperson && <SalespersonClosing sp={config.salesperson} />}
+              </>
             )}
 
             {/* downloads — bottom-left. PDF (primary) or the same deck as PowerPoint. */}
@@ -349,6 +354,57 @@ function PricingView({ pricing }: { pricing: Pricing }) {
         {pricing.footer && <p className="mt-8 text-[11px] text-muted">{pricing.footer}</p>}
       </div>
     </div>
+  );
+}
+
+// Closing "last deck" — the salesperson's profile + contact, at the end of the
+// proposal scroll. Deck-styled to match the rest.
+function SalespersonClosing({ sp }: { sp: Salesperson }) {
+  const initials = sp.name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+  return (
+    <section
+      className="relative flex min-h-screen w-full flex-col items-center justify-center px-6 text-center"
+      style={{ background: "radial-gradient(60% 60% at 50% 42%, #15392d40 0%, rgba(7,9,11,0) 70%), #07090b" }}
+    >
+      <div className="mb-7 text-[11px] font-medium uppercase tracking-[0.34em] text-[#6f8a7f]">Your Trace Finance contact</div>
+      <div className="flex max-w-md flex-col items-center gap-5">
+        {sp.photo ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={sp.photo} alt={sp.name} className="h-28 w-28 rounded-full border border-white/10 object-cover" />
+        ) : (
+          <div className="flex h-28 w-28 items-center justify-center rounded-full border border-green-accent/30 bg-[#0f1814] text-3xl font-semibold text-[#9cc4b3]">
+            {initials}
+          </div>
+        )}
+        <div>
+          <div className="text-2xl font-bold tracking-tight text-title">{sp.name}</div>
+          {sp.title && <div className="mt-0.5 text-sm text-subtitle">{sp.title}</div>}
+        </div>
+        {sp.bio && <p className="text-sm leading-relaxed text-subtitle">{sp.bio}</p>}
+        <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
+          {sp.bookingUrl && (
+            <a href={sp.bookingUrl} target="_blank" rel="noreferrer" className="rounded-xl bg-green-accent px-5 py-2.5 text-sm font-semibold text-[#06120c] transition hover:brightness-110">
+              Book a call →
+            </a>
+          )}
+          {sp.email && (
+            <a href={`mailto:${sp.email}`} className="rounded-xl border border-green-accent/40 px-4 py-2.5 text-sm font-medium text-[#bfe8d4] transition hover:bg-[#13201a]">
+              {sp.email}
+            </a>
+          )}
+          {sp.phone && (
+            <a href={`tel:${sp.phone.replace(/[^+\d]/g, "")}`} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-medium text-subtitle transition hover:text-title">
+              {sp.phone}
+            </a>
+          )}
+        </div>
+      </div>
+      <div className="absolute bottom-6 flex items-center gap-2">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={ASSETS.traceLogo} alt="" style={{ height: 20, width: 20 * TRACE_LOGO_AR }} />
+        <span className="text-[14px] font-semibold text-title">Trace Finance</span>
+      </div>
+    </section>
   );
 }
 
