@@ -182,6 +182,55 @@ export async function previewDeckPng(flowId: string, kind: "title" | "flow"): Pr
 
 type Variant = { flowId: string; name: string };
 
+function dataUrlToBytes(u: string): Uint8Array {
+  const b64 = u.slice(u.indexOf(",") + 1);
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+function triggerDownload(bytes: Uint8Array, filename: string, mime: string) {
+  const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: mime }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+/** Render the personalised deck slides (title + one per flow) as PNG data URLs. */
+async function renderDeckSlides(config: FlowConfig, variants?: Variant[]): Promise<string[]> {
+  const items: Variant[] =
+    variants && variants.length
+      ? variants
+      : [{ flowId: config.flowId, name: getFlow(config.flowId)?.title ?? "Flow" }];
+  const slides = [await renderDeckPng(titleSlide(config))];
+  for (const it of items) {
+    const flow = getFlow(it.flowId);
+    if (!flow) continue;
+    const support = flow.heroSupport ? flow.heroSupport[config.direction] : undefined;
+    slides.push(await renderDeckPng(flowSlide({ ...config, flowId: it.flowId }, flow, it.name, support)));
+  }
+  return slides;
+}
+
+/** Build the same personalised deck as a multi-page PDF and download it. */
+export async function downloadFlowDeckPdf(config: FlowConfig, variants?: Variant[]): Promise<void> {
+  const { PDFDocument } = await import("pdf-lib");
+  const slides = await renderDeckSlides(config, variants);
+  const pdf = await PDFDocument.create();
+  for (const dataUrl of slides) {
+    const png = await pdf.embedPng(dataUrlToBytes(dataUrl));
+    const page = pdf.addPage([DW, DH]); // landscape, 1pt = 1px of the 960x540 deck
+    page.drawImage(png, { x: 0, y: 0, width: DW, height: DH });
+  }
+  const bytes = await pdf.save();
+  triggerDownload(bytes, `Trace Finance - ${config.clientName} - flows.pdf`, "application/pdf");
+}
+
 /** Build a personalised deck (title slide + one slide per flow) and download it. */
 export async function downloadFlowPptx(config: FlowConfig, variants?: Variant[]): Promise<void> {
   const { default: PptxGenJS } = await import("pptxgenjs");

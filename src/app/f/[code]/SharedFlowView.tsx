@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { FlowExperience } from "@/flow-tool/components/FlowExperience";
 import { ASSETS, C, TRACE_LOGO_AR } from "@/flow-tool/components/tokens";
 import { loadSharedFlow } from "@/flow-tool/lib/share";
-import { downloadFlowPdf, pdfDeckAvailable } from "@/flow-tool/lib/pdf";
 import type { Direction, FlowConfig } from "@/flow-tool/data/schema";
 
 // A shared link may carry more than one flow "variant" (e.g. ARQ's With-Arq-IP
@@ -39,20 +38,22 @@ export function SharedFlowView({ code }: { code: string }) {
   const flowId = activeFlowId ?? config?.flowId ?? "";
   const repName = config?.clientRep?.split(",")[0]?.trim();
 
-  async function onDownload() {
+  // personalised deck as a multi-page PDF (title slide + one slide per flow)
+  async function onPdf() {
     if (!config) return;
     setPdf("working");
     try {
       const { variants: _v, ...base } = config;
-      await downloadFlowPdf({ ...base, flowId, direction });
+      const { downloadFlowDeckPdf } = await import("@/flow-tool/lib/pptx");
+      await downloadFlowDeckPdf({ ...base, direction }, variants);
       setPdf("idle");
     } catch {
       setPdf("error");
-      setTimeout(() => setPdf("idle"), 2500);
+      setTimeout(() => setPdf("idle"), 3000);
     }
   }
 
-  // personalised PowerPoint: a title slide + one slide per prepared flow
+  // same deck, as an editable PowerPoint
   async function onPptx() {
     if (!config) return;
     setPpt("working");
@@ -151,25 +152,23 @@ export function SharedFlowView({ code }: { code: string }) {
             onDirectionChange={setDirection}
           />
 
-          {/* downloads — bottom-left. PowerPoint is always available (rendered live);
-              PDF only when the active flow has a pre-designed deck. */}
+          {/* downloads — bottom-left. The personalised deck as PDF (primary) or
+              the same deck as an editable PowerPoint (secondary). Rendered live. */}
           <div className="fixed bottom-6 left-6 z-40 flex items-center gap-2">
+            <button
+              onClick={onPdf}
+              disabled={pdf === "working"}
+              className="flex items-center gap-2 rounded-xl border border-green-accent/40 bg-[#0e1410]/85 px-5 py-3 text-sm font-semibold text-[#bfe8d4] shadow-xl backdrop-blur transition hover:border-green-accent hover:bg-[#13201a] disabled:opacity-60"
+            >
+              {pdf === "working" ? "Building deck…" : pdf === "error" ? "Try again" : "Download PDF ↓"}
+            </button>
             <button
               onClick={onPptx}
               disabled={ppt === "working"}
-              className="flex items-center gap-2 rounded-xl border border-green-accent/40 bg-[#0e1410]/85 px-5 py-3 text-sm font-semibold text-[#bfe8d4] shadow-xl backdrop-blur transition hover:border-green-accent hover:bg-[#13201a] disabled:opacity-60"
+              className="rounded-xl border border-white/10 bg-[#0e1410]/85 px-4 py-3 text-sm font-medium text-subtitle shadow-xl backdrop-blur transition hover:border-green-accent/40 hover:text-title disabled:opacity-60"
             >
-              {ppt === "working" ? "Building deck…" : ppt === "error" ? "Try again" : "Download PowerPoint ↓"}
+              {ppt === "working" ? "Building…" : ppt === "error" ? "Try again" : "PowerPoint"}
             </button>
-            {pdfDeckAvailable(flowId) && (
-              <button
-                onClick={onDownload}
-                disabled={pdf === "working"}
-                className="rounded-xl border border-white/10 bg-[#0e1410]/85 px-4 py-3 text-sm font-medium text-subtitle shadow-xl backdrop-blur transition hover:border-green-accent/40 hover:text-title disabled:opacity-60"
-              >
-                {pdf === "working" ? "Preparing…" : pdf === "error" ? "Try again" : "PDF"}
-              </button>
-            )}
           </div>
         </>
       )}
