@@ -35,6 +35,13 @@ export function MobileFlow({ flow, config }: { flow: Flow; config: FlowConfig })
   });
   const segCount = connOrder.length;
 
+  // The coin carries the foreign currency above the FX hub and BRL below it
+  // (geometry is fixed; only the travel direction flips with the toggle).
+  const convLeg = layout.legs.find((l) => !!l.convertsTo);
+  const fallbackCur: Currency = layout.legs[0]?.carries ?? "BRL";
+  const aboveDisp = displayCurrency(convLeg ? convLeg.carries : fallbackCur, config);
+  const belowDisp = displayCurrency(convLeg ? convLeg.convertsTo! : fallbackCur, config);
+
   // ── the single coin: one looping progress drives position, brightness, spin ──
   const containerRef = useRef<HTMLDivElement>(null);
   const connRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -102,18 +109,46 @@ export function MobileFlow({ flow, config }: { flow: Flow; config: FlowConfig })
     if (d >= 1) return travelDown ? 360 : -360;
     return ((d + 1) / 2) * (travelDown ? 360 : -360);
   });
+  // the coin's currency label crossfades across the hub: foreign above, BRL below
+  const aboveOpacity = useTransform(progress, (p) => {
+    const hf = hubFracRef.current;
+    if (hf == null) return 1;
+    const f = travelDown ? p : 1 - p;
+    const W = 0.045;
+    if (f <= hf - W) return 1;
+    if (f >= hf + W) return 0;
+    return (hf + W - f) / (2 * W);
+  });
+  const belowOpacity = useTransform(progress, (p) => {
+    const hf = hubFracRef.current;
+    if (hf == null) return 0;
+    const f = travelDown ? p : 1 - p;
+    const W = 0.045;
+    if (f <= hf - W) return 0;
+    if (f >= hf + W) return 1;
+    return (f - (hf - W)) / (2 * W);
+  });
 
   return (
     <div ref={containerRef} className="relative mx-auto w-full max-w-md">
       {/* continuous rail behind the cards */}
       <span className="pointer-events-none absolute left-1/2 top-7 bottom-7 z-0 w-px -translate-x-1/2" style={{ background: "rgba(255,255,255,0.10)" }} />
 
-      {/* the single gliding value coin */}
+      {/* the single gliding value coin — labelled, converting across the hub */}
       {!reduced && segCount > 0 && (
         <motion.span
-          className="pointer-events-none absolute left-1/2 z-30 -translate-x-1/2 rounded-full"
-          style={{ top: coinTop, opacity: coinOpacity, height: 12, width: 12, background: accent, boxShadow: `0 0 16px 3px ${accent}` }}
-        />
+          className="pointer-events-none absolute left-1/2 z-30 -translate-x-1/2 -translate-y-1/2"
+          style={{ top: coinTop, opacity: coinOpacity }}
+        >
+          <span className="grid place-items-center">
+            <motion.span style={{ gridArea: "1 / 1", opacity: aboveOpacity }}>
+              <CoinChip currency={aboveDisp} config={config} accent={accent} />
+            </motion.span>
+            <motion.span style={{ gridArea: "1 / 1", opacity: belowOpacity }}>
+              <CoinChip currency={belowDisp} config={config} accent={accent} />
+            </motion.span>
+          </span>
+        </motion.span>
       )}
 
       {nodes.map((node, i) => {
@@ -262,6 +297,26 @@ function VArrow({ direction, accent }: { direction: FlowConfig["direction"]; acc
   return (
     <span className="inline-flex" style={{ transform: "rotate(90deg)" }}>
       <TraceArrow cx={9} cy={9} size={16} direction={direction} color={accent} />
+    </span>
+  );
+}
+
+// The travelling money: a bright accent pill (or the stablecoin) that reads as
+// the value in motion, distinct from the dim static leg labels.
+function CoinChip({ currency, config, accent }: { currency: Currency; config: FlowConfig; accent: string }) {
+  if (currency === "USDC/USDT") {
+    const coin = config.stablecoin === "USDC" ? ASSETS.usdc : ASSETS.usdt;
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={coin} alt="" className="h-5 w-5 rounded-full" style={{ boxShadow: `0 0 14px 2px ${accent}` }} />
+    );
+  }
+  return (
+    <span
+      className="block whitespace-nowrap rounded-full px-2 py-0.5 font-mono text-[11px] font-bold"
+      style={{ background: accent, color: "#06120d", boxShadow: `0 0 16px 3px ${accent}` }}
+    >
+      {currency}
     </span>
   );
 }
