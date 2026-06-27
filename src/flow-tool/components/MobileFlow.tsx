@@ -19,10 +19,10 @@ export function MobileFlow({ flow, config }: { flow: Flow; config: FlowConfig })
   const reduced = useReducedMotion();
   const layout = computeLayout(flow, config);
   const accent = accentFor(config.direction);
-  // Currency/conversion semantics follow the real direction; the ON-SCREEN travel
-  // is inverted by request: Pay-in rises UP the stack, Pay-out descends.
+  // Pay-in (green/collection) flows DOWN the stack; Pay-out (blue/disbursement)
+  // flows UP. Arrows + travel + currency semantics all follow this same sense.
   const semanticDown = config.direction === "collection";
-  const travelDown = config.direction === "disbursement";
+  const travelDown = config.direction === "collection";
   const nodes = layout.nodes; // authored order; direction is shown via arrows + token
   const legFor = (aId: string, bId: string): LegLayout | undefined =>
     layout.legs.find((l) => (l.from === aId && l.to === bId) || (l.from === bId && l.to === aId));
@@ -240,13 +240,13 @@ function MovingToken({ currency, config, accent }: { currency: Currency; config:
   return <span className="block rounded-full" style={{ height: 12, width: 12, background: accent, boxShadow: `0 0 16px 3px ${accent}` }} />;
 }
 
-// The real Trace arrow (mark-half), pointing UP (Pay-in) / down (Pay-out) — it
-// rotates + colour-tweens on toggle. The -90° wrapper + TraceArrow's own inner
-// rotation (0° collection / 180° disbursement) net out to up / down, and the
+// The real Trace arrow (mark-half), pointing DOWN (Pay-in) / up (Pay-out) — it
+// rotates + colour-tweens on toggle. The +90° wrapper + TraceArrow's own inner
+// rotation (0° collection / 180° disbursement) net out to down / up, and the
 // inner 0°↔180° tween animates the swing on toggle.
 function VArrow({ direction, accent }: { direction: FlowConfig["direction"]; accent: string }) {
   return (
-    <span className="inline-flex" style={{ transform: "rotate(-90deg)" }}>
+    <span className="inline-flex" style={{ transform: "rotate(90deg)" }}>
       <TraceArrow cx={9} cy={9} size={16} direction={direction} color={accent} />
     </span>
   );
