@@ -42,6 +42,8 @@ export interface NodeLayout extends Box {
   lines: string[];
   /** For the collapsed "Trace engine": how many internal steps it folds. */
   engineCount?: number;
+  /** Render with the client's logo instead of the kind's default badge. */
+  brandedClient?: boolean;
 }
 
 export interface LegLayout {
@@ -131,7 +133,7 @@ function wrapLabel(label: string): string[] {
   return l2 ? [l1, l2] : [l1];
 }
 
-type SrcNode = { id: string; label: string; kind: NodeKindOrEngine; lane: Flow["nodes"][number]["lane"]; w: number; engineCount?: number };
+type SrcNode = { id: string; label: string; kind: NodeKindOrEngine; lane: Flow["nodes"][number]["lane"]; w: number; engineCount?: number; brandedClient?: boolean };
 type SrcLeg = { from: string; to: string; carries: Currency; convertsTo?: Currency; hubAtEngine?: boolean };
 
 const ENGINE_W = 212;
@@ -190,7 +192,7 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
     srcNodes = [];
     flow.nodes.forEach((n) => {
       if (n.id === first) srcNodes.push(engineNode);
-      if (!idSet.has(n.id)) srcNodes.push({ id: n.id, label: n.label, kind: n.kind, lane: n.lane, w: NODE_W });
+      if (!idSet.has(n.id)) srcNodes.push({ id: n.id, label: n.label, kind: n.kind, lane: n.lane, w: NODE_W, brandedClient: n.brandedClient });
     });
     srcLegs = [];
     flow.legs.forEach((l) => {
@@ -202,7 +204,7 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
       else srcLegs.push({ from: l.from, to: l.to, carries: D(l.carries), convertsTo: l.convertsTo });
     });
   } else {
-    srcNodes = flow.nodes.map((n) => ({ id: n.id, label: n.label, kind: n.kind, lane: n.lane, w: NODE_W }));
+    srcNodes = flow.nodes.map((n) => ({ id: n.id, label: n.label, kind: n.kind, lane: n.lane, w: NODE_W, brandedClient: n.brandedClient }));
     srcLegs = flow.legs.map((l) => ({ from: l.from, to: l.to, carries: l.carries, convertsTo: l.convertsTo }));
   }
 
@@ -231,6 +233,7 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
       lane: node.lane,
       lines: wrapLabel(node.label),
       engineCount: node.engineCount,
+      brandedClient: node.brandedClient,
       x,
       y,
       w: node.w,

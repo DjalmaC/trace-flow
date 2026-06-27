@@ -73,6 +73,20 @@ export function FlowNodeShape({
     );
   }
 
+  // A branded-client node (e.g. the client's own in-country entity) carries the
+  // client logo instead of its kind's default mark.
+  if (node.brandedClient && clientLogoUrl) {
+    const lightPlate = clientLogoPlate === "light";
+    const pad = lightPlate ? 12 : 6;
+    return (
+      <g>
+        {rect}
+        {lightPlate && <rect x={x + 6} y={y + 6} width={w - 12} height={h - 12} rx={7} fill="#ffffff" />}
+        <image href={clientLogoUrl} x={x + pad} y={y + pad} width={w - pad * 2} height={h - pad * 2} preserveAspectRatio="xMidYMid meet" />
+      </g>
+    );
+  }
+
   if (node.kind === "trace") {
     // Operational Trace node: small monochrome monogram above the label. The
     // full colored mark is reserved for the conversion hub (no logo repetition).

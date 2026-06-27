@@ -46,6 +46,9 @@ export interface FlowNode {
   label: string;
   kind: NodeKind;
   lane: Lane;
+  /** Render this node with the client's logo (e.g. the client's own in-country
+   *  entity) instead of its kind's default badge/mark. */
+  brandedClient?: boolean;
 }
 
 export interface Leg {
@@ -91,6 +94,42 @@ export interface Flow {
   nodes: FlowNode[]; // Stage 2 machinery
   legs: Leg[]; // Stage 2 machinery legs, ordered
   sameActor: SameActor[]; // projector links between stages
+}
+
+// ── Proposal layer ────────────────────────────────────────────────────────
+// A "proposal" wraps one or more flows in a branded, downloadable deck built on
+// top of a fixed Trace template PDF (see lib/proposal.ts + public/proposals).
+// The salesperson sets these up on the intro page (/new) before meeting the
+// client, then builds the flow(s) live in the generator.
+
+/** Which template PDF the proposal is assembled on. */
+export type ProposalType = "standard" | "brazil-market";
+
+/** A Trace Finance salesperson. Sourced from the Sales contact slides deck:
+ *  `slidePage` (0-based) points at that rep's pre-designed closing slide, which
+ *  replaces the template's generic contact slide when the proposal is built. */
+export interface TraceRep {
+  id: string;
+  name: string;
+  title?: string;
+  email?: string;
+  phone?: string;
+  linkedin?: string;
+  /** 0-based page index of this rep's slide in /public/proposals/sales-slides.pdf. */
+  slidePage?: number;
+}
+
+/** The salesperson-private setup captured on the intro page, carried into the
+ *  generator. The company fields map onto FlowConfig's client* fields. */
+export interface ProposalSetup {
+  proposalType: ProposalType;
+  /** Display date for the title slide, e.g. "June 2026". */
+  date: string;
+  traceRepId?: string;
+  company: string;
+  companyRep?: string;
+  companyLogoUrl?: string;
+  companyLogoPlate?: "light" | "none";
 }
 
 /** Produced by intake OR the manual picker; drives <FlowExperience>. */

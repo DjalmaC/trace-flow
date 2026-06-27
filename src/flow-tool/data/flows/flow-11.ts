@@ -8,7 +8,7 @@ import type { Flow } from "../schema";
 export const flow11: Flow = {
   id: "flow-11",
   displayId: "11",
-  title: "Arq Argentina — USD/USDT funded abroad, settled in Brazil as BRL via Pix Inc NRA + Arq IP",
+  title: "Arq Argentina",
   blurb:
     "Argentina payout: foreign USD/USDT converts to BRL at the border and settles to a Brazilian beneficiary through Pix Inc's NRA and the Arq IP.",
   dials: { model: "Arq Argentina", rail: "stablecoin-sandwich", nraOwnership: "pix-own", pixRole: "settler", localLp: false },
@@ -28,7 +28,7 @@ export const flow11: Flow = {
     { id: "arqar", label: "Arqu Argentina", kind: "client", lane: "abroad" },
     { id: "pix", label: "Pix Inc", kind: "trace", lane: "abroad" },
     { id: "pixnra", label: "Pix Inc (NRA)", kind: "trace", lane: "brazil" },
-    { id: "arqip", label: "Arq IP", kind: "trace", lane: "brazil" },
+    { id: "arqip", label: "Arq IP", kind: "trace", lane: "brazil", brandedClient: true },
     { id: "benef", label: "Beneficiário BR", kind: "client", lane: "brazil" },
   ],
   legs: [

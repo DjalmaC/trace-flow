@@ -200,7 +200,9 @@ export function MobileFlow({ flow, config }: { flow: Flow; config: FlowConfig })
 
 function NodeCard({ node, primary, config }: { node: NodeLayout; primary: boolean; config: FlowConfig }) {
   const lane = node.lane === "brazil" ? "Brasil" : "Abroad";
-  const hasLogo = primary && !!config.clientLogoUrl;
+  // The primary client and any branded-client node (e.g. the client's own
+  // in-country entity) carry the uploaded client logo.
+  const hasLogo = (primary || node.brandedClient) && !!config.clientLogoUrl;
   return (
     <div
       className="flex items-center gap-3 rounded-2xl border px-4 py-2.5"
