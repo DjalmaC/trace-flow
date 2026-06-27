@@ -310,7 +310,7 @@ function PricingView({ pricing }: { pricing: Pricing }) {
       className="fixed inset-0 z-10 overflow-y-auto overflow-x-hidden"
       style={{ background: "radial-gradient(62% 60% at 50% 28%, #15392d40 0%, rgba(7,9,11,0) 70%), #07090b" }}
     >
-      <div className="mx-auto flex min-h-full w-full max-w-5xl flex-col justify-center px-5 pb-16 pt-28 md:px-10">
+      <div className="mx-auto flex min-h-full flex-col justify-center px-5 pb-16 pt-28 md:px-10" style={{ width: "min(64rem, 100vw)" }}>
         <div className="mb-7">
           <div className="flex items-center gap-3">
             {pricing.flag && <span className="shrink-0 text-4xl leading-none">{pricing.flag}</span>}
