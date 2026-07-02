@@ -3,7 +3,8 @@ import { Defs } from "../components/FlowSvg";
 import { MachineryStage } from "../components/MachineryStage";
 import { ASSETS } from "../components/tokens";
 import { getFlow, defaultConfig } from "../data";
-import type { Flow, FlowConfig, PriceComponent, PriceTier, ProposalPricing } from "../data/schema";
+import { tierText, flatRowText } from "../data/schema";
+import type { Flow, FlowConfig, PriceCard, ProposalPricing } from "../data/schema";
 
 // Personalised PowerPoint export, styled to match the flow 1-10 decks on the web
 // app: near-black background + green radial glow + a thin green top rule + Inter,
@@ -225,18 +226,21 @@ function ArrowBullet({ x, y, h, color }: { x: number; y: number; h: number; colo
   );
 }
 
-function fmtVol(n: number): string {
-  return n >= 1_000_000 ? `$${n / 1_000_000}M` : `$${Math.round(n / 1000)}k`;
-}
-function bandLabel(tiers: PriceTier[], i: number): string {
-  const t = tiers[i];
-  if (t.max == null) {
-    const prev = tiers[i - 1]?.max;
-    return prev != null ? `Above ${fmtVol(prev)} / month` : "All volumes";
+/** Badge glyph for a card: the Pix mark, or a text glyph ($ % ↑ ↓). */
+function BadgeGlyph({ badge, cx, cy }: { badge: PriceCard["badge"]; cx: number; cy: number }) {
+  if (badge === "pix") {
+    return (
+      <svg x={cx - 12} y={cy - 12} width={24} height={24} viewBox="0 0 24 24">
+        <path d={PIX_MARK} fill={PP.badgeInk} />
+      </svg>
+    );
   }
-  if (i === 0) return `Up to ${fmtVol(t.max)} / month`;
-  const prev = tiers[i - 1]?.max;
-  return prev != null ? `${fmtVol(prev)} - ${fmtVol(t.max)} / month` : `Up to ${fmtVol(t.max)} / month`;
+  const glyph = badge === "dollar" ? "$" : badge === "percent" ? "%" : badge === "up" ? "↑" : "↓";
+  return (
+    <text x={cx} y={cy + 7} fontSize={20} fontWeight={700} fill={PP.badgeInk} textAnchor="middle">
+      {glyph}
+    </text>
+  );
 }
 
 function BrazilFlag() {
@@ -254,72 +258,60 @@ function BrazilFlag() {
 }
 
 function PriceCardSvg({
+  card,
   x,
-  symbol,
-  accent,
-  title,
-  sub,
-  comp,
-  render,
+  top = 112,
+  w = 436,
+  h = 331,
+  minRows = 5,
 }: {
+  card: PriceCard;
   x: number;
-  /** Badge glyph: the Pix mark, or a "$" for the FX card. */
-  symbol: "pix" | "dollar";
-  /** The table's Trace colour — badge fill, bullets, and values all use it. */
-  accent: string;
-  title: string;
-  sub: string;
-  comp: PriceComponent;
-  render: (v: number) => string;
+  top?: number;
+  w?: number;
+  h?: number;
+  minRows?: number;
 }) {
+  const accent = card.accent === "blue" ? PP.blue : PP.green;
   const rows: { label: string; value: string }[] =
-    comp.type === "flat"
-      ? [{ label: "All volumes", value: render(comp.flat ?? comp.tiers[0]?.value ?? 0) }]
-      : comp.tiers.map((t, i) => ({ label: bandLabel(comp.tiers, i), value: render(t.value) }));
-  // Rows anchor to the top of the body band at the tiered 5-row rhythm, so a
-  // 1-row (flat) card reads like a tiered card's first row instead of floating
-  // mid-card. Card heights stay matched; extra rows (6+) compress to fit.
-  const CARD_TOP = 112;
-  const CARD_H = 331;
-  const bodyTop = 208;
-  const bodyBottom = CARD_TOP + CARD_H - 22;
-  const pitch = (bodyBottom - bodyTop) / Math.max(rows.length, 5);
+    card.type === "flat"
+      ? [{ label: "All volumes", value: flatRowText(card) }]
+      : card.tiers.map((t) => ({ label: t.label, value: tierText(card, t) }));
+  // Rows anchor to the top of the body band at the card's design rhythm
+  // (5 rows on the standard two-card page, 3 on a Brazil-market card page), so
+  // a short table reads like the full table's first rows instead of floating
+  // mid-card. Card heights stay matched; extra rows compress to fit.
+  const bodyTop = top + 96;
+  const bodyBottom = top + h - 22;
+  const pitch = (bodyBottom - bodyTop) / Math.max(rows.length, minRows);
   const padX = 30;
   return (
     <g>
-      <rect x={x} y={CARD_TOP} width={436} height={CARD_H} rx={14} fill={PP.card} stroke={PP.hairline} strokeWidth={0.75} />
-      <circle cx={x + 45} cy={157} r={20} fill={accent} />
-      {symbol === "pix" ? (
-        <svg x={x + 45 - 12} y={157 - 12} width={24} height={24} viewBox="0 0 24 24">
-          <path d={PIX_MARK} fill={PP.badgeInk} />
-        </svg>
-      ) : (
-        <text x={x + 45} y={164} fontSize={20} fontWeight={700} fill={PP.badgeInk} textAnchor="middle">
-          $
-        </text>
-      )}
-      <text x={x + 75} y={156} fontSize={20} fontWeight={700} fill={PP.text}>
-        {title}
+      <rect x={x} y={top} width={w} height={h} rx={14} fill={PP.card} stroke={PP.hairline} strokeWidth={0.75} />
+      <circle cx={x + 45} cy={top + 45} r={20} fill={accent} />
+      <BadgeGlyph badge={card.badge} cx={x + 45} cy={top + 45} />
+      <text x={x + 75} y={top + 44} fontSize={20} fontWeight={700} fill={PP.text}>
+        {card.title}
       </text>
-      <text x={x + 75} y={175} fontSize={10.5} fill={PP.grey}>
-        {sub}
+      <text x={x + 75} y={top + 63} fontSize={10.5} fill={PP.grey}>
+        {card.sub}
       </text>
-      <line x1={x + 25} y1={194} x2={x + 411} y2={194} stroke={PP.hairline} strokeWidth={0.75} />
+      <line x1={x + 25} y1={top + 82} x2={x + w - 25} y2={top + 82} stroke={PP.hairline} strokeWidth={0.75} />
       {rows.map((r, i) => {
         const yc = bodyTop + (i + 0.5) * pitch; // row centre
         return (
           <g key={i}>
             {i > 0 && (
-              <line x1={x + padX} y1={bodyTop + i * pitch} x2={x + 436 - padX} y2={bodyTop + i * pitch} stroke={PP.rowline} strokeWidth={0.75} />
+              <line x1={x + padX} y1={bodyTop + i * pitch} x2={x + w - padX} y2={bodyTop + i * pitch} stroke={PP.rowline} strokeWidth={0.75} />
             )}
             <ArrowBullet x={x + padX + 1} y={yc - 6.5} h={13} color={accent} />
             <text x={x + padX + 27} y={yc + 4.5} fontSize={12.5} fill={PP.text}>
               {r.label}
             </text>
-            <text x={x + 436 - padX} y={yc + 4.5} fontSize={13} fontWeight={700} fill={accent} textAnchor="end" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+            <text x={x + w - padX} y={yc + 4.5} fontSize={13} fontWeight={700} fill={accent} textAnchor="end" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
               {r.value}
             </text>
-            {comp.type === "flat" && (
+            {card.type === "flat" && (
               <text x={x + padX + 27} y={yc + 22} fontSize={10.5} fill={PP.grey}>
                 A single rate across every monthly volume — no tiers to track.
               </text>
@@ -352,24 +344,9 @@ function pricingPageSlide(pricing: ProposalPricing, subLine: string, footerText?
       <text x={113} y={83} fontSize={13.5} fill={PP.green}>
         {subLine}
       </text>
-      <PriceCardSvg
-        x={40}
-        symbol="pix"
-        accent={PP.green}
-        title="Pix API"
-        sub={pricing.pix.type === "flat" ? "Flat per-payment fee (USD), all volumes" : "Per-payment fee (USD), tiered by volume"}
-        comp={pricing.pix}
-        render={(v) => `USD $${v.toFixed(2)} / pix`}
-      />
-      <PriceCardSvg
-        x={485}
-        symbol="dollar"
-        accent={PP.blue}
-        title="FX spread"
-        sub={pricing.spread.type === "flat" ? "Spot + one flat spread" : "Spot + spread, tiered by volume"}
-        comp={pricing.spread}
-        render={(v) => `${v.toFixed(2)}%`}
-      />
+      {pricing.cards.slice(0, 2).map((card, i) => (
+        <PriceCardSvg key={card.key} card={card} x={i === 0 ? 40 : 485} />
+      ))}
       {footerText && (
         <text x={36} y={514.8} fontSize={9} fill={PP.grey}>
           {footerText}
@@ -381,6 +358,49 @@ function pricingPageSlide(pricing: ProposalPricing, subLine: string, footerText?
       </text>
     </svg>
   );
+}
+
+// A Brazil-market product page: the same Brazil header, one centred card —
+// geometry measured off the template's own pricing pages (card 557×246 at
+// 201.5/152, three rows through the body band).
+function brazilCardPageSlide(card: PriceCard, footerText?: string) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox={`0 0 ${DW} ${DH}`} width={DW} height={DH} style={{ fontFamily: "Inter, sans-serif" }}>
+      <defs>
+        <linearGradient id="pp-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#0d1313" />
+          <stop offset="1" stopColor="#0a0d0d" />
+        </linearGradient>
+      </defs>
+      <rect x={0} y={0} width={DW} height={DH} fill="url(#pp-bg)" />
+      <rect x={0} y={0} width={DW} height={1.6} fill={PP.green} />
+      <text x={943} y={36} fontSize={11} fontWeight={700} fill={PP.text} textAnchor="end">
+        Trace Finance
+      </text>
+      <BrazilFlag />
+      <text x={112} y={61} fontSize={32} fontWeight={700} fill={PP.text}>
+        Brazil
+      </text>
+      <text x={113} y={83} fontSize={13.5} fill={PP.green}>
+        {card.pageSub ?? ""}
+      </text>
+      <PriceCardSvg card={card} x={201.5} top={152} w={557} h={246} minRows={3} />
+      {footerText && (
+        <text x={36} y={514.8} fontSize={9} fill={PP.grey}>
+          {footerText}
+        </text>
+      )}
+      <image href={ASSETS.traceLockupMark} x={759.6} y={486.7} width={44.6} height={44.6} />
+      <text x={808.6} y={516.2} fontSize={20} fontWeight={700} fill={PP.text}>
+        Trace Finance
+      </text>
+    </svg>
+  );
+}
+
+/** Render one Brazil-market product page as a 960×540 PNG data URL. */
+export async function renderBrazilCardPagePng(card: PriceCard, footerText?: string): Promise<string> {
+  return renderDeckPng(brazilCardPageSlide(card, footerText), 4);
 }
 
 /** Render the customized pricing page as a 960×540 PNG data URL (proposal PDF). */

@@ -120,53 +120,177 @@ export interface TraceRep {
 }
 
 // ── Pricing (design handoff 2a/2b) ───────────────────────────────────────────
-// Drives the client's Pricing view and the PDF pricing page. Defaults come from
-// the proposal template ("deck"); the rep may override individual values or
-// rewrite entirely ("custom"). Tiers are volume bands in USD/month.
+// Drives the client's Pricing view and the PDF pricing page(s). Defaults come
+// from the proposal template ("deck"); Custom lets the rep rewrite everything:
+// values, band labels, tier count, or a free-text rate. Standard prices two
+// components (Pix API + FX spread, one shared PDF page); Brazil-market prices
+// the deck's five products, one PDF page each.
 
 export interface PriceTier {
-  /** Upper bound of the monthly-volume band in USD; null = "and above". */
-  max: number | null;
-  /** Pix: USD fee per payment. Spread: % over spot. */
+  /** Volume-band label, fully editable in Custom ("Up to $5M / month"). */
+  label: string;
+  /** Numeric rate; ignored when `text` is set. */
   value: number;
+  /** Free-text rate ("Negotiable") — replaces the formatted number entirely. */
+  text?: string | null;
 }
 
-export interface PriceComponent {
+export interface PriceCard {
+  /** Stable identity against the deck: per-card reset + PDF page replacement. */
+  key: string;
+  title: string;
+  /** In-card caption under the title. */
+  sub: string;
+  /** Green subtitle of the card's own PDF page (Brazil-market decks). */
+  pageSub?: string;
+  /** Rendered value = prefix + value.toFixed(2) + suffix. */
+  prefix?: string;
+  suffix?: string;
+  badge: "pix" | "dollar" | "percent" | "up" | "down";
+  accent: "green" | "blue";
   type: "tiered" | "flat";
   tiers: PriceTier[];
   flat?: number;
+  flatText?: string | null;
 }
 
 export interface ProposalPricing {
-  mode: "deck" | "override" | "custom";
-  /** Pix API per-payment fee (USD/pix) by monthly volume. */
-  pix: PriceComponent;
-  /** FX spread (% over spot) by monthly volume. */
-  spread: PriceComponent;
+  mode: "deck" | "custom";
+  cards: PriceCard[];
+}
+
+/** A tier's display string — the free text when set, else the formatted rate. */
+export function tierText(card: PriceCard, tier: PriceTier): string {
+  return tier.text?.trim() ? tier.text.trim() : `${card.prefix ?? ""}${tier.value.toFixed(2)}${card.suffix ?? ""}`;
+}
+export function flatRowText(card: PriceCard): string {
+  return card.flatText?.trim()
+    ? card.flatText.trim()
+    : `${card.prefix ?? ""}${(card.flat ?? card.tiers[0]?.value ?? 0).toFixed(2)}${card.suffix ?? ""}`;
+}
+
+export function cardEqualsDeck(card: PriceCard, deckCard: PriceCard | undefined): boolean {
+  if (!deckCard) return false;
+  return (
+    card.type === deckCard.type &&
+    card.type === "tiered" &&
+    !card.flatText?.trim() &&
+    card.tiers.length === deckCard.tiers.length &&
+    card.tiers.every((t, i) => t.label === deckCard.tiers[i].label && t.value === deckCard.tiers[i].value && !t.text?.trim())
+  );
 }
 
 /** True when the pricing is structurally and numerically the deck's own rates —
- *  in that case the proposal PDF keeps its hand-designed template rate page. */
-export function pricingEqualsDeck(p: ProposalPricing): boolean {
-  const d = deckPricing();
-  const compEq = (a: PriceComponent, b: PriceComponent) =>
-    a.type === b.type &&
-    a.type === "tiered" &&
-    a.tiers.length === b.tiers.length &&
-    a.tiers.every((t, i) => t.max === b.tiers[i].max && t.value === b.tiers[i].value);
-  return compEq(p.pix, d.pix) && compEq(p.spread, d.spread);
+ *  in that case the proposal PDF keeps its hand-designed template rate pages. */
+export function pricingEqualsDeck(p: ProposalPricing, proposalType: ProposalType = "standard"): boolean {
+  const d = deckPricing(proposalType);
+  return p.cards.length === d.cards.length && p.cards.every((c, i) => c.key === d.cards[i].key && cardEqualsDeck(c, d.cards[i]));
 }
 
-/** The template ("deck") defaults — the 2a rate card. */
-export function deckPricing(): ProposalPricing {
-  const bands = [5_000_000, 10_000_000, 30_000_000, 50_000_000, null];
-  const pix = [0.1, 0.08, 0.06, 0.04, 0.02];
-  const spread = [0.7, 0.65, 0.55, 0.5, 0.35];
+const tiersOf = (labels: string[], values: number[]): PriceTier[] => labels.map((label, i) => ({ label, value: values[i] }));
+
+/** The template ("deck") defaults, per proposal type. */
+export function deckPricing(proposalType: ProposalType = "standard"): ProposalPricing {
+  if (proposalType === "brazil-market") {
+    // The five priced products of the Brazil-market deck, one page each
+    // (labels/values verbatim from public/proposals/templates/brazil-market.pdf).
+    const usdBands = ["USD 1M – 5M", "USD 1M – 10M", "Above USD 10M"];
+    const brlBands = ["Up to BRL 1M", "BRL 1M – 50M", "Above BRL 50M"];
+    return {
+      mode: "deck",
+      cards: [
+        {
+          key: "nonres", title: "Non-resident account", sub: "% of volume transacted through the account",
+          pageSub: "BRL payins · non-resident routing", suffix: "%", badge: "percent", accent: "green",
+          type: "tiered", tiers: tiersOf(usdBands, [0.2, 0.15, 0.1]),
+        },
+        {
+          key: "pixinc", title: "PixInc", sub: "% of volume, tiered",
+          pageSub: "BRL payins via PixInc", suffix: "%", badge: "pix", accent: "green",
+          type: "tiered", tiers: tiersOf(usdBands, [0.25, 0.15, 0.12]),
+        },
+        {
+          key: "onramp", title: "On-ramp · BRL → USDT", sub: "Tiered FX spread",
+          pageSub: "USDT ↔ BRL · stablecoin ramp", suffix: "%", badge: "up", accent: "green",
+          type: "tiered", tiers: tiersOf(brlBands, [0.45, 0.35, 0.25]),
+        },
+        {
+          key: "offramp", title: "Off-ramp · USDT → BRL", sub: "Tiered FX spread",
+          pageSub: "USDT ↔ BRL · stablecoin ramp", suffix: "%", badge: "down", accent: "green",
+          type: "tiered", tiers: tiersOf(brlBands, [0.3, 0.2, 0.15]),
+        },
+        {
+          key: "pixout", title: "Pix", sub: "Per-transaction fee (BRL), tiered by volume",
+          pageSub: "BRL payouts via Pix", prefix: "R$ ", badge: "dollar", accent: "green",
+          type: "tiered", tiers: tiersOf(["Below R$ 50k", "R$ 50k – 100k", "Above R$ 100k"], [0.25, 0.2, 0.1]),
+        },
+      ],
+    };
+  }
+  const bands = ["Up to $5M / month", "$5M to $10M / month", "$10M to $30M / month", "$30M to $50M / month", "Above $50M / month"];
   return {
     mode: "deck",
-    pix: { type: "tiered", tiers: bands.map((max, i) => ({ max, value: pix[i] })) },
-    spread: { type: "tiered", tiers: bands.map((max, i) => ({ max, value: spread[i] })) },
+    cards: [
+      {
+        key: "pix", title: "Pix API", sub: "Per-payment fee (USD), tiered by volume",
+        prefix: "$", suffix: " / pix", badge: "pix", accent: "green",
+        type: "tiered", tiers: tiersOf(bands, [0.1, 0.08, 0.06, 0.04, 0.02]),
+      },
+      {
+        key: "spread", title: "FX spread", sub: "Spot rate + spread, tiered by volume",
+        suffix: "%", badge: "dollar", accent: "blue",
+        type: "tiered", tiers: tiersOf(bands, [0.7, 0.65, 0.55, 0.5, 0.35]),
+      },
+    ],
   };
+}
+
+// ── Legacy pricing (pre-card links) ──────────────────────────────────────────
+// Older shared rows store { mode, pix, spread } with { max, value } tiers.
+// normalizePricing upgrades any stored shape to the card model above.
+
+interface LegacyTier { max: number | null; value: number }
+interface LegacyComponent { type: "tiered" | "flat"; tiers: LegacyTier[]; flat?: number }
+interface LegacyProposalPricing { mode: string; pix: LegacyComponent; spread: LegacyComponent }
+
+function legacyVol(n: number): string {
+  if (n >= 1_000_000) return `$${+(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `$${+(n / 1_000).toFixed(0)}K`;
+  return `$${n}`;
+}
+function legacyBandLabel(tiers: LegacyTier[], i: number): string {
+  const t = tiers[i];
+  const prev = i > 0 ? tiers[i - 1]?.max : null;
+  if (t.max == null) return prev != null ? `Above ${legacyVol(prev)} / month` : "All volumes";
+  if (prev == null) return `Up to ${legacyVol(t.max)} / month`;
+  return `${legacyVol(prev)} to ${legacyVol(t.max)} / month`;
+}
+function legacyToCard(comp: LegacyComponent, deckCard: PriceCard): PriceCard {
+  return {
+    ...deckCard,
+    type: comp.type,
+    flat: comp.flat,
+    tiers: comp.tiers.map((t, i) => ({ label: legacyBandLabel(comp.tiers, i), value: t.value })),
+  };
+}
+
+/** Upgrade any stored pricing (current cards, or legacy pix/spread) to the card
+ *  model. Unrecognizable input falls back to the deck for the proposal type. */
+export function normalizePricing(p: unknown, proposalType: ProposalType = "standard"): ProposalPricing {
+  const deck = deckPricing(proposalType);
+  if (!p || typeof p !== "object") return deck;
+  const anyP = p as Partial<ProposalPricing> & Partial<LegacyProposalPricing>;
+  if (Array.isArray(anyP.cards) && anyP.cards.every((c) => c && typeof c === "object" && Array.isArray(c.tiers))) {
+    return { mode: anyP.mode === "deck" ? "deck" : "custom", cards: anyP.cards as PriceCard[] };
+  }
+  if (anyP.pix && typeof anyP.pix === "object" && anyP.spread && typeof anyP.spread === "object") {
+    const std = deckPricing("standard");
+    return {
+      mode: anyP.mode === "deck" ? "deck" : "custom",
+      cards: [legacyToCard(anyP.pix, std.cards[0]), legacyToCard(anyP.spread, std.cards[1])],
+    };
+  }
+  return deck;
 }
 
 /** The salesperson-private setup captured on the intro page, carried into the

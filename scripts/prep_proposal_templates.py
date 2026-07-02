@@ -62,6 +62,22 @@ for name, path in TEMPLATES.items():
         if "Pix API" in t and "FX spread" in t:
             pricing_page = pno
             break
+    # brazil-market: one priced product per page. Map deck-card keys (see
+    # deckPricing in src/flow-tool/data/schema.ts) to their template page so
+    # the runtime can replace an edited product's page in place.
+    CARD_MARKS = [
+        ("nonres", "Non-resident account"),
+        ("pixinc", "PixInc"),
+        ("onramp", "On-ramp"),
+        ("offramp", "Off-ramp"),
+        ("pixout", "Per-transaction fee"),
+    ]
+    pricing_card_pages = {}
+    for pno, page in enumerate(doc):
+        t = page.get_text()
+        for key, mark in CARD_MARKS:
+            if key not in pricing_card_pages and mark in t:
+                pricing_card_pages[key] = pno
     for pno, page in enumerate(doc):
         d = page.get_text("dict")
         for b in d["blocks"]:
@@ -103,6 +119,8 @@ for name, path in TEMPLATES.items():
         "logo": {"page": 0, "box": [round(v,2) for v in LOGO_BOX]},
         "fields": fields,
     }
+    if pricing_card_pages:
+        manifest["pricingCardPages"] = pricing_card_pages
     blank_path = os.path.join(OUT, f"{name}.pdf")
     doc.save(blank_path, garbage=4, deflate=True)
     doc.close()

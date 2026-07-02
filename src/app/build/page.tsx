@@ -19,6 +19,14 @@ export default function BuildPage() {
   // Sandbox mode: links generated while on are tagged and kept off the pipeline.
   const [sandbox, setSandbox] = useState(false);
 
+  // The deck's rate cards are proposal-type-specific (Standard prices two
+  // components; Brazil-market prices five products), so switching type re-seeds
+  // the pricing from that deck.
+  const proposalType = setup?.proposalType ?? "standard";
+  useEffect(() => {
+    setPricing(deckPricing(proposalType));
+  }, [proposalType]);
+
   // Deep links for screen-share: ?flow=flow-7 preloads a flow, ?present=1 opens
   // straight into presentation mode.
   useEffect(() => {

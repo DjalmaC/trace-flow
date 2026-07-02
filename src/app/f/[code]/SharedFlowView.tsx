@@ -5,8 +5,8 @@ import { FlowExperience, useIsMobile } from "@/flow-tool/components/FlowExperien
 import { ASSETS, C, TRACE_LOGO_AR } from "@/flow-tool/components/tokens";
 import { loadSharedFlowGated } from "@/flow-tool/lib/share";
 import { getRep } from "@/flow-tool/data/reps";
-import { deckPricing } from "@/flow-tool/data/schema";
-import type { Direction, FlowConfig, PriceComponent, ProposalPricing, ProposalType } from "@/flow-tool/data/schema";
+import { deckPricing, flatRowText, normalizePricing, tierText } from "@/flow-tool/data/schema";
+import type { Direction, FlowConfig, PriceCard, ProposalPricing, ProposalType } from "@/flow-tool/data/schema";
 
 // A shared link may carry more than one flow "variant" (e.g. a With-IP
 // vs Direct structures). The viewer switches between them with a
@@ -18,8 +18,8 @@ type Variant = { flowId: string; name: string };
 // ProposalPricing (design handoff 2a/2b); older rows (e.g. the live ARQ link)
 // carry the legacy region/cards/rows shape, which keeps its original renderer.
 type PriceRow = { label: string; value: string };
-type PriceCard = { badge: string; tone?: "green" | "cyan"; title: string; sub?: string; rows: PriceRow[] };
-type LegacyPricing = { region: string; flag?: string; subtitle?: string; cards: PriceCard[]; footer?: string };
+type LegacyCard = { badge: string; tone?: "green" | "cyan"; title: string; sub?: string; rows: PriceRow[] };
+type LegacyPricing = { region: string; flag?: string; subtitle?: string; cards: LegacyCard[]; footer?: string };
 // `salesperson` (optional) renders the closing "last deck" of the proposal.
 type Salesperson = { name: string; title?: string; email?: string; phone?: string; photo?: string; bio?: string; bookingUrl?: string };
 // `proposalType`/`date`/`traceRepId` (optional, set by the proposal generator)
@@ -58,13 +58,16 @@ function resolveProposalHref(url: string, code: string): string | null {
   return null;
 }
 
-// Old rows store pricing as region/cards; new rows as ProposalPricing.
+// Old rows store pricing as region/cards (no mode); newer rows store
+// ProposalPricing — either the legacy pix/spread pair or the card model.
+// normalizePricing upgrades both stored ProposalPricing shapes.
 function isLegacyPricing(p: ProposalPricing | LegacyPricing): p is LegacyPricing {
-  return Array.isArray((p as LegacyPricing).cards);
+  return Array.isArray((p as LegacyPricing).cards) && !("mode" in p);
 }
 function isProposalPricing(p: ProposalPricing | LegacyPricing): p is ProposalPricing {
-  const c = p as ProposalPricing;
-  return !!c.pix && typeof c.pix === "object" && !!c.spread && typeof c.spread === "object";
+  const c = p as ProposalPricing & { pix?: unknown; spread?: unknown };
+  if (c.pix && typeof c.pix === "object" && c.spread && typeof c.spread === "object") return true;
+  return "mode" in c && Array.isArray(c.cards);
 }
 
 type State =
@@ -248,7 +251,9 @@ export function SharedFlowView({ code }: { code: string }) {
   // otherwise the deck defaults. Pricing is therefore always available.
   const legacyPricing = config?.pricing && isLegacyPricing(config.pricing) ? config.pricing : null;
   const proposalPricing: ProposalPricing =
-    config?.pricing && !legacyPricing && isProposalPricing(config.pricing) ? config.pricing : deckPricing();
+    config?.pricing && !legacyPricing && isProposalPricing(config.pricing)
+      ? normalizePricing(config.pricing, config.proposalType ?? "standard")
+      : deckPricing(config?.proposalType ?? "standard");
 
   // the FlowConfig handed to the flow renderer (strip the proposal-only extras)
   const fxConfig: FlowConfig | null = config
@@ -622,28 +627,12 @@ function SegToggle<T extends string>({
 // proposal's ProposalPricing (tiers or a flat rate). No calculator (removed at
 // user request). Direction-independent, so the Pay-in/Pay-out toggle is hidden.
 
-function fmtVol(n: number): string {
-  if (n >= 1_000_000) return `$${+(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `$${+(n / 1_000).toFixed(0)}K`;
-  return `$${n}`;
+function cardRows(card: PriceCard): PriceRow[] {
+  if (card.type === "flat") return [{ label: "All volumes", value: flatRowText(card) }];
+  return card.tiers.map((t) => ({ label: t.label, value: tierText(card, t) }));
 }
 
-function bandLabel(tiers: PriceComponent["tiers"], i: number): string {
-  const t = tiers[i];
-  const prev = i > 0 ? tiers[i - 1]?.max : null;
-  if (t.max == null) return prev != null ? `Above ${fmtVol(prev)} / month` : "All volumes";
-  if (prev == null) return `Up to ${fmtVol(t.max)} / month`;
-  return `${fmtVol(prev)} to ${fmtVol(t.max)} / month`;
-}
-
-function componentRows(c: PriceComponent, kind: "pix" | "spread"): PriceRow[] {
-  const fmt = (v: number) => (kind === "pix" ? `$${v.toFixed(2)} / pix` : `${v.toFixed(2)}%`);
-  if (c.type === "flat") {
-    const v = c.flat ?? c.tiers[0]?.value ?? 0;
-    return [{ label: "All volumes", value: fmt(v) }];
-  }
-  return c.tiers.map((t, i) => ({ label: bandLabel(c.tiers, i), value: fmt(t.value) }));
-}
+const CARD_BADGE: Record<PriceCard["badge"], string> = { pix: "P", dollar: "$", percent: "%", up: "↑", down: "↓" };
 
 function MintCheck() {
   return (
@@ -654,24 +643,19 @@ function MintCheck() {
 }
 
 const PROOF_CHIPS = ["Cents per Pix, not a %", "Rate falls as you grow", "No minimums or setup"];
+const BRAZIL_PROOF_CHIPS = ["Rate falls as you grow", "No minimums or setup", "USDT ↔ BRL on demand"];
 
 function PricingView({ pricing, clientName, inline }: { pricing: ProposalPricing; clientName: string; inline?: boolean }) {
-  const cards = [
-    {
-      badge: "P",
-      badgeBg: "#00f2b1",
-      title: "Pix API",
-      sub: pricing.pix.type === "flat" ? "Per-payment fee (USD), all volumes" : "Per-payment fee (USD), tiered by volume",
-      rows: componentRows(pricing.pix, "pix"),
-    },
-    {
-      badge: "$",
-      badgeBg: "#2be8d6",
-      title: "FX spread",
-      sub: pricing.spread.type === "flat" ? "Spot rate + spread, all volumes" : "Spot rate + spread, tiered by volume",
-      rows: componentRows(pricing.spread, "spread"),
-    },
-  ];
+  // Brazil-market prices five products; its intro copy can't promise the
+  // standard deck's "never a percentage on Pix".
+  const isBrazil = pricing.cards.some((c) => c.key === "nonres");
+  const cards = pricing.cards.map((card) => ({
+    badge: CARD_BADGE[card.badge] ?? "$",
+    badgeBg: card.accent === "blue" ? "#2be8d6" : "#00f2b1",
+    title: card.title,
+    sub: card.sub,
+    rows: cardRows(card),
+  }));
   return (
     <div
       className={inline ? "w-full overflow-x-hidden" : "fixed inset-0 z-10 overflow-y-auto overflow-x-hidden"}
@@ -686,13 +670,14 @@ function PricingView({ pricing, clientName, inline }: { pricing: ProposalPricing
             What <span className="text-mint">{clientName}</span> pays
           </h1>
           <p className="mx-auto mt-3 max-w-[64ch] text-[13.5px] leading-normal text-[#8b948f]">
-            Two line items, nothing hidden. A few cents per payment, never a percentage on Pix, plus a tight FX spread
-            over spot. No monthly minimum, no setup fee.
+            {isBrazil
+              ? "Every rate on the table: payins, payouts and the stablecoin ramp, tiered by volume. No monthly minimum, no setup fee."
+              : "Two line items, nothing hidden. A few cents per payment, never a percentage on Pix, plus a tight FX spread over spot. No monthly minimum, no setup fee."}
           </p>
         </div>
 
         <div className="mt-4 flex flex-wrap justify-center gap-2">
-          {PROOF_CHIPS.map((label) => (
+          {(isBrazil ? BRAZIL_PROOF_CHIPS : PROOF_CHIPS).map((label) => (
             <span
               key={label}
               className="inline-flex items-center gap-1.5 rounded-full border border-hairline-minted bg-[rgba(0,242,177,.06)] px-3 py-1.5 text-[11.5px] font-medium text-[#bfe8d4]"

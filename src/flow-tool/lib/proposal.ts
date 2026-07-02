@@ -7,8 +7,8 @@ import type {
   Stablecoin,
   TraceRep,
 } from "../data/schema";
-import { pricingEqualsDeck } from "../data/schema";
-import { renderPricingPagePng, renderProposalFlowPngs } from "./pptx";
+import { cardEqualsDeck, deckPricing, normalizePricing, pricingEqualsDeck } from "../data/schema";
+import { renderBrazilCardPagePng, renderPricingPagePng, renderProposalFlowPngs } from "./pptx";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Proposal assembly (client-side).
@@ -53,8 +53,11 @@ interface Manifest {
   closingPage: number;
   flowsInsertAt: number;
   /** Page index of the pix/spread rate card, or null when the template has no
-   *  1:1 counterpart (brazil-market) and a customized card is inserted instead. */
+   *  single combined rate page (brazil-market prices per product instead). */
   pricingPage?: number | null;
+  /** brazil-market: deck-card key → the template page priced by that card;
+   *  customized cards replace their page in place. */
+  pricingCardPages?: Record<string, number>;
   logo: { page: number; box: [number, number, number, number] };
   fields: ManifestField[];
 }
@@ -84,8 +87,9 @@ export interface ProposalBuildOpts {
   /** Trace salesperson — fills (or, via slidePage, replaces) the contact slide. */
   rep?: TraceRep;
   /** The proposal's pricing. When it differs from the deck rates, the PDF's
-   *  rate page is live-rendered so the download matches the client's Pricing
-   *  view (standard: replaces the template page; brazil-market: inserted). */
+   *  rate page(s) are live-rendered in place so the download matches the
+   *  client's Pricing view (standard: the combined rate page; brazil-market:
+   *  each edited product's own page). */
   pricing?: ProposalPricing;
   /** Credentials for fetching the gated sales-slides deck. */
   assetAuth?: AssetAuth;
@@ -342,12 +346,13 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
   const lb = manifest.logo.box;
   const logoBox: [number, number, number, number] = [lb[0], lb[1], lb[0] + 200, lb[1] + 56];
 
-  // ── customized pricing → the PDF rate page is live-rendered ──
-  // Deck-identical pricing keeps the template's hand-designed page. Anything
-  // else (override / flat / custom bands) renders the page from the same
-  // ProposalPricing the client's web Pricing view reads, so the download can
-  // never disagree with what the client saw on the link.
-  const pricingCustomized = !!opts.pricing && !pricingEqualsDeck(opts.pricing);
+  // ── customized pricing → the PDF rate page(s) are live-rendered ──
+  // Deck-identical pricing keeps the template's hand-designed pages. Anything
+  // else (edited values, bands, tier counts, flat, free-text rates) renders
+  // from the same ProposalPricing the client's web Pricing view reads, so the
+  // download can never disagree with what the client saw on the link.
+  const pricing = opts.pricing ? normalizePricing(opts.pricing, opts.proposalType) : undefined;
+  const pricingCustomized = !!pricing && !pricingEqualsDeck(pricing, opts.proposalType);
   const pricingSub =
     opts.proposalType === "standard"
       ? "BRL payins and payouts via Pix / TED · USDC ↔ BRL"
@@ -356,10 +361,25 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
     // standard: replace the template's own rate page in place (page count
     // unchanged, so every downstream index stays valid). The overlay loop
     // below still stamps this page's footer field onto the replacement.
-    const png = await doc.embedPng(dataUrlToBytes(await renderPricingPagePng(opts.pricing!, pricingSub)));
+    const png = await doc.embedPng(dataUrlToBytes(await renderPricingPagePng(pricing!, pricingSub)));
     doc.removePage(manifest.pricingPage);
     const page = doc.insertPage(manifest.pricingPage, [DW, DH]);
     page.drawImage(png, { x: 0, y: 0, width: DW, height: DH });
+  }
+  if (pricingCustomized && manifest.pricingCardPages) {
+    // brazil-market: each product has its own template page. Replace only the
+    // pages whose card was actually edited — untouched products keep the
+    // template's hand-designed page. In-place, so every index stays valid and
+    // the overlay loop below still stamps footers onto the replacements.
+    const deck = deckPricing(opts.proposalType);
+    for (const card of pricing!.cards) {
+      const pno = manifest.pricingCardPages[card.key];
+      if (typeof pno !== "number" || cardEqualsDeck(card, deck.cards.find((c) => c.key === card.key))) continue;
+      const png = await doc.embedPng(dataUrlToBytes(await renderBrazilCardPagePng(card)));
+      doc.removePage(pno);
+      const page = doc.insertPage(pno, [DW, DH]);
+      page.drawImage(png, { x: 0, y: 0, width: DW, height: DH });
+    }
   }
 
   // Stamp overlays onto the relevant template pages (before inserting flows, so
@@ -404,25 +424,12 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
     page.drawImage(png, { x: 0, y: 0, width: DW, height: DH });
   }
 
-  // brazil-market has no pix/spread page to replace; a customized rate card is
-  // inserted just ahead of the flow slides (footer baked in — no manifest
-  // fields exist for a page the template never had).
-  let pricingInserted = 0;
-  if (pricingCustomized && typeof manifest.pricingPage !== "number") {
-    const footerField = manifest.fields.find((f) => f.key === "footer");
-    const footerText = footerField ? resolveTemplate(footerField.template, vars).trim() : undefined;
-    const png = await doc.embedPng(dataUrlToBytes(await renderPricingPagePng(opts.pricing!, pricingSub, footerText)));
-    const page = doc.insertPage(manifest.flowsInsertAt, [DW, DH]);
-    page.drawImage(png, { x: 0, y: 0, width: DW, height: DH });
-    pricingInserted = 1;
-  }
-
   // Swap in the rep's pre-designed contact slide (preloaded above). If it wasn't
   // available the closing page was stamped normally, so nothing ships blank.
   if (willReplace && repSlideDoc) {
     const [repSlide] = await doc.copyPages(repSlideDoc, [repSlideIndex]);
-    // closing page shifted right by the inserted flow + pricing pages
-    const closingIdx = manifest.closingPage + flowPngs.length + pricingInserted;
+    // closing page shifted right by the inserted flow pages
+    const closingIdx = manifest.closingPage + flowPngs.length;
     doc.removePage(closingIdx);
     doc.insertPage(closingIdx, repSlide);
   }

@@ -147,5 +147,12 @@
       "align": "left"
     }
   ],
-  "pricingPage": null
+  "pricingPage": null,
+  "pricingCardPages": {
+    "nonres": 1,
+    "pixinc": 2,
+    "onramp": 3,
+    "offramp": 4,
+    "pixout": 5
+  }
 }

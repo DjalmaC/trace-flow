@@ -14,11 +14,14 @@ import {
 
 const TYPE_LABEL: Record<string, string> = { standard: "Standard", "brazil-market": "Brazil-market" };
 
-// New links store the raw ProposalPricing; legacy rows (ARQ) carry a display
-// shape the PDF builder can't consume.
+// New links store the raw ProposalPricing (card model, or the older pix/spread
+// pair — the PDF builder normalizes both); legacy rows (ARQ) carry a display
+// shape it can't consume.
 function isRawPricing(p: unknown): p is import("@/flow-tool/data/schema").ProposalPricing {
-  const c = p as { pix?: unknown; spread?: unknown } | null;
-  return !!c && typeof c === "object" && !!c.pix && typeof c.pix === "object" && !!c.spread && typeof c.spread === "object";
+  const c = p as { pix?: unknown; spread?: unknown; mode?: unknown; cards?: unknown } | null;
+  if (!c || typeof c !== "object") return false;
+  if (c.pix && typeof c.pix === "object" && c.spread && typeof c.spread === "object") return true;
+  return typeof c.mode === "string" && Array.isArray(c.cards);
 }
 const initials = (name: string) =>
   name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();

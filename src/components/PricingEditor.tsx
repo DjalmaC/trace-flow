@@ -1,37 +1,31 @@
 "use client";
 import { useMemo, useState } from "react";
 import {
+  cardEqualsDeck,
   deckPricing,
-  type PriceComponent,
+  normalizePricing,
+  type PriceCard,
+  type PriceTier,
   type ProposalPricing,
   type ProposalType,
 } from "@/flow-tool/data/schema";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Rep pricing editor (design handoff 2b). Lives inside the Present step of the
-// build rail. Three modes: From deck (read-only template rates), Override
-// (edit any field; deltas are highlighted with a per-field reset), Custom
-// (rewrite entirely, starting from the deck values). All values land in the
-// client link (Pricing tab) and the downloadable PDF.
+// build rail. Two modes: From deck (the template's own rates; touch any field
+// and it upgrades to Custom) and Custom (everything is editable: values, band
+// labels, tier count, flat rates, or a free-text rate per band). One section
+// per priced product — the Standard deck's two, or the Brazil-market deck's
+// five. All values land in the client link (Pricing tab) and the PDF, where an
+// edited product's page is re-rendered in place.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Volume-band labels, index-aligned with deckPricing() tiers. */
-const TIER_LABELS = ["Up to $5M", "$5-10M", "$10-30M", "$30-50M", "Above $50M"];
-const BAND_LABELS_LONG = [
-  "Up to $5M / month",
-  "$5M to $10M / month",
-  "$10M to $30M / month",
-  "$30M to $50M / month",
-  "Above $50M / month",
-];
-
-type CompKey = "pix" | "spread";
 type PricingMode = ProposalPricing["mode"];
 
 const fmt = (n: number) => n.toFixed(2);
 
 export function PricingEditor({
-  pricing,
+  pricing: rawPricing,
   onChange,
   proposalType,
 }: {
@@ -39,29 +33,33 @@ export function PricingEditor({
   onChange: (next: ProposalPricing) => void;
   proposalType: ProposalType;
 }) {
-  const deck = useMemo(() => deckPricing(), []);
-  // Local text drafts so a field can pass through "0." while typing; the parsed
-  // number is committed on every valid keystroke and the draft snaps on blur.
+  const deck = useMemo(() => deckPricing(proposalType), [proposalType]);
+  const pricing = useMemo(() => normalizePricing(rawPricing, proposalType), [rawPricing, proposalType]);
+  // Local text drafts so a numeric field can pass through "0." while typing;
+  // the parsed number is committed on every valid keystroke and the draft
+  // snaps on blur.
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
 
   const readOnly = pricing.mode === "deck";
-  const isOverride = pricing.mode === "override";
 
   function setMode(mode: PricingMode) {
     setDrafts({});
     if (mode === "deck") {
       // From deck always shows (and shares) the template's own rates.
-      onChange({ ...deckPricing(), mode: "deck" });
+      onChange({ ...deckPricing(proposalType), mode: "deck" });
     } else {
       onChange({ ...pricing, mode });
     }
   }
 
-  // Editing while on "From deck" upgrades to Override in the same stroke, so
-  // the default mode never feels dead: touch a field and it just works.
-  function patchComp(key: CompKey, comp: PriceComponent) {
-    onChange({ ...pricing, mode: pricing.mode === "deck" ? "override" : pricing.mode, [key]: comp });
+  // Editing while on "From deck" upgrades to Custom in the same stroke, so the
+  // default mode never feels dead: touch a field and it just works.
+  function patchCard(key: string, next: PriceCard) {
+    onChange({
+      mode: "custom",
+      cards: pricing.cards.map((c) => (c.key === key ? next : c)),
+    });
   }
 
   function display(k: string, v: number) {
@@ -79,63 +77,110 @@ export function PricingEditor({
     });
   }
 
-  function setTier(key: CompKey, i: number, value: number) {
-    const comp = pricing[key];
-    patchComp(key, { ...comp, tiers: comp.tiers.map((t, j) => (j === i ? { ...t, value } : t)) });
+  function patchTier(card: PriceCard, i: number, patch: Partial<PriceTier>) {
+    patchCard(card.key, { ...card, tiers: card.tiers.map((t, j) => (j === i ? { ...t, ...patch } : t)) });
   }
-  function setFlat(key: CompKey, value: number) {
-    patchComp(key, { ...pricing[key], flat: value });
-  }
-  function setType(key: CompKey, type: "tiered" | "flat") {
-    const comp = pricing[key];
-    if (comp.type === type) return;
+  function deleteTier(card: PriceCard, i: number) {
     setDrafts({});
-    patchComp(key, {
-      ...comp,
+    patchCard(card.key, { ...card, tiers: card.tiers.filter((_, j) => j !== i) });
+  }
+  function addTier(card: PriceCard) {
+    const last = card.tiers[card.tiers.length - 1];
+    patchCard(card.key, { ...card, tiers: [...card.tiers, { label: "New tier", value: last?.value ?? 0 }] });
+  }
+  function setType(card: PriceCard, type: "tiered" | "flat") {
+    if (card.type === type) return;
+    setDrafts({});
+    patchCard(card.key, {
+      ...card,
       type,
       // Seed the flat value from the middle band so it starts sensible.
-      flat: type === "flat" ? comp.flat ?? comp.tiers[2]?.value ?? comp.tiers[0]?.value ?? 0 : comp.flat,
+      flat: type === "flat" ? card.flat ?? card.tiers[Math.floor(card.tiers.length / 2)]?.value ?? 0 : card.flat,
     });
   }
-
-  function resetTier(key: CompKey, i: number) {
+  function resetCard(card: PriceCard) {
     setDrafts({});
-    setTier(key, i, deck[key].tiers[i].value);
+    const dc = deck.cards.find((c) => c.key === card.key);
+    if (dc) patchCard(card.key, structuredClone(dc));
   }
-  function resetComp(key: CompKey) {
-    setDrafts({});
-    patchComp(key, { ...deck[key] });
-  }
-
-  const tierOverridden = (key: CompKey, i: number) =>
-    isOverride && pricing[key].type === "tiered" && pricing[key].tiers[i]?.value !== deck[key].tiers[i].value;
-  // The deck is tiered, so a flat component is itself a (structural) override.
-  const flatOverridden = (key: CompKey) => isOverride && pricing[key].type === "flat";
-
-  const rampEnabled = proposalType === "brazil-market";
 
   const modeCaption: Record<PricingMode, string> = {
-    deck: `Values come straight from the ${proposalType === "standard" ? "Standard" : "Brazil-market"} deck. Edit any field and it becomes an override.`,
-    override: "Values loaded from the deck. Edit any field to override; overrides are marked with the deck's original.",
-    custom: "Write pricing from scratch, starting from the deck values.",
+    deck: `Values come straight from the ${proposalType === "standard" ? "Standard" : "Brazil-market"} deck. Edit any field and it becomes Custom.`,
+    custom: "Everything is editable: rates, band labels, tier count, flat rates, or free text (the Aa toggle) per band.",
   };
 
-  function renderSection(key: CompKey, title: string, unit: { prefix?: string; suffix?: string }, flatCaption: string) {
-    const comp = pricing[key];
-    const renderDeck = (v: number) => (key === "pix" ? `$${fmt(v)}` : `${fmt(v)}%`);
+  /** Numeric-or-text rate box, shared by tier rows and the flat field. */
+  function rateBox(card: PriceCard, opts: {
+    k: string;
+    value: number;
+    text: string | null | undefined;
+    onValue: (n: number) => void;
+    onText: (s: string | null) => void;
+    ariaLabel: string;
+    wide?: boolean;
+  }) {
+    const textMode = opts.text != null;
     return (
-      <div className="mb-[18px]">
+      <span className={`flex items-center gap-1 ${opts.wide ? "flex-1" : ""}`}>
+        <span
+          className={`flex items-center gap-1 rounded-[7px] border border-hairline-control bg-surface-input px-2 py-[5px] transition duration-150 ease-ds ${
+            opts.wide ? "flex-1" : textMode ? "w-[126px]" : "w-[92px]"
+          } focus-within:border-hairline-selected`}
+        >
+          {!textMode && card.prefix && <span className="font-mono text-[11px] text-muted">{card.prefix.trim()}</span>}
+          {textMode ? (
+            <input
+              value={opts.text ?? ""}
+              onChange={(e) => opts.onText(e.target.value)}
+              placeholder="Included"
+              aria-label={`${opts.ariaLabel}, as text`}
+              className="w-full bg-transparent font-mono text-xs font-medium text-title outline-none placeholder:text-muted"
+            />
+          ) : (
+            <input
+              value={display(opts.k, opts.value)}
+              onChange={(e) => edit(opts.k, e.target.value, opts.onValue)}
+              onBlur={() => settle(opts.k)}
+              inputMode="decimal"
+              aria-label={opts.ariaLabel}
+              className={`w-full bg-transparent font-mono text-xs font-medium outline-none ${readOnly ? "text-subtitle" : "text-title"}`}
+            />
+          )}
+          {!textMode && card.suffix && <span className="font-mono text-[11px] text-muted">{card.suffix.trim()}</span>}
+        </span>
+        <button
+          onClick={() => {
+            settle(opts.k);
+            opts.onText(textMode ? null : "");
+          }}
+          title={textMode ? "Back to a numeric rate" : "Write the rate as text"}
+          aria-label={textMode ? `${opts.ariaLabel}: switch to number` : `${opts.ariaLabel}: switch to text`}
+          className={`rounded-[5px] border px-1 py-[3px] font-mono text-[9px] font-medium transition duration-150 ease-ds ${
+            textMode
+              ? "border-hairline-selected text-mint"
+              : "border-hairline-control text-[#8b948f] hover:text-title"
+          }`}
+        >
+          Aa
+        </button>
+      </span>
+    );
+  }
+
+  function renderCard(card: PriceCard) {
+    const deckCard = deck.cards.find((c) => c.key === card.key);
+    const edited = pricing.mode === "custom" && !cardEqualsDeck(card, deckCard);
+    return (
+      <div key={card.key} className="mb-[18px]">
         <div className="mb-2 flex items-center justify-between">
-          <span className="font-mono text-[10px] font-medium tracking-[.1em] text-mint-muted">{title}</span>
+          <span className="font-mono text-[10px] font-medium uppercase tracking-[.1em] text-mint-muted">{card.title}</span>
           <span className="flex gap-[2px] rounded-[7px] border border-hairline-card bg-surface-input p-[2px]">
             {(["tiered", "flat"] as const).map((t) => (
               <button
                 key={t}
-                onClick={() => setType(key, t)}
+                onClick={() => setType(card, t)}
                 className={`rounded-[5px] px-2 py-[3px] text-[9.5px] transition duration-150 ease-ds ${
-                  comp.type === t
-                    ? "bg-mint font-semibold text-mint-on"
-                    : "font-medium text-[#8b948f] hover:text-title"
+                  card.type === t ? "bg-mint font-semibold text-mint-on" : "font-medium text-[#8b948f] hover:text-title"
                 }`}
               >
                 {t === "tiered" ? "Tiered" : "Flat"}
@@ -144,81 +189,72 @@ export function PricingEditor({
           </span>
         </div>
 
-        {comp.type === "tiered" ? (
+        {card.type === "tiered" ? (
           <div className="flex flex-col gap-1.5">
-            {comp.tiers.map((tier, i) => {
-              const over = tierOverridden(key, i);
-              const k = `${key}-${i}`;
-              return (
-                <div key={k} className="flex items-center gap-2">
-                  <span className="flex-1 text-[11.5px] text-[#8b948f]">{TIER_LABELS[i] ?? `Band ${i + 1}`}</span>
-                  <span
-                    className={`flex w-[92px] items-center gap-1 rounded-[7px] border bg-surface-input px-2 py-[5px] transition duration-150 ease-ds ${
-                      over ? "border-hairline-selected" : "border-hairline-control"
-                    } focus-within:border-hairline-selected`}
-                  >
-                    {unit.prefix && <span className="font-mono text-[11px] text-muted">{unit.prefix}</span>}
-                    <input
-                      value={display(k, tier.value)}
-                      onChange={(e) => edit(k, e.target.value, (n) => setTier(key, i, n))}
-                      onBlur={() => settle(k)}
-                      inputMode="decimal"
-                      aria-label={`${title}, ${TIER_LABELS[i]}`}
-                      className={`w-full bg-transparent font-mono text-xs font-medium outline-none ${
-                        over ? "text-mint" : readOnly ? "text-subtitle" : "text-title"
-                      }`}
-                    />
-                    {unit.suffix && <span className="font-mono text-[11px] text-muted">{unit.suffix}</span>}
-                  </span>
-                </div>
-              );
-            })}
-            {isOverride &&
-              comp.tiers.map((_, i) =>
-                tierOverridden(key, i) ? (
-                  <div key={`note-${key}-${i}`} className="flex items-center gap-1.5 text-[10.5px] text-mint">
-                    <span className="h-[5px] w-[5px] shrink-0 rounded-full bg-mint" />
-                    <span>
-                      {TIER_LABELS[i]} · deck was {renderDeck(deck[key].tiers[i].value)} ·{" "}
-                      <button onClick={() => resetTier(key, i)} className="underline transition hover:text-mint-hover">
-                        reset
-                      </button>
-                    </span>
-                  </div>
-                ) : null,
-              )}
+            {card.tiers.map((tier, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <input
+                  value={tier.label}
+                  onChange={(e) => patchTier(card, i, { label: e.target.value })}
+                  aria-label={`${card.title}, band ${i + 1} label`}
+                  className={`min-w-0 flex-1 rounded-[7px] border border-transparent bg-transparent px-1.5 py-[5px] text-[11.5px] outline-none transition duration-150 ease-ds hover:border-hairline-control focus:border-hairline-selected focus:bg-surface-input ${
+                    readOnly ? "text-[#8b948f]" : "text-node-text"
+                  }`}
+                />
+                {rateBox(card, {
+                  k: `${card.key}-${i}`,
+                  value: tier.value,
+                  text: tier.text,
+                  onValue: (n) => patchTier(card, i, { value: n }),
+                  onText: (s) => patchTier(card, i, { text: s }),
+                  ariaLabel: `${card.title}, ${tier.label}`,
+                })}
+                <button
+                  onClick={() => deleteTier(card, i)}
+                  disabled={card.tiers.length <= 1}
+                  title="Delete this tier"
+                  aria-label={`Delete ${card.title} band ${i + 1}`}
+                  className="rounded-[5px] px-1 text-[13px] leading-none text-[#5a655f] transition duration-150 ease-ds hover:text-title disabled:cursor-default disabled:opacity-30"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+            <button
+              onClick={() => addTier(card)}
+              className="self-start rounded-[7px] border border-dashed border-hairline-control px-2 py-[4px] text-[10.5px] font-medium text-[#8b948f] transition duration-150 ease-ds hover:border-hairline-selected hover:text-title"
+            >
+              + Add tier
+            </button>
           </div>
         ) : (
           <div>
-            <div
-              className={`mb-1.5 flex items-center rounded-lg border bg-surface-input px-3 py-2 transition duration-150 ease-ds ${
-                flatOverridden(key) ? "border-hairline-selected" : "border-hairline-control"
-              }`}
-            >
-              <input
-                value={display(`${key}-flat`, comp.flat ?? 0)}
-                onChange={(e) => edit(`${key}-flat`, e.target.value, (n) => setFlat(key, n))}
-                onBlur={() => settle(`${key}-flat`)}
-                inputMode="decimal"
-                aria-label={`${title}, flat`}
-                className={`flex-1 bg-transparent font-mono text-[13px] font-medium outline-none ${
-                  flatOverridden(key) ? "text-mint" : readOnly ? "text-subtitle" : "text-title"
-                }`}
-              />
-              <span className="font-mono text-[11px] text-muted">{unit.suffix ?? unit.prefix}</span>
+            <div className="mb-1.5 flex items-center gap-1">
+              {rateBox(card, {
+                k: `${card.key}-flat`,
+                value: card.flat ?? 0,
+                text: card.flatText,
+                onValue: (n) => patchCard(card.key, { ...card, flat: n }),
+                onText: (s) => patchCard(card.key, { ...card, flatText: s }),
+                ariaLabel: `${card.title}, flat`,
+                wide: true,
+              })}
             </div>
-            <p className="text-[10.5px] leading-normal text-muted">{flatCaption}</p>
-            {flatOverridden(key) && (
-              <div className="mt-1 flex items-center gap-1.5 text-[10.5px] text-mint">
-                <span className="h-[5px] w-[5px] shrink-0 rounded-full bg-mint" />
-                <span>
-                  Flat · deck was tiered ·{" "}
-                  <button onClick={() => resetComp(key)} className="underline transition hover:text-mint-hover">
-                    reset
-                  </button>
-                </span>
-              </div>
-            )}
+            <p className="text-[10.5px] leading-normal text-muted">
+              One flat rate across all volumes. Switch to Tiered for volume bands.
+            </p>
+          </div>
+        )}
+
+        {edited && (
+          <div className="mt-1.5 flex items-center gap-1.5 text-[10.5px] text-mint">
+            <span className="h-[5px] w-[5px] shrink-0 rounded-full bg-mint" />
+            <span>
+              Edited from the deck ·{" "}
+              <button onClick={() => resetCard(card)} className="underline transition hover:text-mint-hover">
+                reset
+              </button>
+            </span>
           </div>
         )}
       </div>
@@ -236,11 +272,10 @@ export function PricingEditor({
 
       <div className="px-4 py-3.5">
         {/* mode tabs */}
-        <div className="mb-3 grid grid-cols-3 gap-[3px] rounded-[10px] border border-hairline-card bg-surface-input p-[3px]">
+        <div className="mb-3 grid grid-cols-2 gap-[3px] rounded-[10px] border border-hairline-card bg-surface-input p-[3px]">
           {(
             [
               ["deck", "From deck"],
-              ["override", "Override"],
               ["custom", "Custom"],
             ] as [PricingMode, string][]
           ).map(([m, label]) => (
@@ -257,26 +292,21 @@ export function PricingEditor({
         </div>
         <p className="mb-4 text-[11px] leading-normal text-muted">{modeCaption[pricing.mode]}</p>
 
-        {renderSection("pix", "PIX API · USD / PIX", { prefix: "$" }, "One flat fee across all volumes. Switch to Tiered for the five volume bands.")}
-        {renderSection("spread", "FX SPREAD · % OVER SPOT", { suffix: "%" }, "One flat spread across all volumes. Switch to Tiered for the five volume bands.")}
+        {pricing.cards.map(renderCard)}
 
-        {/* on/off-ramp — placeholder; only "enabled-looking" on the Brazil-market template */}
-        <div className={`mb-2 font-mono text-[10px] font-medium tracking-[.1em] ${rampEnabled ? "text-mint-muted" : "text-[#3f4a45]"}`}>
-          ON/OFF-RAMP · BPS
-        </div>
-        <div
-          className={`mb-[18px] rounded-lg px-3 py-[9px] text-[11.5px] ${
-            rampEnabled
-              ? "border border-hairline-control bg-surface-input text-[#8b948f]"
-              : "border border-dashed border-hairline-control bg-[#0c110e] text-[#4a5651]"
-          }`}
-        >
-          {rampEnabled ? "Not in the proposal" : "Not in the Standard proposal"}
-        </div>
+        {proposalType === "standard" && (
+          <>
+            <div className="mb-2 font-mono text-[10px] font-medium tracking-[.1em] text-[#3f4a45]">ON/OFF-RAMP · BPS</div>
+            <div className="mb-[18px] rounded-lg border border-dashed border-hairline-control bg-[#0c110e] px-3 py-[9px] text-[11.5px] text-[#4a5651]">
+              Not in the Standard proposal
+            </div>
+          </>
+        )}
 
         <div className="border-t border-hairline-row pt-3.5">
           <p className="mb-2.5 text-[10.5px] leading-normal text-muted">
-            These rates drive the client&apos;s <b className="font-semibold text-[#8b948f]">Pricing view</b> and the downloadable PDF.
+            These rates drive the client&apos;s <b className="font-semibold text-[#8b948f]">Pricing view</b> and the downloadable PDF
+            {proposalType === "brazil-market" ? " (an edited product re-renders its own deck page)" : ""}.
           </p>
           <button
             onClick={() => {
