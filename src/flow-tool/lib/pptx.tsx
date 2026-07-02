@@ -276,14 +276,14 @@ function PriceCardSvg({
     comp.type === "flat"
       ? [{ label: "All volumes", value: render(comp.flat ?? comp.tiers[0]?.value ?? 0) }]
       : comp.tiers.map((t, i) => ({ label: bandLabel(comp.tiers, i), value: render(t.value) }));
-  // Distribute the rows evenly through a fixed body band so 1-row (flat) and
-  // 5-row (tiered) cards both fill their card with even rhythm — no dead space,
-  // no cramping, matched card heights.
+  // Rows anchor to the top of the body band at the tiered 5-row rhythm, so a
+  // 1-row (flat) card reads like a tiered card's first row instead of floating
+  // mid-card. Card heights stay matched; extra rows (6+) compress to fit.
   const CARD_TOP = 112;
   const CARD_H = 331;
   const bodyTop = 208;
   const bodyBottom = CARD_TOP + CARD_H - 22;
-  const pitch = (bodyBottom - bodyTop) / rows.length;
+  const pitch = (bodyBottom - bodyTop) / Math.max(rows.length, 5);
   const padX = 30;
   return (
     <g>
