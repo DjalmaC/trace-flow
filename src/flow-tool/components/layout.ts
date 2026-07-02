@@ -244,24 +244,37 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
   });
   const byId = new Map(nodes.map((n) => [n.id, n]));
 
-  // ── divider between the last Brazil node and the first Abroad node ──
+  // ── divider between the Brazil lane and the Abroad lane ──
+  // Sit it in the widest horizontal gap between two adjacent nodes of different
+  // lanes, so it lands on the real border regardless of which lane is drawn on
+  // the left (e.g. abroad-first flows like #11.1, not just Brazil-first ones).
   const engineNodeL = byId.get(ENGINE_ID);
-  const lastBrazil = nodes.filter((n) => n.lane === "brazil").at(-1);
-  const firstAbroad = nodes.find((n) => n.lane === "abroad");
-  const dividerX = engineNodeL
-    ? engineNodeL.cx // the folded engine straddles the border
-    : lastBrazil && firstAbroad
-      ? (lastBrazil.x + lastBrazil.w + firstAbroad.x) / 2
-      : width / 2;
-
   const brazilNodes = nodes.filter((n) => n.lane === "brazil");
   const abroadNodes = nodes.filter((n) => n.lane === "abroad");
-  const brazilLabelX = brazilNodes.length
-    ? (brazilNodes[0].x + brazilNodes.at(-1)!.cx) / 2
-    : dividerX / 2;
-  const abroadLabelX = abroadNodes.length
-    ? (abroadNodes[0].cx + abroadNodes.at(-1)!.x + abroadNodes.at(-1)!.w) / 2
-    : (dividerX + width) / 2;
+  const byX = [...nodes].sort((a, b) => a.x - b.x);
+  let gapMid = width / 2;
+  let bestGap = -Infinity;
+  for (let i = 0; i < byX.length - 1; i++) {
+    if (byX[i].lane === byX[i + 1].lane) continue;
+    const gap = byX[i + 1].x - (byX[i].x + byX[i].w);
+    if (gap > bestGap) {
+      bestGap = gap;
+      gapMid = (byX[i].x + byX[i].w + byX[i + 1].x) / 2;
+    }
+  }
+  const dividerX = engineNodeL
+    ? engineNodeL.cx // the folded engine straddles the border
+    : brazilNodes.length && abroadNodes.length
+      ? gapMid
+      : width / 2;
+
+  const laneCenter = (ns: NodeLayout[]) => {
+    const x0 = Math.min(...ns.map((n) => n.x));
+    const x1 = Math.max(...ns.map((n) => n.x + n.w));
+    return (x0 + x1) / 2;
+  };
+  const brazilLabelX = brazilNodes.length ? laneCenter(brazilNodes) : dividerX / 2;
+  const abroadLabelX = abroadNodes.length ? laneCenter(abroadNodes) : (dividerX + width) / 2;
 
   // ── legs: straight horizontal connectors along the rail ──
   const legs: LegLayout[] = srcLegs.map((leg, index) => {

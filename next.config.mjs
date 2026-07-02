@@ -1,6 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // The gated PDFs live outside /public; make sure Vercel ships them inside the
+  // /api/asset serverless function bundle so readFile() can find them at runtime.
+  outputFileTracingIncludes: {
+    "/api/asset/[name]": ["./private-assets/**"],
+  },
   webpack: (config, { isServer, webpack }) => {
     // pptxgenjs (used client-side for the PowerPoint export) references Node
     // builtins for its server file-write path; in the browser it downloads via

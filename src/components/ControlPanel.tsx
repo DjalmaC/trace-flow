@@ -1,14 +1,33 @@
 "use client";
-import { useMemo, useState } from "react";
-import type { Currency, Direction, FlowConfig, ProposalSetup, ProposalType, Stablecoin } from "@/flow-tool/data/schema";
-import { FLOWS, getFlow } from "@/flow-tool/data";
+import { useEffect, useMemo, useState } from "react";
+import type {
+  Currency,
+  Direction,
+  FlowConfig,
+  ProposalPricing,
+  ProposalSetup,
+  ProposalType,
+  Stablecoin,
+} from "@/flow-tool/data/schema";
+import { getFlow } from "@/flow-tool/data";
 import { TRACE_REPS, getRep } from "@/flow-tool/data/reps";
-import { QUESTIONS, type IntakeAnswers } from "@/flow-tool/intake/questions";
-import { resolve, NO_MATCH_MESSAGE } from "@/flow-tool/intake/resolver";
+import type { IntakeAnswers } from "@/flow-tool/intake/questions";
+import { resolve } from "@/flow-tool/intake/resolver";
 import { createShareLink, isShareConfigured } from "@/flow-tool/lib/share";
+import { loadRepKey } from "@/flow-tool/lib/rep-session";
 import { normalizeLogo } from "@/flow-tool/lib/logo";
 import { downloadProposalPdf } from "@/flow-tool/lib/proposal";
 import { defaultProposalDate, saveSetup } from "@/flow-tool/lib/setup";
+import { CommandPalette, type PaletteAction } from "@/components/CommandPalette";
+import { FlowLibrary, type StudioMode } from "@/components/FlowLibrary";
+import { PricingEditor } from "@/components/PricingEditor";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Rep-side build rail (design handoff 3b structure + 3a ⌘K palette + 2b pricing
+// editor). A 344px fixed left rail with a three-step stepper — Deal → Client →
+// Present — over the untouched client-facing canvas. Everything the old panel
+// did survives; it is only re-arranged into steps.
+// ─────────────────────────────────────────────────────────────────────────────
 
 const PROPOSAL_LABELS: Record<ProposalType, string> = {
   standard: "Standard",
@@ -19,8 +38,6 @@ const PROPOSAL_LABELS: Record<ProposalType, string> = {
 // of a one-colour mark), Card (keep brand colours on a white chip).
 type LogoTreatment = "auto" | "white" | "mint" | "card";
 
-type Mode = "intake" | "manual";
-
 const COLLECTED: Currency[] = ["BRL"];
 const DELIVERED: Currency[] = ["USD/EUR", "USD", "EUR"];
 const STABLECOINS: { value: Stablecoin; label: string }[] = [
@@ -29,10 +46,54 @@ const STABLECOINS: { value: Stablecoin; label: string }[] = [
   { value: "USDT", label: "USDT" },
 ];
 
+const STEPS = [
+  { id: "deal", label: "Deal" },
+  { id: "client", label: "Client" },
+  { id: "present", label: "Present" },
+] as const;
+
 /** Does the selected flow move a stablecoin (so the coin choice is relevant)? */
 function usesStablecoin(flowId: string): boolean {
   const flow = getFlow(flowId);
   return !!flow?.legs.some((l) => l.carries === "USDC/USDT" || l.convertsTo === "USDC/USDT");
+}
+
+// ── inline icons (DS: no emoji; Lucide-style 2px strokes) ───────────────────
+
+function CheckIcon({ size = 13, strokeWidth = 3 }: { size?: number; strokeWidth?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+function XIcon({ size = 11 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <path d="M18 6 6 18M6 6l12 12" />
+    </svg>
+  );
+}
+function PlusIcon({ size = 11 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+function PlayIcon({ size = 10 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M7 4.5v15l13-7.5z" />
+    </svg>
+  );
+}
+function ChevronIcon({ dir, size = 14 }: { dir: "left" | "right"; size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      {dir === "left" ? <polyline points="15 18 9 12 15 6" /> : <polyline points="9 18 15 12 9 6" />}
+    </svg>
+  );
 }
 
 export function ControlPanel({
@@ -43,6 +104,10 @@ export function ControlPanel({
   onSetupChange,
   proposalFlows,
   onProposalFlowsChange,
+  pricing,
+  onPricingChange,
+  sandbox = false,
+  onSandboxChange,
 }: {
   config: FlowConfig;
   onConfigChange: (next: FlowConfig) => void;
@@ -51,9 +116,16 @@ export function ControlPanel({
   onSetupChange?: (next: ProposalSetup) => void;
   proposalFlows?: { flowId: string; name: string }[];
   onProposalFlowsChange?: (next: { flowId: string; name: string }[]) => void;
+  pricing: ProposalPricing;
+  onPricingChange: (next: ProposalPricing) => void;
+  /** Sandbox mode: generated links are tagged and kept off the pipeline. */
+  sandbox?: boolean;
+  onSandboxChange?: (v: boolean) => void;
 }) {
   const [open, setOpen] = useState(true);
-  const [mode, setMode] = useState<Mode>("intake");
+  const [step, setStep] = useState(0);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [studio, setStudio] = useState<StudioMode | null>(null); // flow studio overlay
   const [answers, setAnswers] = useState<IntakeAnswers>({});
   const [share, setShare] = useState<{ status: "idle" | "loading" | "done" | "error"; url?: string; msg?: string; copied?: boolean }>({ status: "idle" });
   const [pdf, setPdf] = useState<"idle" | "working" | "error">("idle");
@@ -65,6 +137,21 @@ export function ControlPanel({
   const proposalType: ProposalType = setup?.proposalType ?? "standard";
   const proposalDate = setup?.date ?? defaultProposalDate();
   const traceRepId = setup?.traceRepId ?? TRACE_REPS[0]?.id;
+
+  // ⌘K / ctrl+K toggles the palette anywhere on /build; Escape is handled by
+  // the palette itself.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen((o) => !o);
+      } else if (e.key === "Escape") {
+        setPaletteOpen(false);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   // Edit the proposal setup in place (creating it from the live config if the
   // salesperson skipped the intro page), and persist it for this session.
@@ -103,14 +190,30 @@ export function ControlPanel({
     setShare({ status: "loading" });
     try {
       const list = proposalFlowList();
+      // Attach the closing contact card from the selected Trace rep so the shared
+      // view actually shows "your contact" (the client link has no other source).
+      const rep = getRep(traceRepId);
+      const salesperson = rep
+        ? { name: rep.name, title: rep.title, email: rep.email }
+        : undefined;
       const shareConfig = {
         ...config,
         variants: list.length > 1 ? list : undefined,
         proposalType,
         date: proposalDate,
         traceRepId,
+        salesperson,
+        // 2b pricing: the shared view's new renderer consumes the raw
+        // ProposalPricing directly (legacy region/cards rows from pre-existing
+        // links keep the old renderer).
+        pricing,
+        // 2c client-link gate: the password is auto-set to the client's company
+        // name at share time (the rep communicates it; the UI never says so).
+        gatePassword: config.clientName.trim() || undefined,
+        // Sandbox links are tagged so the dashboard keeps them off the pipeline.
+        sandbox: sandbox || undefined,
       };
-      const { code } = await createShareLink(shareConfig as FlowConfig);
+      const { code } = await createShareLink(shareConfig as unknown as FlowConfig);
       const url = `${window.location.origin}/f/${code}`;
       setShare({ status: "done", url });
     } catch (err) {
@@ -134,6 +237,8 @@ export function ControlPanel({
         collected: config.collected,
         delivered: config.delivered,
         rep: getRep(traceRepId),
+        pricing,
+        assetAuth: { repKey: loadRepKey() ?? undefined },
       });
       setPdf("idle");
     } catch {
@@ -188,243 +293,341 @@ export function ControlPanel({
     setTimeout(() => setShare((s) => ({ ...s, copied: false })), 1600);
   }
 
+  const paletteActions: PaletteAction[] = [
+    { id: "add-flow", label: "Add current flow to proposal", icon: "plus", run: addCurrentFlow },
+    { id: "studio-describe", label: "Describe the deal", icon: "plus", run: () => setStudio("describe") },
+    { id: "studio-browse", label: "Browse all flows", icon: "plus", run: () => setStudio("browse") },
+    {
+      id: "generate-link",
+      label: "Generate client link",
+      icon: "link",
+      run: () => {
+        setStep(2);
+        setOpen(true);
+        void generateProposal();
+      },
+    },
+    { id: "present", label: "Present", icon: "play", run: onPresent },
+  ];
+
+  const palette = (
+    <>
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        onSelectFlow={(flowId) => patch({ flowId })}
+        actions={paletteActions}
+      />
+      <FlowLibrary
+        open={studio !== null}
+        initialMode={studio ?? "describe"}
+        onClose={() => setStudio(null)}
+        clientName={config.clientName}
+        deck={flows}
+        onDeckChange={(next) => onProposalFlowsChange?.(next)}
+        previewId={config.flowId}
+        onPreview={(flowId) => patch({ flowId })}
+        answers={answers}
+        onAnswer={answer}
+        onResetAnswers={() => setAnswers({})}
+        resolution={resolution}
+      />
+    </>
+  );
+
+  if (!open) {
+    return (
+      <>
+        {palette}
+        <button
+          onClick={() => setOpen(true)}
+          className="fixed left-4 top-4 z-50 flex items-center gap-2 rounded-lg border border-hairline-card bg-[#0c110f]/90 px-3 py-2 text-sm font-semibold text-title backdrop-blur transition duration-150 ease-ds hover:border-hairline-control"
+        >
+          Trace Flow
+          <span className="text-muted">
+            <ChevronIcon dir="right" />
+          </span>
+        </button>
+      </>
+    );
+  }
+
   return (
-    <div className="fixed left-4 top-4 z-50 w-[340px] max-w-[calc(100vw-2rem)] rounded-xl border border-node-stroke bg-[#0c110f]/95 text-node-text shadow-2xl backdrop-blur">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between rounded-t-xl px-4 py-3 text-left"
-      >
-        <span className="text-sm font-semibold text-title">Trace Flow — configure</span>
-        <span className="text-muted">{open ? "▾" : "▸"}</span>
-      </button>
-
-      {open && (
-        <div className="max-h-[calc(100vh-6rem)] overflow-y-auto px-4 pb-4">
-          {/* mode toggle */}
-          <div className="mb-4 grid grid-cols-2 gap-1 rounded-lg bg-node-fill p-1">
-            {(["intake", "manual"] as Mode[]).map((m) => (
-              <button
-                key={m}
-                onClick={() => setMode(m)}
-                className={`rounded-md px-2 py-1.5 text-xs font-medium transition ${
-                  mode === m ? "bg-green-accent text-[#06120c]" : "text-subtitle hover:text-title"
-                }`}
-              >
-                {m === "intake" ? "Describe the deal" : "Pick manually"}
-              </button>
-            ))}
-          </div>
-
-          {mode === "intake" ? (
-            <IntakeForm answers={answers} onAnswer={answer} resolution={resolution} />
-          ) : (
-            <ManualPicker selected={config.flowId} onSelect={(flowId) => patch({ flowId })} />
-          )}
-
-          {/* Proposal flows — add the flow on screen straight into the deck, right
-              here so you never scroll to the bottom to stack flows. */}
-          <div className="mt-4 rounded-lg border border-node-stroke bg-node-fill/40 p-2.5">
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">
-                Proposal flows{flows.length ? ` · ${flows.length}` : ""}
-              </span>
-              {(() => {
-                const added = flows.some((x) => x.flowId === config.flowId);
-                return (
-                  <button
-                    onClick={addCurrentFlow}
-                    disabled={added}
-                    className="shrink-0 rounded-md bg-green-accent px-2.5 py-1 text-[11px] font-semibold text-[#06120c] transition hover:brightness-110 disabled:cursor-default disabled:bg-green-fill disabled:text-green-accent"
-                  >
-                    {added ? "Added ✓" : "+ Add this flow"}
-                  </button>
-                );
-              })()}
-            </div>
-            {flows.length === 0 ? (
-              <p className="text-[10px] leading-snug text-muted">
-                Empty → the deck uses the flow on screen. Add flows to stack several.
-              </p>
-            ) : (
-              <div className="flex flex-wrap gap-1.5">
-                {flows.map((f, i) => (
-                  <span
-                    key={f.flowId}
-                    className="flex items-center gap-1.5 rounded-md border border-node-stroke bg-node-fill px-2 py-1 text-[11px] text-title"
-                  >
-                    <span className="text-muted">{i + 1}</span>
-                    <span className="max-w-[150px] truncate">{f.name}</span>
-                    <button onClick={() => removeFlow(f.flowId)} className="text-muted transition hover:text-title">
-                      ✕
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* client fields */}
-          <div className="mt-5 space-y-3 border-t border-node-stroke pt-4">
-            <Field label="Client name">
-              <input
-                value={config.clientName}
-                onChange={(e) => patch({ clientName: e.target.value })}
-                className="w-full rounded-md border border-node-stroke bg-node-fill px-2 py-1.5 text-sm text-title outline-none focus:border-green-accent"
-              />
-            </Field>
-
-            <Field label="Client representative">
-              <input
-                value={config.clientRep ?? ""}
-                onChange={(e) => patch({ clientRep: e.target.value })}
-                placeholder="e.g. Maria Silva, Head of Finance"
-                className="w-full rounded-md border border-node-stroke bg-node-fill px-2 py-1.5 text-sm text-title outline-none placeholder:text-muted focus:border-green-accent"
-              />
-            </Field>
-
-            <Field label="Client logo">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={onLogo}
-                className="w-full text-xs text-subtitle file:mr-2 file:rounded file:border-0 file:bg-node-fill file:px-2 file:py-1 file:text-subtitle"
-              />
-            </Field>
-
-            {config.clientLogoUrl && (
-              <Field label="Logo on dark">
-                <div
-                  className={`mb-2 flex h-11 items-center justify-center rounded-md px-3 ${config.clientLogoPlate === "light" ? "bg-white" : ""}`}
-                  style={config.clientLogoPlate === "light" ? undefined : { background: "radial-gradient(70% 70% at 50% 50%, #15392d 0%, #0b1714 75%)" }}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={config.clientLogoUrl} alt="logo preview" className="h-8 w-auto max-w-[160px] object-contain" />
-                </div>
-                <div className="grid grid-cols-4 gap-1 rounded-lg bg-node-fill p-1">
-                  {([["auto", "Auto"], ["white", "White"], ["mint", "Mint"], ["card", "Card"]] as [LogoTreatment, string][]).map(
-                    ([t, label]) => (
-                      <button
-                        key={t}
-                        onClick={() => applyTreatment(t)}
-                        className={`rounded-md px-1 py-1.5 text-xs font-medium transition ${
-                          treatment === t ? "bg-green-accent text-[#06120c]" : "text-subtitle hover:text-title"
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    ),
-                  )}
-                </div>
-                <p className="mt-1 text-[10px] leading-snug text-muted">
-                  Background removed automatically. White/Mint repaint a one-colour mark to read on dark; Card keeps brand colours on a white chip.
-                </p>
-              </Field>
-            )}
-
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Collected">
-                <Select value={config.collected} options={COLLECTED} onChange={(v) => patch({ collected: v as Currency })} />
-              </Field>
-              <Field label="Delivered">
-                <Select value={config.delivered} options={DELIVERED} onChange={(v) => patch({ delivered: v as Currency })} />
-              </Field>
-            </div>
-
-            <Field label="Direction">
-              <div className="grid grid-cols-2 gap-1 rounded-lg bg-node-fill p-1">
-                {(["collection", "disbursement"] as Direction[]).map((d) => (
-                  <button
-                    key={d}
-                    onClick={() => patch({ direction: d })}
-                    className={`rounded-md px-2 py-1.5 text-xs font-medium transition ${
-                      config.direction === d ? "bg-green-accent text-[#06120c]" : "text-subtitle hover:text-title"
-                    }`}
-                  >
-                    {d === "collection" ? "Pay-in" : "Pay-out"}
-                  </button>
-                ))}
-              </div>
-            </Field>
-
-            {usesStablecoin(config.flowId) && (
-              <Field label="Stablecoin">
-                <div className="grid grid-cols-3 gap-1 rounded-lg bg-node-fill p-1">
-                  {STABLECOINS.map((s) => (
-                    <button
-                      key={s.value}
-                      onClick={() => patch({ stablecoin: s.value })}
-                      className={`rounded-md px-2 py-1.5 text-xs font-medium transition ${
-                        config.stablecoin === s.value ? "bg-green-accent text-[#06120c]" : "text-subtitle hover:text-title"
-                      }`}
-                    >
-                      {s.label}
-                    </button>
-                  ))}
-                </div>
-              </Field>
-            )}
-          </div>
-
+    <>
+      {palette}
+      <div className="fixed inset-y-0 left-0 z-50 flex w-[344px] max-w-[calc(100vw-2rem)] flex-col border-r border-hairline-row bg-[#090d0b]/[.96] backdrop-blur">
+        {/* header */}
+        <div className="flex items-center gap-2 px-5 pb-4 pt-5">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/assets/trace_logo.png" alt="" className="h-[19px] w-auto shrink-0" />
+          <span className="min-w-0 flex-1 truncate font-display text-[13.5px] font-semibold tracking-[-0.01em] text-title">
+            Building for {config.clientName.trim() || "your client"}
+          </span>
+          <button
+            onClick={() => setPaletteOpen(true)}
+            title="Command palette (⌘K)"
+            className="shrink-0 rounded-md border border-hairline-control px-2 py-1 font-mono text-[10.5px] font-medium text-[#8b948f] transition duration-150 ease-ds hover:text-title"
+          >
+            ⌘K
+          </button>
           <button
             onClick={onPresent}
-            className="mt-5 w-full rounded-lg bg-green-accent px-3 py-2 text-sm font-semibold text-[#06120c] transition hover:brightness-110"
+            className="flex shrink-0 items-center gap-1.5 rounded-lg bg-mint px-2.5 py-1.5 text-xs font-semibold text-mint-on transition duration-150 ease-ds hover:bg-mint-hover active:bg-mint-press"
           >
-            Present ▶
+            <PlayIcon />
+            Present
           </button>
+          <button
+            onClick={() => setOpen(false)}
+            aria-label="Collapse panel"
+            className="shrink-0 rounded-md p-1 text-muted transition duration-150 ease-ds hover:text-title"
+          >
+            <ChevronIcon dir="left" />
+          </button>
+        </div>
 
-          {/* ── Generate: proposal type + Trace rep, then link + PDF ── */}
-          <div className="mt-4 border-t border-node-stroke pt-4">
-            <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted">Generate proposal</div>
+        {/* sandbox mode — tag generated links so they stay off the pipeline */}
+        {onSandboxChange && (
+          <button
+            onClick={() => onSandboxChange(!sandbox)}
+            aria-pressed={sandbox}
+            className={`mx-5 mb-4 flex items-center gap-2.5 rounded-[10px] border px-3 py-2 text-left transition duration-150 ease-ds ${
+              sandbox
+                ? "border-[#e6b566]/50 bg-[#241d10]"
+                : "border-hairline-card bg-transparent hover:border-hairline-control"
+            }`}
+          >
+            <span
+              className={`relative h-[16px] w-[28px] shrink-0 rounded-full transition duration-150 ease-ds ${sandbox ? "bg-[#e6b566]" : "bg-hairline-control"}`}
+            >
+              <span
+                className={`absolute top-[2px] h-[12px] w-[12px] rounded-full bg-[#0c110f] transition-all duration-150 ease-ds ${sandbox ? "left-[14px]" : "left-[2px]"}`}
+              />
+            </span>
+            <span className="min-w-0">
+              <span className={`block text-[11.5px] font-semibold ${sandbox ? "text-[#e6b566]" : "text-subtitle"}`}>
+                Sandbox{sandbox ? " on" : ""}
+              </span>
+              <span className="block text-[10px] leading-snug text-muted">
+                {sandbox ? "Links you generate stay off your pipeline." : "Experiment without touching your pipeline."}
+              </span>
+            </span>
+          </button>
+        )}
 
-            {/* type + rep pickers */}
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-1 rounded-lg bg-node-fill p-1">
-                {(["standard", "brazil-market"] as ProposalType[]).map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => patchSetup({ proposalType: t })}
-                    className={`rounded-md px-2 py-1.5 text-xs font-medium transition ${
-                      proposalType === t ? "bg-green-accent text-[#06120c]" : "text-subtitle hover:text-title"
+        {/* stepper */}
+        <div className="flex items-center px-6 pb-5">
+          {STEPS.map((s, i) => {
+            const state = i < step ? "done" : i === step ? "active" : "upcoming";
+            return (
+              <div key={s.id} className="contents">
+                {i > 0 && (
+                  <span className={`mx-1.5 mb-[16px] h-[1.5px] flex-1 ${i <= step ? "bg-hairline-minted" : "bg-hairline-control"}`} />
+                )}
+                <button onClick={() => setStep(i)} className="flex flex-col items-center gap-1.5">
+                  <span
+                    className={`flex h-7 w-7 items-center justify-center rounded-full font-mono text-xs transition duration-200 ease-ds ${
+                      state === "done"
+                        ? "border border-hairline-minted bg-status-viewedBg text-mint"
+                        : state === "active"
+                          ? "bg-mint font-bold text-mint-on"
+                          : "border border-hairline-control bg-node-fill font-semibold text-muted"
                     }`}
                   >
-                    {PROPOSAL_LABELS[t]}
-                  </button>
-                ))}
+                    {state === "done" ? <CheckIcon /> : i + 1}
+                  </span>
+                  <span
+                    className={`text-[10px] ${
+                      state === "active" ? "font-semibold text-[#bfe8d4]" : state === "done" ? "font-medium text-mint-muted" : "font-medium text-muted"
+                    }`}
+                  >
+                    {s.label}
+                  </span>
+                </button>
               </div>
+            );
+          })}
+        </div>
 
-              <Field label="Trace representative">
-                <select
-                  value={traceRepId}
-                  onChange={(e) => patchSetup({ traceRepId: e.target.value })}
-                  className="w-full rounded-md border border-node-stroke bg-node-fill px-2 py-1.5 text-sm text-title outline-none focus:border-green-accent"
-                >
-                  {TRACE_REPS.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.name}
-                    </option>
-                  ))}
-                </select>
-              </Field>
+        {/* step content */}
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4">
+          {step === 0 && (
+            <DealStep
+              resolution={resolution}
+              selectedFlowId={config.flowId}
+              flows={flows}
+              onAdd={addCurrentFlow}
+              onRemove={removeFlow}
+              onOpenStudio={setStudio}
+            />
+          )}
+
+          {step === 1 && (
+            <div>
+              <StepTitle title="Who's the client?" sub="Shown on the deck. You can edit any of this later." />
+              <div className="space-y-4">
+                <Field label="Company">
+                  <input
+                    value={config.clientName}
+                    onChange={(e) => patch({ clientName: e.target.value })}
+                    className="w-full rounded-[9px] border border-hairline-control bg-surface-input px-3 py-2.5 text-sm font-medium text-title outline-none transition duration-150 ease-ds focus:border-hairline-selected"
+                  />
+                </Field>
+
+                <Field label="Point of contact">
+                  <input
+                    value={config.clientRep ?? ""}
+                    onChange={(e) => patch({ clientRep: e.target.value })}
+                    placeholder="e.g. Maria Silva, Head of Finance"
+                    className="w-full rounded-[9px] border border-hairline-control bg-surface-input px-3 py-2.5 text-sm text-title outline-none transition duration-150 ease-ds placeholder:text-muted focus:border-hairline-selected"
+                  />
+                </Field>
+
+                <Field label="Logo">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={onLogo}
+                    className="w-full text-xs text-subtitle file:mr-2 file:rounded-md file:border-0 file:bg-node-fill file:px-2.5 file:py-1.5 file:text-subtitle"
+                  />
+                </Field>
+
+                {config.clientLogoUrl && (
+                  <Field label="Logo on dark">
+                    <div
+                      className={`mb-2 flex h-11 items-center justify-center rounded-lg px-3 ${config.clientLogoPlate === "light" ? "bg-white" : ""}`}
+                      style={config.clientLogoPlate === "light" ? undefined : { background: "radial-gradient(70% 70% at 50% 50%, #15392d 0%, #0b1714 75%)" }}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={config.clientLogoUrl} alt="logo preview" className="h-8 w-auto max-w-[160px] object-contain" />
+                    </div>
+                    <Segmented
+                      value={treatment}
+                      options={[
+                        { value: "auto", label: "Auto" },
+                        { value: "white", label: "White" },
+                        { value: "mint", label: "Mint" },
+                        { value: "card", label: "Card" },
+                      ]}
+                      onChange={(t) => void applyTreatment(t)}
+                    />
+                    <p className="mt-1.5 text-[10.5px] leading-snug text-muted">
+                      Background removed automatically. White/Mint repaint a one-colour mark to read on dark; Card keeps brand colours on a white chip.
+                    </p>
+                  </Field>
+                )}
+
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Collected">
+                    <Select value={config.collected} options={COLLECTED} onChange={(v) => patch({ collected: v as Currency })} />
+                  </Field>
+                  <Field label="Delivered">
+                    <Select value={config.delivered} options={DELIVERED} onChange={(v) => patch({ delivered: v as Currency })} />
+                  </Field>
+                </div>
+
+                <Field label="Direction">
+                  <Segmented
+                    value={config.direction}
+                    options={[
+                      { value: "collection" as Direction, label: "Pay-in" },
+                      { value: "disbursement" as Direction, label: "Pay-out" },
+                    ]}
+                    onChange={(d) => patch({ direction: d })}
+                  />
+                </Field>
+
+                {usesStablecoin(config.flowId) && (
+                  <Field label="Stablecoin">
+                    <Segmented
+                      value={config.stablecoin}
+                      options={STABLECOINS}
+                      onChange={(s) => patch({ stablecoin: s })}
+                    />
+                  </Field>
+                )}
+              </div>
             </div>
+          )}
 
-            {/* generate */}
-            <div className="mt-4 space-y-2">
+          {step === 2 && (
+            <div>
+              <StepTitle title="Present and share" sub="Template, your contact slide, and the rates the client sees." />
+              <div className="space-y-4">
+                <Field label="Proposal template">
+                  <Segmented
+                    value={proposalType}
+                    options={(["standard", "brazil-market"] as ProposalType[]).map((t) => ({ value: t, label: PROPOSAL_LABELS[t] }))}
+                    onChange={(t) => patchSetup({ proposalType: t })}
+                  />
+                </Field>
+
+                <Field label="Trace representative">
+                  <select
+                    value={traceRepId}
+                    onChange={(e) => patchSetup({ traceRepId: e.target.value })}
+                    className="w-full rounded-[9px] border border-hairline-control bg-surface-input px-3 py-2.5 text-sm text-title outline-none transition duration-150 ease-ds focus:border-hairline-selected"
+                  >
+                    {TRACE_REPS.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+
+                <PricingEditor pricing={pricing} onChange={onPricingChange} proposalType={proposalType} />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* footer */}
+        <div className="border-t border-hairline-row px-5 pb-5 pt-3.5">
+          <p className="mb-3 text-[11px] leading-snug text-[#5c6b65]">The client sees only this canvas. The rail is yours.</p>
+
+          {step < 2 ? (
+            <div className="flex gap-2">
               <button
-                onClick={downloadPdf}
-                disabled={pdf === "working"}
-                className="w-full rounded-lg bg-green-accent px-3 py-2 text-sm font-semibold text-[#06120c] transition hover:brightness-110 disabled:opacity-60"
+                onClick={() => setStep((s) => Math.max(0, s - 1))}
+                disabled={step === 0}
+                className="rounded-[10px] border border-hairline-control px-3.5 py-2.5 text-[13px] font-semibold text-[#8b948f] transition duration-150 ease-ds enabled:hover:text-title disabled:opacity-40"
               >
-                {pdf === "working" ? "Building proposal…" : pdf === "error" ? "Try again" : "Download proposal PDF ↓"}
+                Back
               </button>
+              <button
+                onClick={() => setStep((s) => Math.min(2, s + 1))}
+                className="flex-1 rounded-[10px] bg-mint px-3 py-2.5 text-[13px] font-semibold text-mint-on transition duration-150 ease-ds hover:bg-mint-hover active:bg-mint-press"
+              >
+                {step === 1 ? "Continue to Present →" : "Continue →"}
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setStep(1)}
+                  className="rounded-[10px] border border-hairline-control px-3.5 py-2.5 text-[13px] font-semibold text-[#8b948f] transition duration-150 ease-ds hover:text-title"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={downloadPdf}
+                  disabled={pdf === "working"}
+                  className="flex-1 rounded-[10px] bg-mint px-3 py-2.5 text-[13px] font-semibold text-mint-on transition duration-150 ease-ds hover:bg-mint-hover active:bg-mint-press disabled:opacity-60"
+                >
+                  {pdf === "working" ? "Building proposal…" : pdf === "error" ? "Try again" : "Download proposal PDF"}
+                </button>
+              </div>
 
               {isShareConfigured() ? (
                 <>
                   <button
                     onClick={generateProposal}
                     disabled={share.status === "loading"}
-                    className="w-full rounded-lg border border-green-accent/50 px-3 py-2 text-sm font-medium text-green-accent transition hover:bg-green-fill disabled:opacity-60"
+                    className="w-full rounded-[10px] border border-mint/50 px-3 py-2.5 text-[13px] font-medium text-mint transition duration-150 ease-ds hover:bg-mint/10 disabled:opacity-60"
                   >
-                    {share.status === "loading" ? "Generating…" : "Generate client link 🔗"}
+                    {share.status === "loading" ? "Generating…" : "Generate client link"}
                   </button>
                   {share.status === "done" && share.url && (
                     <div className="space-y-1.5">
@@ -433,112 +636,149 @@ export function ControlPanel({
                           readOnly
                           value={share.url}
                           onFocus={(e) => e.target.select()}
-                          className="w-full rounded-md border border-node-stroke bg-node-fill px-2 py-1.5 text-[11px] text-subtitle outline-none"
+                          className="w-full rounded-md border border-hairline-control bg-surface-input px-2 py-1.5 font-mono text-[11px] text-subtitle outline-none"
                         />
                         <button
                           onClick={copyLink}
-                          className="shrink-0 rounded-md bg-green-accent px-2.5 py-1.5 text-xs font-semibold text-[#06120c] transition hover:brightness-110"
+                          className="shrink-0 rounded-md bg-mint px-2.5 py-1.5 text-xs font-semibold text-mint-on transition duration-150 ease-ds hover:bg-mint-hover"
                         >
-                          {share.copied ? "✓" : "Copy"}
+                          {share.copied ? "Copied" : "Copy"}
                         </button>
                       </div>
-                      <p className="text-[10px] leading-snug text-muted">
-                        View-only proposal for {config.clientName} — flows, pricing and your contact card.
+                      <p className={`text-[10px] leading-snug ${sandbox ? "text-[#e6b566]" : "text-muted"}`}>
+                        {sandbox
+                          ? "Sandbox link: it works like the real thing but stays off your pipeline."
+                          : `View-only proposal for ${config.clientName}: the flows, pricing, and your contact card.`}
                       </p>
                     </div>
                   )}
-                  {share.status === "error" && <p className="text-[11px] text-[#e6b566]">⚑ {share.msg}</p>}
+                  {share.status === "error" && <p className="text-[11px] text-status-draftFg">{share.msg}</p>}
                 </>
               ) : (
                 <p className="text-[11px] leading-snug text-muted">
-                  Client links need <code className="text-subtitle">NEXT_PUBLIC_SUPABASE_ANON_KEY</code>. The PDF works without it.
+                  Client links need <code className="font-mono text-subtitle">NEXT_PUBLIC_SUPABASE_ANON_KEY</code>. The PDF works without it.
                 </p>
               )}
             </div>
-          </div>
+          )}
         </div>
-      )}
-    </div>
+      </div>
+    </>
   );
 }
 
-function IntakeForm({
-  answers,
-  onAnswer,
+// ── Step 1: Deal — intake / manual picker + the proposal-flow stack ──────────
+
+// The Deal step is a launcher into the Flow Studio (design 3c): the rail stays
+// lean; describing the deal and browsing the library happen in the dedicated
+// full-screen space. Here: the two entry points, what's on canvas, and the deck.
+function DealStep({
   resolution,
+  selectedFlowId,
+  flows,
+  onAdd,
+  onRemove,
+  onOpenStudio,
 }: {
-  answers: IntakeAnswers;
-  onAnswer: (qid: string, value: string) => void;
   resolution: ReturnType<typeof resolve>;
+  selectedFlowId: string;
+  flows: { flowId: string; name: string }[];
+  onAdd: () => void;
+  onRemove: (id: string) => void;
+  onOpenStudio: (mode: StudioMode) => void;
 }) {
+  const added = flows.some((x) => x.flowId === selectedFlowId);
+  const current = getFlow(selectedFlowId);
   return (
-    <div className="space-y-4">
-      {QUESTIONS.map((q) => (
-        <div key={q.id}>
-          <div className="mb-1.5 flex items-baseline justify-between gap-2">
-            <label className="text-xs font-medium text-title">{q.prompt}</label>
-            <span className="shrink-0 text-[10px] uppercase tracking-wide text-muted">{q.source}</span>
-          </div>
-          <div className="space-y-1">
-            {q.options.map((o) => (
-              <button
-                key={o.value}
-                onClick={() => onAnswer(q.id, o.value)}
-                className={`block w-full rounded-md border px-2 py-1.5 text-left text-xs transition ${
-                  answers[q.id] === o.value
-                    ? "border-green-accent bg-green-fill text-green-text"
-                    : "border-node-stroke bg-node-fill text-subtitle hover:border-leg"
-                }`}
+    <div>
+      <StepTitle title="What's the deal?" sub="Answer a few plain questions and the right flow resolves itself." />
+
+      <button
+        onClick={() => onOpenStudio("describe")}
+        className="flex w-full items-center justify-between rounded-xl bg-mint px-4 py-3.5 text-left transition duration-150 ease-ds hover:bg-mint-hover"
+      >
+        <span>
+          <span className="block text-[13.5px] font-semibold text-mint-on">Describe the deal</span>
+          <span className="block text-[11px] text-mint-on/70">Plain-language questions, resolved live</span>
+        </span>
+        <span className="font-mono text-[13px] text-mint-on">&rarr;</span>
+      </button>
+      <button
+        onClick={() => onOpenStudio("browse")}
+        className="mt-2 flex w-full items-center justify-between rounded-xl border border-hairline-control px-4 py-3 text-left transition duration-150 ease-ds hover:border-mint/40"
+      >
+        <span className="text-[12.5px] font-medium text-subtitle">Browse all flows</span>
+        <span className="font-mono text-[12px] text-muted">13</span>
+      </button>
+
+      {/* what's on the canvas right now */}
+      <div className="mt-4 rounded-xl border border-hairline-card bg-node-fill/40 p-3">
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <span className="font-mono text-[10px] font-medium uppercase tracking-[.1em] text-mint-muted">On canvas</span>
+          {resolution.status === "exact" && (
+            <span className="flex items-center gap-1 font-mono text-[9.5px] uppercase tracking-wide text-mint">
+              <CheckIcon size={9} /> resolved
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="rounded-md border border-hairline-control px-1.5 py-0.5 font-mono text-[10.5px] font-medium text-mint">
+            {current?.displayId ?? "?"}
+          </span>
+          <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-title">{current?.title ?? selectedFlowId}</span>
+          <button
+            onClick={onAdd}
+            disabled={added}
+            className="flex shrink-0 items-center gap-1 rounded-md bg-mint px-2.5 py-1 text-[11px] font-semibold text-mint-on transition duration-150 ease-ds hover:bg-mint-hover disabled:cursor-default disabled:bg-status-viewedBg disabled:text-mint"
+          >
+            {added ? (
+              <>
+                <CheckIcon size={10} /> In deck
+              </>
+            ) : (
+              <>
+                <PlusIcon size={10} /> Add to deck
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* the deck so far */}
+      <div className="mt-3 rounded-xl border border-hairline-card bg-node-fill/40 p-3">
+        <span className="font-mono text-[10px] font-medium uppercase tracking-[.1em] text-mint-muted">
+          The deck{flows.length ? ` \u00b7 ${flows.length}` : ""}
+        </span>
+        {flows.length === 0 ? (
+          <p className="mt-1.5 text-[10.5px] leading-snug text-muted">
+            Empty deck presents just the flow on canvas. Add flows to stack several.
+          </p>
+        ) : (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {flows.map((f, i) => (
+              <span
+                key={f.flowId}
+                className="flex items-center gap-1.5 rounded-md border border-hairline-control bg-node-fill px-2 py-1 text-[11px] text-title"
               >
-                {o.label}
-              </button>
+                <span className="font-mono text-[10px] text-mint">{i + 1}</span>
+                <span className="max-w-[140px] truncate">{f.name}</span>
+                <button onClick={() => onRemove(f.flowId)} aria-label={`Remove ${f.name}`} className="text-muted transition hover:text-title">
+                  <XIcon size={9} />
+                </button>
+              </span>
             ))}
           </div>
-        </div>
-      ))}
-
-      {/* resolution feedback (Stage B) */}
-      <div className="rounded-lg border border-node-stroke bg-node-fill p-3 text-xs">
-        {resolution.status === "empty" && <span className="text-muted">Answer above to resolve a flow.</span>}
-        {resolution.status === "partial" && (
-          <span className="text-subtitle">
-            {resolution.candidates.length} flows still match — keep answering to narrow it down.
-          </span>
-        )}
-        {resolution.status === "exact" && resolution.config && (
-          <span className="text-green-accent">
-            ✓ Resolved to Flow {resolution.candidates[0].displayId} — {resolution.candidates[0].dials.model}.
-          </span>
-        )}
-        {resolution.status === "no-match" && (
-          <span className="text-[#e6b566]">⚑ {NO_MATCH_MESSAGE}</span>
         )}
       </div>
     </div>
   );
 }
 
-function ManualPicker({ selected, onSelect }: { selected: string; onSelect: (id: string) => void }) {
+function StepTitle({ title, sub }: { title: string; sub: string }) {
   return (
-    <div className="space-y-1">
-      {FLOWS.map((f) => (
-        <button
-          key={f.id}
-          onClick={() => onSelect(f.id)}
-          className={`block w-full rounded-md border px-2.5 py-2 text-left transition ${
-            selected === f.id
-              ? "border-green-accent bg-green-fill"
-              : "border-node-stroke bg-node-fill hover:border-leg"
-          }`}
-        >
-          <div className="flex items-baseline gap-2">
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted">Flow {f.displayId}</span>
-            <span className="text-[10px] text-muted">{f.dials.model}</span>
-          </div>
-          <div className="mt-0.5 text-xs font-semibold text-title">{f.title}</div>
-          <div className="mt-0.5 text-[11px] leading-snug text-muted">{f.blurb}</div>
-        </button>
-      ))}
+    <div className="mb-4">
+      <div className="font-display text-[17px] font-semibold tracking-[-0.01em] text-title">{title}</div>
+      <div className="mt-0.5 text-xs text-muted">{sub}</div>
     </div>
   );
 }
@@ -546,8 +786,38 @@ function ManualPicker({ selected, onSelect }: { selected: string; onSelect: (id:
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-muted">{label}</label>
+      <label className="mb-1.5 block text-[11px] font-medium text-[#8b948f]">{label}</label>
       {children}
+    </div>
+  );
+}
+
+/** DS segmented control: active = solid mint + dark text, inactive transparent. */
+function Segmented<T extends string>({
+  value,
+  options,
+  onChange,
+}: {
+  value: T;
+  options: { value: T; label: string }[];
+  onChange: (v: T) => void;
+}) {
+  return (
+    <div
+      className="grid gap-[3px] rounded-[10px] border border-hairline-card bg-surface-input p-[3px]"
+      style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
+    >
+      {options.map((o) => (
+        <button
+          key={o.value}
+          onClick={() => onChange(o.value)}
+          className={`rounded-[7px] px-1.5 py-[7px] text-xs transition duration-150 ease-ds ${
+            value === o.value ? "bg-mint font-semibold text-mint-on" : "font-medium text-[#8b948f] hover:text-title"
+          }`}
+        >
+          {o.label}
+        </button>
+      ))}
     </div>
   );
 }
@@ -557,7 +827,7 @@ function Select({ value, options, onChange }: { value: string; options: string[]
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full rounded-md border border-node-stroke bg-node-fill px-2 py-1.5 text-sm text-title outline-none focus:border-green-accent"
+      className="w-full rounded-[9px] border border-hairline-control bg-surface-input px-3 py-2.5 text-sm text-title outline-none transition duration-150 ease-ds focus:border-hairline-selected"
     >
       {options.map((o) => (
         <option key={o} value={o}>

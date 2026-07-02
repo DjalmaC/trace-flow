@@ -6,6 +6,9 @@ import { getRep } from "../data/reps";
 // dashboard exposes a "Switch" control that clears it.
 
 const KEY = "tf:rep-id";
+// The shared rep password, sent as x-tf-key on privileged API calls. Entered
+// once at login; identity-plus-a-lock, not per-user auth (see lib/api-auth).
+const PW_KEY = "tf:rep-key";
 
 export function saveRepId(id: string): void {
   try {
@@ -23,6 +26,22 @@ export function loadRepId(): string | null {
   }
 }
 
+export function saveRepKey(key: string): void {
+  try {
+    localStorage.setItem(PW_KEY, key);
+  } catch {
+    /* private mode — key just won't persist */
+  }
+}
+
+export function loadRepKey(): string | null {
+  try {
+    return localStorage.getItem(PW_KEY);
+  } catch {
+    return null;
+  }
+}
+
 export function loadRep(): TraceRep | undefined {
   return getRep(loadRepId() ?? undefined);
 }
@@ -30,6 +49,7 @@ export function loadRep(): TraceRep | undefined {
 export function clearRepId(): void {
   try {
     localStorage.removeItem(KEY);
+    localStorage.removeItem(PW_KEY);
   } catch {
     /* ignore */
   }

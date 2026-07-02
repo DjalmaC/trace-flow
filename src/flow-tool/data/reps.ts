@@ -3,14 +3,15 @@ import type { TraceRep } from "./schema";
 // ─────────────────────────────────────────────────────────────────────────────
 // Trace Finance salespeople roster.
 //
-// SOURCE OF TRUTH: "Trace Finance - Sales contact slides.pdf", copied into the
-// app at `public/proposals/sales-slides.pdf` — one slide per rep. `slidePage`
-// (0-based) points at each rep's pre-designed contact slide; at proposal-build
-// time that slide REPLACES the template's generic closing slide, fully designed
-// and pre-filled (see lib/proposal.ts).
+// SOURCE OF TRUTH: "Trace Finance - Sales contact slides.pdf", stored (outside
+// /public) at `private-assets/sales-slides.pdf` and served only through the
+// gated /api/asset route — one slide per rep. `slidePage` (0-based) points at
+// each rep's pre-designed contact slide; at proposal-build time that slide
+// REPLACES the template's generic closing slide, fully designed and pre-filled
+// (see lib/proposal.ts).
 //
-// To add a rep: add their slide to the deck, re-copy the PDF, and add an entry
-// here with the new slidePage.
+// To add a rep: add their slide to the deck, re-copy the PDF into private-assets,
+// and add an entry here with the new slidePage.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const TRACE_REPS: TraceRep[] = [

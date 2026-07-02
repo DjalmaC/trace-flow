@@ -115,8 +115,58 @@ export interface TraceRep {
   email?: string;
   phone?: string;
   linkedin?: string;
-  /** 0-based page index of this rep's slide in /public/proposals/sales-slides.pdf. */
+  /** 0-based page index of this rep's slide in private-assets/sales-slides.pdf. */
   slidePage?: number;
+}
+
+// ── Pricing (design handoff 2a/2b) ───────────────────────────────────────────
+// Drives the client's Pricing view and the PDF pricing page. Defaults come from
+// the proposal template ("deck"); the rep may override individual values or
+// rewrite entirely ("custom"). Tiers are volume bands in USD/month.
+
+export interface PriceTier {
+  /** Upper bound of the monthly-volume band in USD; null = "and above". */
+  max: number | null;
+  /** Pix: USD fee per payment. Spread: % over spot. */
+  value: number;
+}
+
+export interface PriceComponent {
+  type: "tiered" | "flat";
+  tiers: PriceTier[];
+  flat?: number;
+}
+
+export interface ProposalPricing {
+  mode: "deck" | "override" | "custom";
+  /** Pix API per-payment fee (USD/pix) by monthly volume. */
+  pix: PriceComponent;
+  /** FX spread (% over spot) by monthly volume. */
+  spread: PriceComponent;
+}
+
+/** True when the pricing is structurally and numerically the deck's own rates —
+ *  in that case the proposal PDF keeps its hand-designed template rate page. */
+export function pricingEqualsDeck(p: ProposalPricing): boolean {
+  const d = deckPricing();
+  const compEq = (a: PriceComponent, b: PriceComponent) =>
+    a.type === b.type &&
+    a.type === "tiered" &&
+    a.tiers.length === b.tiers.length &&
+    a.tiers.every((t, i) => t.max === b.tiers[i].max && t.value === b.tiers[i].value);
+  return compEq(p.pix, d.pix) && compEq(p.spread, d.spread);
+}
+
+/** The template ("deck") defaults — the 2a rate card. */
+export function deckPricing(): ProposalPricing {
+  const bands = [5_000_000, 10_000_000, 30_000_000, 50_000_000, null];
+  const pix = [0.1, 0.08, 0.06, 0.04, 0.02];
+  const spread = [0.7, 0.65, 0.55, 0.5, 0.35];
+  return {
+    mode: "deck",
+    pix: { type: "tiered", tiers: bands.map((max, i) => ({ max, value: pix[i] })) },
+    spread: { type: "tiered", tiers: bands.map((max, i) => ({ max, value: spread[i] })) },
+  };
 }
 
 /** The salesperson-private setup captured on the intro page, carried into the
@@ -165,8 +215,10 @@ export function settlementForm(rail: DialCoordinate["rail"]): "virtual-asset" | 
  */
 export function computeTraceRole(flow: Pick<Flow, "dials" | "legs">): TraceRole[] {
   const roles: TraceRole[] = [];
+  // Any stablecoin-bearing leg makes Trace a VASP — including the "USD/USDT"
+  // currency used by the Foreigner-to-BR pair (#11 / #11.1), not just "USDC/USDT".
   const hasVA = flow.legs.some((l) =>
-    [l.carries, l.convertsTo].some((c) => c === "USDC/USDT"),
+    [l.carries, l.convertsTo].some((c) => c === "USDC/USDT" || c === "USD/USDT"),
   );
   if (hasVA) roles.push("VASP");
 

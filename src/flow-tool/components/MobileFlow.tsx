@@ -73,6 +73,10 @@ export function MobileFlow({ flow, config }: { flow: Flow; config: FlowConfig })
 
   useEffect(() => {
     if (reduced || segCount === 0) return;
+    // Reset to the start: animate() reads keyframes from the CURRENT value, so
+    // switching flows mid-cycle would otherwise loop from wherever the coin was
+    // (e.g. 0.6→1 forever) and never traverse the new flow's full stack.
+    progress.set(0);
     const controls = animate(progress, 1, {
       duration: Math.max(2.6, segCount * 0.72),
       ease: "linear",

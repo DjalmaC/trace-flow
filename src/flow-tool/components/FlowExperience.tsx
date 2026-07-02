@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   motion,
   useMotionTemplate,
@@ -57,9 +57,27 @@ export function FlowExperience({
   forceStatic?: boolean;
 }) {
   const flow = getFlow(config.flowId);
-  const reduced = useReducedMotion();
+
+  // Reduced-motion is null during SSR and on the first client render, then true
+  // on a reduced-motion machine — branching on it directly would flip the whole
+  // tree between server and client and trip a hydration error on Vercel. Gate it
+  // behind a mount flag (same shape as useIsMobile) so first render always
+  // matches the server, then settle into the reduced layout after mount.
+  const rawReduced = useReducedMotion();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const reduced = mounted ? !!rawReduced : false;
   const animate = !reduced;
   const isMobile = useIsMobile();
+
+  // Layout only depends on the flow + travel direction; memoise on those so the
+  // machinery isn't re-laid-out (and its relay restarted) on every keystroke in
+  // the control panel, which hands down a fresh config object each render.
+  const layout = useMemo(
+    () => (flow ? computeLayout(flow, config) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [flow, config.direction],
+  );
 
   const sectionRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress: p } = useScroll({
@@ -83,20 +101,21 @@ export function FlowExperience({
   const veilOpacity = useTransform(p, [0, 0.4, 0.85], [0, 0.65, 0.12]);
   const hintOpacity = useTransform(p, [0, 0.08], [1, 0]);
 
-  if (!flow) {
+  if (!flow || !layout) {
     return <div className="p-8 text-node-text">Unknown flow: {config.flowId}</div>;
   }
 
   // One unified machinery diagram per flow — the full chain, always shown and
   // scaled to fit the deck (no collapse/expand split, no horizontal pan).
-  const layout = computeLayout(flow, config);
   const flowTag = `Flow ${flow.displayId} · ${flow.dials.model}`;
   const machineryVB = `0 ${CONT_Y - 12} ${layout.width} ${CONT_H + 30}`;
 
   const svgStyle = {
     display: "block",
     width: "100%",
-    fontFamily: "Inter, system-ui, Arial, sans-serif",
+    // real Inter via next/font's hashed family — the deck look stays Inter even
+    // though the app chrome moved to the DS fonts (DM Sans/Poppins).
+    fontFamily: "var(--font-inter), system-ui, Arial, sans-serif",
   } as const;
 
   const SurfaceSvg = <HeroFlow flow={flow} config={config} />;
@@ -106,6 +125,7 @@ export function FlowExperience({
       viewBox={machineryVB}
       preserveAspectRatio="xMidYMid meet"
       style={{ ...svgStyle, maxHeight: "64vh" }}
+      role="img"
       aria-label={`How Trace makes it happen — ${flow.title}`}
     >
       <Defs />
@@ -126,11 +146,11 @@ export function FlowExperience({
 
   const SurfaceHeading = (
     <div className="mx-auto mb-5 text-center" style={{ width: "min(36rem, calc(100vw - 2rem))" }}>
-      <div className="mb-2 text-[10px] font-medium uppercase tracking-[0.18em] text-[#6f8a7f] md:text-[13px] md:tracking-[0.34em]">
+      <div className="mb-2 font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[#6f8a7f] md:text-[12px] md:tracking-[0.34em]">
         The desired transaction
       </div>
-      <h1 className="text-3xl font-bold tracking-tight text-[#f2f5f3] md:text-5xl">
-        What <span className="text-[#5fd3a0]">{config.clientName}</span> wants
+      <h1 className="font-display text-3xl font-semibold tracking-[-0.01em] text-[#f2f5f3] md:text-5xl">
+        What <span className="text-mint">{config.clientName}</span> wants
       </h1>
       <p className="mt-3 text-sm font-normal text-[#8b948f] md:text-base">{support}</p>
     </div>
@@ -138,13 +158,13 @@ export function FlowExperience({
 
   const DepthHeading = (
     <div className="mx-auto mb-5 text-center" style={{ width: "min(36rem, calc(100vw - 2rem))" }}>
-      <div className="mb-2 text-[10px] font-medium uppercase tracking-[0.18em] text-muted md:text-[11px] md:tracking-[0.32em]">
+      <div className="mb-2 font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-muted md:text-[11px] md:tracking-[0.32em]">
         Beneath the surface
       </div>
-      <h2 className="text-2xl font-semibold tracking-tight text-title md:text-4xl">
+      <h2 className="font-display text-2xl font-semibold tracking-[-0.01em] text-title md:text-4xl">
         How Trace makes it happen
       </h2>
-      <p className="mt-2.5 text-sm font-medium text-[#5fd3a0] md:text-base">{flow.title}</p>
+      <p className="mt-2.5 text-sm font-medium text-mint md:text-base">{flow.title}</p>
     </div>
   );
 
@@ -158,6 +178,24 @@ export function FlowExperience({
           {only === "surface" ? SurfaceSvg : MachinerySvg}
         </div>
         <Lockup />
+      </div>
+    );
+  }
+
+  // ── phones: the flow re-laid-out VERTICALLY (no dive, no horizontal scroll) ──
+  // Checked before reduced-motion so a reduced-motion phone still gets the
+  // purpose-built mobile layout (MobileFlow honours reduced-motion internally)
+  // rather than the desktop machinery scaled down to phone width.
+  if (isMobile && !forceStatic) {
+    return (
+      <div className="w-full overflow-x-hidden px-4 pb-8 pt-2" style={{ background: deckGlow }}>
+        {/* On /build there's no other Pay-in/Pay-out control on a phone; the
+            shared /f/ view supplies its own toggle, so skip it in presentation. */}
+        {onDirectionChange && !presentation && (
+          <DirectionToggle direction={config.direction} onChange={onDirectionChange} fixed />
+        )}
+        {SurfaceHeading}
+        <MobileFlow flow={flow} config={config} />
       </div>
     );
   }
@@ -176,16 +214,6 @@ export function FlowExperience({
           <div className="w-full max-w-[1500px]">{MachinerySvg}</div>
         </section>
         <Lockup />
-      </div>
-    );
-  }
-
-  // ── phones: the flow re-laid-out VERTICALLY (no dive, no horizontal scroll) ──
-  if (isMobile) {
-    return (
-      <div className="w-full overflow-x-hidden px-4 pb-8 pt-2" style={{ background: deckGlow }}>
-        {SurfaceHeading}
-        <MobileFlow flow={flow} config={config} />
       </div>
     );
   }
@@ -272,6 +300,7 @@ function DirectionToggle({
         <button
           key={d}
           onClick={() => onChange(d)}
+          aria-pressed={direction === d}
           className={`rounded-lg px-[15px] py-[6px] text-[12.5px] font-medium tracking-[0.2px] transition ${
             direction === d ? "bg-[#46d39a24] text-[#bfe8d4]" : "text-[#8b948f] hover:text-[#bfe8d4]"
           }`}

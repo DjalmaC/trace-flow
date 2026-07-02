@@ -10,7 +10,16 @@ export function saveSetup(setup: ProposalSetup): void {
   try {
     sessionStorage.setItem(KEY, JSON.stringify(setup));
   } catch {
-    /* private mode / quota — setup just won't carry over */
+    // Usually a large logo data URL blew the ~5MB quota. Keep the rest of the
+    // setup (company, date, rep, type) rather than losing everything; the logo
+    // can be re-added in the generator.
+    try {
+      const { companyLogoUrl: _drop, ...rest } = setup;
+      void _drop;
+      sessionStorage.setItem(KEY, JSON.stringify(rest));
+    } catch {
+      /* private mode / still over quota — setup just won't carry over */
+    }
   }
 }
 

@@ -1,0 +1,185 @@
+/* ==========================================================================
+   Trace Design System — Foundations
+   Generated from Trace-DS Figma file (Atom, Colors, Typography, Spacing-Grid)
+   ========================================================================== */
+
+
+:root {
+  /* ===== BRAND / CORE ===== */
+  --t-brand-green: #00f2b1;       /* "Trace mint" — primary brand accent */
+  --t-brand-green-200: #4cf6c8;   /* hover / lighter */
+  --t-brand-green-tint: #e5fef7;  /* low-opacity fill */
+  --t-brand-red: #d80027;         /* signature red — destructive / alerts */
+  --t-brand-red-800: #a2001d;     /* pressed red */
+  --t-brand-yellow: #ffda44;      /* accent / highlight */
+  --t-brand-blue: #0052b4;        /* deep blue — links, emphasis */
+  --t-brand-coral: #fc8289;       /* warm pink accent */
+
+  /* ===== FOUNDATIONS ===== */
+  --t-black: #0c0a05;      /* near-black body text */
+  --t-ink: #0c0a05;
+  --t-white: #ffffff;
+  --t-paper: #ffffff;
+
+  /* Surface scale (dark product chrome – spec pages) */
+  --t-surface-0: #121212;
+  --t-surface-1: #1b1b1b;
+  --t-surface-2: #2a2a2a;
+  --t-surface-3: #333948;
+
+  /* Neutral / slate scale (mirrors Tailwind slate, used throughout) */
+  --t-slate-50:  #f8fafc;
+  --t-slate-100: #f1f5f9;
+  --t-slate-200: #e2e8f0;
+  --t-slate-300: #cbd5e1;
+  --t-slate-400: #94a3b8;
+  --t-slate-500: #64748b;
+  --t-slate-600: #475569;
+  --t-slate-700: #334155;
+  --t-slate-800: #1e293b;
+  --t-slate-900: #0f172a;
+
+  /* Zinc / gray scale (UI text + borders) */
+  --t-zinc-50:  #fafafa;
+  --t-zinc-100: #f4f4f5;
+  --t-zinc-200: #e4e4e7;
+  --t-zinc-300: #d4d4d8;
+  --t-zinc-500: #71717b;
+  --t-zinc-700: #3f3f46;
+  --t-zinc-900: #09090b;
+
+  /* Semantic */
+  --t-success: var(--t-brand-green);
+  --t-danger: #ef4444;     /* destructive button red */
+  --t-danger-600: #d80027; /* stronger brand red */
+  --t-warning: #ffda44;
+  --t-info: #338af3;
+
+  /* ===== FOREGROUND TOKENS ===== */
+  --t-fg-1: var(--t-ink);          /* primary text */
+  --t-fg-2: var(--t-slate-500);    /* secondary text */
+  --t-fg-3: var(--t-slate-400);    /* tertiary / placeholder */
+  --t-fg-inverse: var(--t-white);
+
+  /* ===== BACKGROUND TOKENS ===== */
+  --t-bg-1: var(--t-white);
+  --t-bg-2: var(--t-slate-100);    /* page wash / disabled fields */
+  --t-bg-3: var(--t-slate-200);    /* secondary buttons / chips */
+
+  /* Borders */
+  --t-border-1: var(--t-zinc-200); /* default border */
+  --t-border-2: var(--t-slate-200);
+  --t-border-3: var(--t-slate-300);
+  --t-border-strong: var(--t-ink);
+
+  /* ===== TYPE FAMILIES ===== */
+  --t-font-display: "Poppins", "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --t-font-sans:    "DM Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --t-font-ui:      "Roboto", "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --t-font-mono:    "DM Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  /* ===== TYPE SCALE (d-font-size-*)  ===== */
+  --t-fs-50:   11px;  /* caption */
+  --t-fs-75:   12px;
+  --t-fs-100:  14px;  /* body */
+  --t-fs-200:  16px;
+  --t-fs-300:  18px;
+  --t-fs-400:  20px;
+  --t-fs-500:  22px;
+  --t-fs-600:  25px;
+  --t-fs-700:  28px;
+  --t-fs-800:  32px;
+  --t-fs-900:  36px;
+  --t-fs-1000: 40px;
+  --t-fs-1100: 45px;
+  --t-fs-1200: 50px;
+  --t-fs-1300: 60px;
+
+  --t-lh-tight: 1.1;
+  --t-lh-display: 1.15;
+  --t-lh-body: 1.45;
+  --t-lh-ui: 1.3;
+
+  --t-fw-light: 300;
+  --t-fw-regular: 400;
+  --t-fw-medium: 500;
+  --t-fw-semibold: 600;
+  --t-fw-bold: 700;
+
+  /* ===== SPACING SCALE (base 2, multiples of 8) ===== */
+  --t-space-2:   2px;
+  --t-space-4:   4px;
+  --t-space-8:   8px;
+  --t-space-12:  12px;
+  --t-space-16:  16px;
+  --t-space-24:  24px;
+  --t-space-32:  32px;
+  --t-space-40:  40px;
+  --t-space-48:  48px;
+  --t-space-56:  56px;
+  --t-space-64:  64px;
+  --t-space-80:  80px;
+  --t-space-96:  96px;
+  --t-space-128: 128px;
+  --t-space-160: 160px;
+
+  /* ===== RADII ===== */
+  --t-radius-xs: 3px;
+  --t-radius-sm: 5px;
+  --t-radius-md: 6px;   /* default for buttons, inputs */
+  --t-radius-lg: 8px;
+  --t-radius-xl: 12px;
+  --t-radius-2xl: 24px; /* dark hero cards / spec panels */
+  --t-radius-full: 9999px;
+
+  /* ===== ELEVATION ===== */
+  --t-shadow-xs: 0 1px 2px rgba(12,10,5,.06);
+  --t-shadow-sm: 0 1px 3px rgba(12,10,5,.08), 0 1px 2px rgba(12,10,5,.04);
+  --t-shadow-md: 0 4px 10px rgba(12,10,5,.08), 0 2px 4px rgba(12,10,5,.04);
+  --t-shadow-lg: 0 10px 30px rgba(12,10,5,.12);
+  --t-shadow-focus: 0 0 0 3px rgba(0,242,177,.35);
+
+  /* ===== MOTION ===== */
+  --t-ease-standard: cubic-bezier(.2,.8,.2,1);
+  --t-ease-spring:   cubic-bezier(.34,1.56,.64,1);
+  --t-dur-fast: 120ms;
+  --t-dur-base: 180ms;
+  --t-dur-slow: 280ms;
+}
+
+/* ==========================================================================
+   SEMANTIC TYPE
+   Display: Poppins   UI / Body: DM Sans   Data: DM Mono   Labels: Roboto
+   ========================================================================== */
+/* NOTE: bare-element selectors (h1..h4) removed from the source sheet — they
+   set color: var(--t-fg-1) (near-black ink, the DS is white-first) and were
+   overriding Tailwind's inherited colors on our dark pages. Only the opt-in
+   .t-* utility classes remain. */
+.t-display {
+  font-family: var(--t-font-display);
+  font-weight: var(--t-fw-medium);
+  font-size: var(--t-fs-1200);
+  line-height: var(--t-lh-display);
+  letter-spacing: -0.01em;
+  color: var(--t-fg-1);
+}
+.t-h1 { font-family: var(--t-font-display); font-weight: 500; font-size: var(--t-fs-1000); line-height: var(--t-lh-display); letter-spacing: -0.01em; color: var(--t-fg-1); }
+.t-h2 { font-family: var(--t-font-display); font-weight: 500; font-size: var(--t-fs-800);  line-height: var(--t-lh-display); letter-spacing: -0.005em; color: var(--t-fg-1); }
+.t-h3 { font-family: var(--t-font-display); font-weight: 500; font-size: var(--t-fs-600);  line-height: var(--t-lh-ui); color: var(--t-fg-1); }
+.t-h4 { font-family: var(--t-font-sans);    font-weight: 600; font-size: var(--t-fs-300);  line-height: var(--t-lh-ui); color: var(--t-fg-1); }
+
+.t-eyebrow  { font-family: var(--t-font-sans); font-weight: 600; font-size: var(--t-fs-75); letter-spacing: .08em; text-transform: uppercase; color: var(--t-fg-2); }
+.t-body     { font-family: var(--t-font-sans); font-weight: 400; font-size: var(--t-fs-100); line-height: var(--t-lh-body); color: var(--t-fg-1); }
+.t-body-lg  { font-family: var(--t-font-sans); font-weight: 400; font-size: var(--t-fs-200); line-height: var(--t-lh-body); color: var(--t-fg-1); }
+.t-caption  { font-family: var(--t-font-sans); font-weight: 400; font-size: var(--t-fs-75);  line-height: var(--t-lh-body); color: var(--t-fg-2); }
+.t-label    { font-family: var(--t-font-sans); font-weight: 500; font-size: var(--t-fs-100); line-height: var(--t-lh-ui);   color: var(--t-fg-1); }
+.t-button   { font-family: var(--t-font-sans); font-weight: 500; font-size: var(--t-fs-100); line-height: var(--t-lh-ui); letter-spacing: 0; }
+.t-mono     { font-family: var(--t-font-mono); font-weight: 400; font-size: var(--t-fs-75);  line-height: var(--t-lh-ui); }
+.t-ui       { font-family: var(--t-font-ui);   font-weight: 400; font-size: var(--t-fs-100); }
+code, kbd, samp, pre { font-family: var(--t-font-mono); font-size: .95em; }
+
+/* ==========================================================================
+   Basic resets used by preview cards
+   ========================================================================== */
+*, *::before, *::after { box-sizing: border-box; }
+/* bare body rule removed — globals.css owns the page background/color */

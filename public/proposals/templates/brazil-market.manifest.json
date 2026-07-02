@@ -17,7 +17,7 @@
     {
       "key": "repCompany",
       "page": 0,
-      "template": "{rep} \u2014 {company}",
+      "template": "{rep} — {company}",
       "x": 93.6,
       "baseline": 456.1,
       "size": 13.0,
@@ -39,7 +39,7 @@
     {
       "key": "footer",
       "page": 1,
-      "template": "Confidential \u2014 prepared for {company} \u00b7 {date}",
+      "template": "Confidential — prepared for {company} · {date}",
       "x": 36.0,
       "baseline": 514.8,
       "size": 9.0,
@@ -50,7 +50,7 @@
     {
       "key": "footer",
       "page": 2,
-      "template": "Confidential \u2014 prepared for {company} \u00b7 {date}",
+      "template": "Confidential — prepared for {company} · {date}",
       "x": 36.0,
       "baseline": 514.8,
       "size": 9.0,
@@ -61,7 +61,7 @@
     {
       "key": "footer",
       "page": 3,
-      "template": "Confidential \u2014 prepared for {company} \u00b7 {date}",
+      "template": "Confidential — prepared for {company} · {date}",
       "x": 36.0,
       "baseline": 514.8,
       "size": 9.0,
@@ -72,7 +72,7 @@
     {
       "key": "footer",
       "page": 4,
-      "template": "Confidential \u2014 prepared for {company} \u00b7 {date}",
+      "template": "Confidential — prepared for {company} · {date}",
       "x": 36.0,
       "baseline": 514.8,
       "size": 9.0,
@@ -83,7 +83,7 @@
     {
       "key": "footer",
       "page": 5,
-      "template": "Confidential \u2014 prepared for {company} \u00b7 {date}",
+      "template": "Confidential — prepared for {company} · {date}",
       "x": 36.0,
       "baseline": 514.8,
       "size": 9.0,
@@ -146,5 +146,6 @@
       "font": "regular",
       "align": "left"
     }
-  ]
+  ],
+  "pricingPage": null
 }

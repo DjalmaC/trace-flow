@@ -1,7 +1,15 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { DM_Mono, DM_Sans, Inter, Poppins } from "next/font/google";
 import "./globals.css";
+import "./trace-ds-tokens.css";
 
+// Trace DS type system (design handoff): Poppins for display/headings, DM Sans
+// for UI/body, DM Mono for numerics/dates/counts/kbd. Inter stays loaded ONLY
+// for the deck-render path (flow SVGs + PDF/PPTX exports must keep matching the
+// proposal template PDFs, which are set in Inter).
+const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600", "700"], display: "swap", variable: "--font-poppins" });
+const dmSans = DM_Sans({ subsets: ["latin"], display: "swap", variable: "--font-dm-sans" });
+const dmMono = DM_Mono({ subsets: ["latin"], weight: ["400", "500"], display: "swap", variable: "--font-dm-mono" });
 const inter = Inter({ subsets: ["latin"], display: "swap", variable: "--font-inter" });
 
 export const metadata: Metadata = {
@@ -19,7 +27,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={inter.className}>
+    <html lang="en" className={`${dmSans.variable} ${poppins.variable} ${dmMono.variable} ${inter.variable} ${dmSans.className}`}>
       <body>{children}</body>
     </html>
   );

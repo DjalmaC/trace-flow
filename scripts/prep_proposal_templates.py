@@ -53,6 +53,15 @@ for name, path in TEMPLATES.items():
     doc = fitz.open(path)
     fields = []
     closing_page = None
+    # The pix/spread rate page (both "Pix API" and "FX spread" cards on one
+    # page). Runtime replaces it with a live-rendered card when the rep
+    # customizes pricing; null means "no 1:1 counterpart, insert instead".
+    pricing_page = None
+    for pno, page in enumerate(doc):
+        t = page.get_text()
+        if "Pix API" in t and "FX spread" in t:
+            pricing_page = pno
+            break
     for pno, page in enumerate(doc):
         d = page.get_text("dict")
         for b in d["blocks"]:
@@ -83,11 +92,14 @@ for name, path in TEMPLATES.items():
             page.add_redact_annot(fitz.Rect(*[LOGO_BOX[0]-1, LOGO_BOX[1]-1, LOGO_BOX[2]+1, LOGO_BOX[3]+1]))
         page.apply_redactions(images=fitz.PDF_REDACT_IMAGE_NONE,
                               graphics=fitz.PDF_REDACT_LINE_ART_REMOVE_IF_TOUCHED)
+    if closing_page is None:
+        raise SystemExit(f"{name}: no closing-page placeholders found — manifest would be unusable")
     manifest = {
         "name": name,
         "pageW": 960, "pageH": 540,
         "closingPage": closing_page,
         "flowsInsertAt": closing_page,           # flows inserted right before the closing page
+        "pricingPage": pricing_page,
         "logo": {"page": 0, "box": [round(v,2) for v in LOGO_BOX]},
         "fields": fields,
     }

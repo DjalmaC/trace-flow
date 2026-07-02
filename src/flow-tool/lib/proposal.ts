@@ -2,11 +2,13 @@ import type {
   Currency,
   Direction,
   FlowConfig,
+  ProposalPricing,
   ProposalType,
   Stablecoin,
   TraceRep,
 } from "../data/schema";
-import { renderProposalFlowPngs } from "./pptx";
+import { pricingEqualsDeck } from "../data/schema";
+import { renderPricingPagePng, renderProposalFlowPngs } from "./pptx";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Proposal assembly (client-side).
@@ -23,7 +25,7 @@ import { renderProposalFlowPngs } from "./pptx";
 //   2. insert the live-rendered flow deck pages (960×540, identical to the web
 //      decks) right before the contact slide,
 //   3. optionally REPLACE the contact slide with the selected rep's pre-designed
-//      slide from /public/proposals/sales-slides.pdf.
+//      slide from the gated /api/asset/sales-slides.pdf (private-assets/).
 //
 // Everything runs in the browser, reusing the same SVG→PNG rasteriser the flow
 // decks use, so there is a single source of truth for the deck look.
@@ -50,8 +52,18 @@ interface Manifest {
   pageH: number;
   closingPage: number;
   flowsInsertAt: number;
+  /** Page index of the pix/spread rate card, or null when the template has no
+   *  1:1 counterpart (brazil-market) and a customized card is inserted instead. */
+  pricingPage?: number | null;
   logo: { page: number; box: [number, number, number, number] };
   fields: ManifestField[];
+}
+
+/** How this caller is allowed to fetch the gated /api/asset PDFs: a rep holds
+ *  the shared key; a client holds a valid share code. */
+export interface AssetAuth {
+  repKey?: string;
+  code?: string;
 }
 
 export interface ProposalBuildOpts {
@@ -71,6 +83,45 @@ export interface ProposalBuildOpts {
   delivered?: Currency;
   /** Trace salesperson — fills (or, via slidePage, replaces) the contact slide. */
   rep?: TraceRep;
+  /** The proposal's pricing. When it differs from the deck rates, the PDF's
+   *  rate page is live-rendered so the download matches the client's Pricing
+   *  view (standard: replaces the template page; brazil-market: inserted). */
+  pricing?: ProposalPricing;
+  /** Credentials for fetching the gated sales-slides deck. */
+  assetAuth?: AssetAuth;
+}
+
+/** Fetch a gated /api/asset PDF, returning null on any failure. */
+async function fetchAsset(name: string, auth?: AssetAuth): Promise<ArrayBuffer | null> {
+  const q = auth?.code ? `?code=${encodeURIComponent(auth.code)}` : "";
+  const headers: HeadersInit | undefined = auth?.repKey ? { "x-tf-key": auth.repKey } : undefined;
+  return fetch(`/api/asset/${name}${q}`, { headers })
+    .then((r) => (r.ok ? r.arrayBuffer() : null))
+    .catch(() => null);
+}
+
+// Register Inter as a real FontFace so canvas measureText() (used by fitSize)
+// matches the Inter embedded in the rasterised overlay. Without this the app's
+// hashed next/font family isn't reachable as "Inter" and metrics fall back to
+// sans-serif, so headlines fit inconsistently across machines.
+let _interLoaded: Promise<void> | null = null;
+function ensureInterLoaded(): Promise<void> {
+  if (_interLoaded) return _interLoaded;
+  if (typeof document === "undefined" || !("fonts" in document)) return Promise.resolve();
+  _interLoaded = (async () => {
+    await Promise.all(
+      [400, 700].map(async (w) => {
+        try {
+          const ff = new FontFace("Inter", `url(/fonts/inter-${w}.woff2)`, { weight: String(w) });
+          await ff.load();
+          (document as Document & { fonts: FontFaceSet }).fonts.add(ff);
+        } catch {
+          /* fall back to sans-serif metrics for this weight */
+        }
+      }),
+    );
+  })();
+  return _interLoaded;
 }
 
 // ── font embedding + rasterisation (shared shape with lib/pptx) ──────────────
@@ -81,7 +132,10 @@ async function interStyle(): Promise<string> {
   const weights = [400, 700];
   const faces = await Promise.all(
     weights.map(async (w) => {
-      const buf = await fetch(`/fonts/inter-${w}.woff2`).then((r) => r.arrayBuffer());
+      const buf = await fetch(`/fonts/inter-${w}.woff2`).then((r) => {
+        if (!r.ok) throw new Error(`Could not load Inter ${w}.`);
+        return r.arrayBuffer();
+      });
       const bytes = new Uint8Array(buf);
       let bin = "";
       for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
@@ -97,17 +151,22 @@ function rasterize(svg: string): Promise<Uint8Array> {
     const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
     const img = new Image();
     img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = DW * SCALE;
-      canvas.height = DH * SCALE;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return reject(new Error("no 2d context"));
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      URL.revokeObjectURL(url);
-      canvas.toBlob((b) => {
-        if (!b) return reject(new Error("overlay toBlob failed"));
-        b.arrayBuffer().then((ab) => resolve(new Uint8Array(ab)));
-      }, "image/png");
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = DW * SCALE;
+        canvas.height = DH * SCALE;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return reject(new Error("no 2d context"));
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(url);
+        canvas.toBlob((b) => {
+          if (!b) return reject(new Error("overlay toBlob failed"));
+          b.arrayBuffer().then((ab) => resolve(new Uint8Array(ab))).catch(reject);
+        }, "image/png");
+      } catch (e) {
+        URL.revokeObjectURL(url);
+        reject(e instanceof Error ? e : new Error("Could not rasterise the overlay."));
+      }
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
@@ -119,6 +178,19 @@ function rasterize(svg: string): Promise<Uint8Array> {
 
 const esc = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+// For values placed inside an SVG attribute (e.g. the logo href): also neutralise
+// quotes so a hostile/odd URL can't break out of the attribute or inject markup.
+const escAttr = (s: string) =>
+  esc(s).replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+
+/** Only embed logos we can trust as inert: data URIs or same-app asset paths. */
+function safeLogoHref(url: string): string | null {
+  const u = url.trim();
+  if (/^data:image\//i.test(u)) return u;
+  if (u.startsWith("/")) return u; // same-origin app asset
+  return null; // reject http(s)/javascript/etc. — won't render in SVG anyway
+}
 
 /** Shrink a font size until the text fits `maxW` at the given weight (Inter). */
 function fitSize(text: string, size: number, weight: number, maxW: number): number {
@@ -147,7 +219,8 @@ async function pageOverlaySvg(
   const style = await interStyle();
   const parts: string[] = [];
 
-  if (logo) {
+  const logoHref = logo ? safeLogoHref(logo.url) : null;
+  if (logo && logoHref) {
     const [x0, y0, x1, y1] = logo.box;
     const bw = x1 - x0;
     const bh = y1 - y0;
@@ -157,11 +230,11 @@ async function pageOverlaySvg(
       );
       const inset = Math.min(5, bw * 0.06);
       parts.push(
-        `<image href="${logo.url}" x="${x0 + inset}" y="${y0 + inset}" width="${bw - 2 * inset}" height="${bh - 2 * inset}" preserveAspectRatio="xMidYMid meet"/>`,
+        `<image href="${escAttr(logoHref)}" x="${x0 + inset}" y="${y0 + inset}" width="${bw - 2 * inset}" height="${bh - 2 * inset}" preserveAspectRatio="xMidYMid meet"/>`,
       );
     } else {
       parts.push(
-        `<image href="${logo.url}" x="${x0}" y="${y0}" width="${bw}" height="${bh}" preserveAspectRatio="xMinYMid meet"/>`,
+        `<image href="${escAttr(logoHref)}" x="${x0}" y="${y0}" width="${bw}" height="${bh}" preserveAspectRatio="xMinYMid meet"/>`,
       );
     }
   }
@@ -206,6 +279,13 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
     }),
   ]);
 
+  if (manifest.closingPage == null || manifest.flowsInsertAt == null) {
+    throw new Error("Proposal manifest is missing page anchors.");
+  }
+
+  // Make canvas text metrics match the embedded Inter before any fitSize() runs.
+  await ensureInterLoaded();
+
   const doc = await PDFDocument.load(tplBytes);
 
   // Fill values. repCompany collapses to just the company when no contact given.
@@ -221,8 +301,23 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
     repLinkedIn: rep?.linkedin ?? "",
   };
 
-  // Will we replace the contact slide with the rep's pre-designed slide?
-  const replaceClosing = rep?.slidePage != null;
+  // Try to load the rep's pre-designed contact slide up front. Only if it's
+  // actually available (deck present + the page index in range) will we replace
+  // the template's closing page; otherwise we stamp the closing page below so it
+  // never ships blank. pdf-lib import reused from above.
+  let repSlideDoc: Awaited<ReturnType<typeof PDFDocument.load>> | null = null;
+  let repSlideIndex = -1;
+  if (rep?.slidePage != null) {
+    const salesBytes = await fetchAsset("sales-slides.pdf", opts.assetAuth);
+    if (salesBytes) {
+      const sales = await PDFDocument.load(salesBytes);
+      if (rep.slidePage >= 0 && rep.slidePage < sales.getPageCount()) {
+        repSlideDoc = sales;
+        repSlideIndex = rep.slidePage;
+      }
+    }
+  }
+  const willReplace = repSlideIndex >= 0;
 
   // The template's static "Prepared for" label sits just above the rep line but
   // gets clipped during redaction; redraw it (with the colon) in its original
@@ -247,12 +342,32 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
   const lb = manifest.logo.box;
   const logoBox: [number, number, number, number] = [lb[0], lb[1], lb[0] + 200, lb[1] + 56];
 
+  // ── customized pricing → the PDF rate page is live-rendered ──
+  // Deck-identical pricing keeps the template's hand-designed page. Anything
+  // else (override / flat / custom bands) renders the page from the same
+  // ProposalPricing the client's web Pricing view reads, so the download can
+  // never disagree with what the client saw on the link.
+  const pricingCustomized = !!opts.pricing && !pricingEqualsDeck(opts.pricing);
+  const pricingSub =
+    opts.proposalType === "standard"
+      ? "BRL payins and payouts via Pix / TED · USDC ↔ BRL"
+      : "Cross-border payins and payouts · USDT ↔ BRL";
+  if (pricingCustomized && typeof manifest.pricingPage === "number") {
+    // standard: replace the template's own rate page in place (page count
+    // unchanged, so every downstream index stays valid). The overlay loop
+    // below still stamps this page's footer field onto the replacement.
+    const png = await doc.embedPng(dataUrlToBytes(await renderPricingPagePng(opts.pricing!, pricingSub)));
+    doc.removePage(manifest.pricingPage);
+    const page = doc.insertPage(manifest.pricingPage, [DW, DH]);
+    page.drawImage(png, { x: 0, y: 0, width: DW, height: DH });
+  }
+
   // Stamp overlays onto the relevant template pages (before inserting flows, so
   // page references stay valid). Skip the closing page when we'll replace it.
   const pages = new Set(manifest.fields.map((f) => f.page));
   pages.add(manifest.logo.page);
   for (const pno of pages) {
-    if (replaceClosing && pno === manifest.closingPage) continue;
+    if (willReplace && pno === manifest.closingPage) continue;
     let fields = manifest.fields.filter((f) => f.page === pno);
     // when no company contact, drop the "— company" tail to avoid "Acme — Acme"
     if (!opts.companyRep) {
@@ -289,19 +404,27 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
     page.drawImage(png, { x: 0, y: 0, width: DW, height: DH });
   }
 
-  // Swap in the rep's pre-designed contact slide, if available.
-  if (replaceClosing) {
-    const salesBytes = await fetch("/proposals/sales-slides.pdf")
-      .then((r) => (r.ok ? r.arrayBuffer() : null))
-      .catch(() => null);
-    if (salesBytes) {
-      const sales = await PDFDocument.load(salesBytes);
-      const [repSlide] = await doc.copyPages(sales, [rep!.slidePage!]);
-      // closing page shifted right by the inserted flow pages
-      const closingIdx = manifest.closingPage + flowPngs.length;
-      doc.removePage(closingIdx);
-      doc.insertPage(closingIdx, repSlide);
-    }
+  // brazil-market has no pix/spread page to replace; a customized rate card is
+  // inserted just ahead of the flow slides (footer baked in — no manifest
+  // fields exist for a page the template never had).
+  let pricingInserted = 0;
+  if (pricingCustomized && typeof manifest.pricingPage !== "number") {
+    const footerField = manifest.fields.find((f) => f.key === "footer");
+    const footerText = footerField ? resolveTemplate(footerField.template, vars).trim() : undefined;
+    const png = await doc.embedPng(dataUrlToBytes(await renderPricingPagePng(opts.pricing!, pricingSub, footerText)));
+    const page = doc.insertPage(manifest.flowsInsertAt, [DW, DH]);
+    page.drawImage(png, { x: 0, y: 0, width: DW, height: DH });
+    pricingInserted = 1;
+  }
+
+  // Swap in the rep's pre-designed contact slide (preloaded above). If it wasn't
+  // available the closing page was stamped normally, so nothing ships blank.
+  if (willReplace && repSlideDoc) {
+    const [repSlide] = await doc.copyPages(repSlideDoc, [repSlideIndex]);
+    // closing page shifted right by the inserted flow + pricing pages
+    const closingIdx = manifest.closingPage + flowPngs.length + pricingInserted;
+    doc.removePage(closingIdx);
+    doc.insertPage(closingIdx, repSlide);
   }
 
   return doc.save();
@@ -315,7 +438,9 @@ function triggerDownload(bytes: Uint8Array, filename: string) {
   document.body.appendChild(a);
   a.click();
   a.remove();
-  URL.revokeObjectURL(url);
+  // Defer revocation: revoking synchronously after click() can abort the
+  // download in Safari/Firefox before it has started.
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
 /** Build + download the proposal PDF. */

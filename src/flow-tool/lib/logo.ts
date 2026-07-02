@@ -28,6 +28,30 @@ export interface NormalizeResult {
 
 const lum1 = (r: number, g: number, b: number) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
 
+// Logos ride inside stored configs and list responses as data URIs, so an
+// uncapped export (a photographic PNG can re-encode to >1MB) bloats every
+// share row and dashboard load. Re-encode down until the data URL fits.
+const MAX_DATA_URL = 300_000; // ~300KB — generous for a logo, tiny for a photo
+function cappedDataUrl(canvas: HTMLCanvasElement): string {
+  let out = canvas.toDataURL("image/png");
+  let w = canvas.width;
+  let h = canvas.height;
+  for (let i = 0; i < 4 && out.length > MAX_DATA_URL && w > 64; i++) {
+    const scale = Math.max(0.4, Math.sqrt(MAX_DATA_URL / out.length) * 0.95);
+    w = Math.max(64, Math.round(w * scale));
+    h = Math.max(1, Math.round(h * scale));
+    const c = document.createElement("canvas");
+    c.width = w;
+    c.height = h;
+    const ctx = c.getContext("2d");
+    if (!ctx) break;
+    ctx.drawImage(canvas, 0, 0, w, h);
+    canvas = c;
+    out = c.toDataURL("image/png");
+  }
+  return out;
+}
+
 /** Fraction of pixels that are meaningfully transparent (already-cut sources). */
 function transparentShare(d: Uint8ClampedArray): number {
   let t = 0;
@@ -156,9 +180,13 @@ export async function normalizeLogo(
     img.onload = () => {
       try {
         const MAX = 1400;
-        const scale = Math.min(1, MAX / Math.max(img.width || 1, img.height || 1));
-        const w = Math.max(1, Math.round((img.width || 1) * scale));
-        const h = Math.max(1, Math.round((img.height || 1) * scale));
+        // Dimensionless SVGs report width/height 0 in some browsers; fall back to
+        // a sane raster size instead of collapsing the logo to a 1×1 pixel.
+        const iw = img.naturalWidth || img.width || 512;
+        const ih = img.naturalHeight || img.height || 512;
+        const scale = Math.min(1, MAX / Math.max(iw, ih));
+        const w = Math.max(1, Math.round(iw * scale));
+        const h = Math.max(1, Math.round(ih * scale));
         const canvas = document.createElement("canvas");
         canvas.width = w; canvas.height = h;
         const ctx = canvas.getContext("2d", { willReadFrequently: true });
@@ -226,9 +254,9 @@ export async function normalizeLogo(
           const octx = out.getContext("2d");
           if (!octx) return resolve(orig({ plate, recolored, cut, needsModel }));
           octx.drawImage(canvas, minX, minY, cw, ch, 0, 0, cw, ch);
-          return resolve({ url: out.toDataURL("image/png"), plate, recolored, cut, needsModel });
+          return resolve({ url: cappedDataUrl(out), plate, recolored, cut, needsModel });
         }
-        resolve({ url: canvas.toDataURL("image/png"), plate, recolored, cut, needsModel });
+        resolve({ url: cappedDataUrl(canvas), plate, recolored, cut, needsModel });
       } catch {
         resolve(orig());
       }
@@ -248,9 +276,11 @@ export async function detectLogoPlate(src: string): Promise<LogoPlate> {
     img.onload = () => {
       try {
         const max = 96;
-        const scale = Math.min(1, max / Math.max(img.width || 1, img.height || 1));
-        const w = Math.max(1, Math.round((img.width || 1) * scale));
-        const h = Math.max(1, Math.round((img.height || 1) * scale));
+        const iw = img.naturalWidth || img.width || 512;
+        const ih = img.naturalHeight || img.height || 512;
+        const scale = Math.min(1, max / Math.max(iw, ih));
+        const w = Math.max(1, Math.round(iw * scale));
+        const h = Math.max(1, Math.round(ih * scale));
         const canvas = document.createElement("canvas");
         canvas.width = w;
         canvas.height = h;
@@ -290,9 +320,11 @@ export async function removeBackground(src: string): Promise<string | null> {
     img.onload = () => {
       try {
         const MAX = 1400;
-        const scale = Math.min(1, MAX / Math.max(img.width || 1, img.height || 1));
-        const w = Math.max(1, Math.round((img.width || 1) * scale));
-        const h = Math.max(1, Math.round((img.height || 1) * scale));
+        const iw = img.naturalWidth || img.width || 512;
+        const ih = img.naturalHeight || img.height || 512;
+        const scale = Math.min(1, MAX / Math.max(iw, ih));
+        const w = Math.max(1, Math.round(iw * scale));
+        const h = Math.max(1, Math.round(ih * scale));
         const canvas = document.createElement("canvas");
         canvas.width = w;
         canvas.height = h;
@@ -384,7 +416,7 @@ export async function removeBackground(src: string): Promise<string | null> {
         const octx = out.getContext("2d");
         if (!octx) return resolve(null);
         octx.drawImage(canvas, minX, minY, cw, ch, 0, 0, cw, ch);
-        resolve(out.toDataURL("image/png"));
+        resolve(cappedDataUrl(out));
       } catch {
         resolve(null);
       }

@@ -1,88 +1,99 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { FlowConfig } from "../data/schema";
+import { loadRepKey } from "./rep-session";
 
-// Client-share links. A drafted FlowConfig (client name, rep, currencies,
-// direction, stablecoin, logo) is stored in Supabase and addressed by a short
-// code, so a salesperson can send a clean /f/<code> link that opens a locked,
-// view-only render of just that flow.
-//
-// Config is supplied via env (public anon key — safe to expose). The project
-// URL falls back to the project already wired into .mcp.json, so in practice
-// only NEXT_PUBLIC_SUPABASE_ANON_KEY needs to be set.
+// Client-side share API. All privileged work (create / list / delete) is
+// mediated by server routes under /api that hold the Supabase service-role key
+// and require the shared rep password; the browser never sees the service key
+// and no longer bundles the Supabase SDK. The only anonymous path is reading a
+// single flow by its unguessable code (/api/flow/<code>), used by /f/<code>.
 
-const SUPABASE_URL =
-  process.env.NEXT_PUBLIC_SUPABASE_URL || "https://bvgmnounfupalekjfzuu.supabase.co";
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+const REP_KEY_HEADER = "x-tf-key";
 
-const TABLE = "shared_flows";
-
-let _client: SupabaseClient | null = null;
-function client(): SupabaseClient | null {
-  if (!SUPABASE_ANON_KEY) return null;
-  if (!_client) _client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false } });
-  return _client;
-}
-
-/** Sharing is only available once the anon key is configured. */
+/** Sharing UI is offered when the deploy advertises it (server holds the keys). */
 export function isShareConfigured(): boolean {
-  return !!SUPABASE_ANON_KEY;
+  return process.env.NEXT_PUBLIC_SHARE_ENABLED === "1";
 }
 
-/** A short, URL-safe, unguessable code. */
-function makeCode(len = 9): string {
-  const alphabet = "abcdefghijkmnpqrstuvwxyz23456789"; // no ambiguous chars
-  const bytes = new Uint8Array(len);
-  crypto.getRandomValues(bytes);
-  let out = "";
-  for (let i = 0; i < len; i++) out += alphabet[bytes[i] % alphabet.length];
-  return out;
-}
-
-export interface SharedRow {
-  config: FlowConfig;
-  clientName: string;
-  clientRep: string | null;
-}
-
-/**
- * Persist the drafted config and return its share code. The logo (which may be
- * a large data URI) rides along inside the config JSON.
- */
-export async function createShareLink(config: FlowConfig): Promise<{ code: string }> {
-  const sb = client();
-  if (!sb) throw new Error("Sharing is not configured (missing NEXT_PUBLIC_SUPABASE_ANON_KEY).");
-
-  // a couple of retries in the (extremely unlikely) event of a code collision
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const code = makeCode();
-    const { error } = await sb.from(TABLE).insert({
-      code,
-      config,
-      client_name: config.clientName,
-      client_rep: config.clientRep ?? null,
-    });
-    if (!error) return { code };
-    // 23505 = unique_violation → retry with a fresh code; anything else throws
-    if ((error as { code?: string }).code !== "23505") {
-      throw new Error(error.message || "Could not create the share link.");
-    }
+/** Validate a rep password against the server (login screen). */
+export async function checkRepKey(key: string): Promise<boolean> {
+  try {
+    const res = await fetch("/api/auth/check", { headers: { [REP_KEY_HEADER]: key }, cache: "no-store" });
+    return res.ok;
+  } catch {
+    return false;
   }
-  throw new Error("Could not create a unique share link, please try again.");
 }
 
-/** Load a shared flow by its code (read-only, anon). */
+function authHeaders(): HeadersInit {
+  const key = loadRepKey();
+  return key ? { [REP_KEY_HEADER]: key } : {};
+}
+
+async function asError(res: Response, fallback: string): Promise<Error> {
+  if (res.status === 401) return new Error("Your rep password is missing or incorrect. Sign in again.");
+  if (res.status === 503) return new Error("Sharing is not configured on the server.");
+  let msg = fallback;
+  try {
+    const body = await res.json();
+    if (body?.error && typeof body.error === "string") msg = body.error;
+  } catch {
+    /* keep fallback */
+  }
+  return new Error(msg);
+}
+
+/** Persist the drafted config server-side and return its share code. */
+export async function createShareLink(config: FlowConfig): Promise<{ code: string }> {
+  const res = await fetch("/api/proposals", {
+    method: "POST",
+    headers: { "content-type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ config }),
+  });
+  if (!res.ok) throw await asError(res, "Could not create the share link.");
+  return res.json();
+}
+
+/** Outcome of a public flow read — the /f/ page renders each state distinctly. */
+export type SharedFlowResult =
+  | { status: "ok"; config: FlowConfig }
+  | { status: "notfound" }
+  | { status: "locked" } // gate present, no password supplied yet
+  | { status: "wrong-password" }
+  | { status: "expired" };
+
+/** Load a shared flow by its code. Sends the rep key when present (rep opens
+ *  bypass the gate/expiry and are excluded from view analytics). */
+export async function loadSharedFlowGated(code: string, pw?: string): Promise<SharedFlowResult> {
+  const q = pw ? `?pw=${encodeURIComponent(pw)}` : "";
+  const res = await fetch(`/api/flow/${encodeURIComponent(code)}${q}`, {
+    cache: "no-store",
+    headers: authHeaders(),
+  });
+  if (res.status === 404) return { status: "notfound" };
+  if (res.status === 401) return { status: "locked" };
+  if (res.status === 403) return { status: "wrong-password" };
+  if (res.status === 410) return { status: "expired" };
+  if (res.status === 503) throw new Error("Sharing is not configured.");
+  if (!res.ok) throw await asError(res, "Could not load this flow.");
+  const body = await res.json();
+  return { status: "ok", config: body.config as FlowConfig };
+}
+
+/** Back-compat convenience for internal callers (dashboard PDF rebuild). */
 export async function loadSharedFlow(code: string): Promise<FlowConfig | null> {
-  const sb = client();
-  if (!sb) throw new Error("Sharing is not configured.");
-  const { data, error } = await sb.from(TABLE).select("config").eq("code", code).maybeSingle();
-  if (error) throw new Error(error.message || "Could not load this flow.");
-  if (!data) return null;
-  return data.config as FlowConfig;
+  const r = await loadSharedFlowGated(code);
+  return r.status === "ok" ? r.config : null;
 }
 
 // ── Dashboard: list + delete past proposals ─────────────────────────────────
-// Each "Generate client link" persists a row; the dashboard reads them back,
-// grouped by client. A proposal is one generated link.
+
+export interface ViewStats {
+  views: number;
+  uniqueDevices: number;
+  lastViewedAt: string | null;
+  firstViewedAt: string | null;
+  locations: { country: string; cities: string[] }[];
+}
 
 export interface ProposalRecord {
   code: string;
@@ -94,39 +105,56 @@ export interface ProposalRecord {
   date?: string;
   traceRepId?: string;
   createdAt: string;
+  /** Pipeline status derived server-side data: draft (no link opens), shared, viewed. */
+  stats?: ViewStats;
+  /** Sandbox links stay off the pipeline (separate dashboard tab). */
+  sandbox?: boolean;
 }
+
+// The list endpoint projects config fields server-side (logo/plate/type/date/
+// rep) instead of shipping whole configs — see /api/proposals.
+type RawRow = {
+  code: string;
+  client_name?: string | null;
+  client_rep?: string | null;
+  created_at: string;
+  logo?: string | null;
+  plate?: string | null;
+  ptype?: string | null;
+  pdate?: string | null;
+  rep_id?: string | null;
+  sandbox?: string | null; // jsonb boolean arrives as "true"
+};
 
 /** All saved proposals, newest first. Optionally scoped to one Trace rep. */
 export async function listProposals(traceRepId?: string): Promise<ProposalRecord[]> {
-  const sb = client();
-  if (!sb) return [];
-  const { data, error } = await sb
-    .from(TABLE)
-    .select("code, config, client_name, client_rep, created_at")
-    .order("created_at", { ascending: false });
-  if (error) throw new Error(error.message || "Could not load proposals.");
-  const rows = (data ?? []).map((r): ProposalRecord => {
-    const cfg = (r.config ?? {}) as Record<string, unknown>;
-    return {
-      code: r.code as string,
-      clientName: (r.client_name as string) || (cfg.clientName as string) || "Untitled",
-      clientRep: (r.client_rep as string) ?? null,
-      clientLogoUrl: cfg.clientLogoUrl as string | undefined,
-      clientLogoPlate: cfg.clientLogoPlate as "light" | "none" | undefined,
-      proposalType: cfg.proposalType as string | undefined,
-      date: cfg.date as string | undefined,
-      traceRepId: cfg.traceRepId as string | undefined,
-      createdAt: r.created_at as string,
-    };
-  });
+  const res = await fetch("/api/proposals", { headers: authHeaders(), cache: "no-store" });
+  if (!res.ok) throw await asError(res, "Could not load proposals.");
+  const body = await res.json();
+  const analytics = (body.analytics ?? {}) as Record<string, ViewStats>;
+  const rows = ((body.rows ?? []) as RawRow[]).map(
+    (r): ProposalRecord => ({
+      code: r.code,
+      clientName: r.client_name || "Untitled",
+      clientRep: r.client_rep ?? null,
+      clientLogoUrl: r.logo ?? undefined,
+      clientLogoPlate: (r.plate as "light" | "none" | null) ?? undefined,
+      proposalType: r.ptype ?? undefined,
+      date: r.pdate ?? undefined,
+      traceRepId: r.rep_id ?? undefined,
+      createdAt: r.created_at,
+      stats: analytics[r.code],
+      sandbox: r.sandbox === "true",
+    }),
+  );
   return traceRepId ? rows.filter((r) => r.traceRepId === traceRepId) : rows;
 }
 
-/** Delete one proposal by its code. Requires the anon delete RLS policy (see
- *  SHARING.md); without it the row simply isn't removed. */
+/** Delete one proposal by its code (rep-key gated). */
 export async function deleteProposal(code: string): Promise<void> {
-  const sb = client();
-  if (!sb) throw new Error("Sharing is not configured.");
-  const { error } = await sb.from(TABLE).delete().eq("code", code);
-  if (error) throw new Error(error.message || "Could not delete this proposal.");
+  const res = await fetch(`/api/proposals/${encodeURIComponent(code)}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw await asError(res, "Could not delete this proposal.");
 }

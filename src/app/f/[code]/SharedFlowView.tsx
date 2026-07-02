@@ -1,22 +1,25 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { FlowExperience, useIsMobile } from "@/flow-tool/components/FlowExperience";
 import { ASSETS, C, TRACE_LOGO_AR } from "@/flow-tool/components/tokens";
-import { loadSharedFlow } from "@/flow-tool/lib/share";
+import { loadSharedFlowGated } from "@/flow-tool/lib/share";
 import { getRep } from "@/flow-tool/data/reps";
-import type { Direction, FlowConfig, ProposalType } from "@/flow-tool/data/schema";
+import { deckPricing } from "@/flow-tool/data/schema";
+import type { Direction, FlowConfig, PriceComponent, ProposalPricing, ProposalType } from "@/flow-tool/data/schema";
 
 // A shared link may carry more than one flow "variant" (e.g. a With-IP
-// vs Direct structures). The viewer switches between them with a left-side
-// toggle that mirrors the Pay-in / Pay-out control on the right.
+// vs Direct structures). The viewer switches between them with a
+// toggle that sits alongside the Pay-in / Pay-out control.
 type Variant = { flowId: string; name: string };
 // `proposalUrl` (optional) points to a curated proposal PDF to serve on
 // "Download Proposal"; without it we fall back to the live-generated deck.
-// `pricing` (optional) drives the native Pricing tab (rendered as web content).
+// `pricing` (optional) drives the native Pricing tab. New links carry a
+// ProposalPricing (design handoff 2a/2b); older rows (e.g. the live ARQ link)
+// carry the legacy region/cards/rows shape, which keeps its original renderer.
 type PriceRow = { label: string; value: string };
 type PriceCard = { badge: string; tone?: "green" | "cyan"; title: string; sub?: string; rows: PriceRow[] };
-type Pricing = { region: string; flag?: string; subtitle?: string; cards: PriceCard[]; footer?: string };
+type LegacyPricing = { region: string; flag?: string; subtitle?: string; cards: PriceCard[]; footer?: string };
 // `salesperson` (optional) renders the closing "last deck" of the proposal.
 type Salesperson = { name: string; title?: string; email?: string; phone?: string; photo?: string; bio?: string; bookingUrl?: string };
 // `proposalType`/`date`/`traceRepId` (optional, set by the proposal generator)
@@ -24,17 +27,53 @@ type Salesperson = { name: string; title?: string; email?: string; phone?: strin
 type SharedConfig = FlowConfig & {
   variants?: Variant[];
   proposalUrl?: string;
-  pricing?: Pricing;
+  pricing?: ProposalPricing | LegacyPricing;
   salesperson?: Salesperson;
   proposalType?: ProposalType;
   date?: string;
   traceRepId?: string;
 };
 
+// A shared row is only writable by an authenticated rep, but it's still
+// attacker-shaped data rendered on our own origin, so every URL that becomes an
+// href/src is scheme-checked. javascript: and other odd schemes are dropped.
+function safeSrc(url?: string): string | undefined {
+  if (!url) return undefined;
+  const u = url.trim();
+  return /^data:image\//i.test(u) || /^https:\/\//i.test(u) || u.startsWith("/") ? u : undefined;
+}
+function safeLink(url?: string): string | undefined {
+  if (!url) return undefined;
+  const u = url.trim();
+  return /^https:\/\//i.test(u) || /^mailto:/i.test(u) || /^tel:/i.test(u) ? u : undefined;
+}
+// Curated "Download Proposal" target. Legacy /proposals/*.pdf rows are rewritten
+// to the gated asset route, carrying the client's own share code as the key.
+function resolveProposalHref(url: string, code: string): string | null {
+  const u = url.trim();
+  const legacy = u.match(/^\/proposals\/([\w.-]+\.pdf)$/i);
+  if (legacy) return `/api/asset/${legacy[1]}?code=${encodeURIComponent(code)}`;
+  if (u.startsWith("/api/asset/")) return u.includes("?") ? u : `${u}?code=${encodeURIComponent(code)}`;
+  if (/^data:application\/pdf/i.test(u) || /^https:\/\//i.test(u) || u.startsWith("/")) return u;
+  return null;
+}
+
+// Old rows store pricing as region/cards; new rows as ProposalPricing.
+function isLegacyPricing(p: ProposalPricing | LegacyPricing): p is LegacyPricing {
+  return Array.isArray((p as LegacyPricing).cards);
+}
+function isProposalPricing(p: ProposalPricing | LegacyPricing): p is ProposalPricing {
+  const c = p as ProposalPricing;
+  return !!c.pix && typeof c.pix === "object" && !!c.spread && typeof c.spread === "object";
+}
+
 type State =
   | { status: "loading" }
   | { status: "notfound" }
   | { status: "unconfigured" }
+  | { status: "expired" }
+  // gate present; `wrong` marks a failed password attempt (2c client gate)
+  | { status: "locked"; wrong?: boolean }
   | { status: "error"; msg: string }
   | { status: "ready"; config: SharedConfig };
 
@@ -47,6 +86,11 @@ const MIN_LOAD_MS = 1500;
 const WELCOME_HOLD_MS = 2300;
 const FADE_MS = 950;
 
+// 3px brand strip (design 1c): mint→cyan gradient, full width. FlowExperience
+// paints its own solid rule; this overlay sits above it (z-60) so the client
+// page reads gradient without touching FlowExperience internals.
+const STRIP_GRADIENT = "linear-gradient(90deg,#2be8d6,#00f2b1)";
+
 export function SharedFlowView({ code }: { code: string }) {
   const [state, setState] = useState<State>({ status: "loading" });
   const [intro, setIntro] = useState<Intro>("loading");
@@ -54,7 +98,7 @@ export function SharedFlowView({ code }: { code: string }) {
   const [activeFlowId, setActiveFlowId] = useState<string | null>(null);
   const [pdf, setPdf] = useState<"idle" | "working" | "error">("idle");
   const [ppt, setPpt] = useState<"idle" | "working" | "error">("idle");
-  const [view, setView] = useState<"flow" | "pricing">("flow"); // top-left Flow | Pricing tab
+  const [view, setView] = useState<"flow" | "pricing">("flow"); // Flow | Pricing tab
 
   const config = state.status === "ready" ? state.config : null;
   const variants = config?.variants;
@@ -68,8 +112,14 @@ export function SharedFlowView({ code }: { code: string }) {
   async function onProposal() {
     if (!config) return;
     if (config.proposalUrl) {
+      const href = resolveProposalHref(config.proposalUrl, code);
+      if (!href) {
+        setPdf("error");
+        setTimeout(() => setPdf("idle"), 3000);
+        return;
+      }
       const a = document.createElement("a");
-      a.href = config.proposalUrl;
+      a.href = href;
       a.download = `Trace Finance - ${config.clientName} - Proposal.pdf`;
       document.body.appendChild(a);
       a.click();
@@ -93,6 +143,8 @@ export function SharedFlowView({ code }: { code: string }) {
           collected: config.collected,
           delivered: config.delivered,
           rep: getRep(config.traceRepId),
+          pricing: config.pricing && isProposalPricing(config.pricing) ? config.pricing : undefined,
+          assetAuth: { code },
         });
       } else {
         const { variants: _v, proposalUrl: _p, ...base } = config;
@@ -121,22 +173,27 @@ export function SharedFlowView({ code }: { code: string }) {
     }
   }
 
+  function applyLoaded(loaded: SharedConfig) {
+    setDirection(loaded.direction);
+    setActiveFlowId(loaded.variants?.[0]?.flowId ?? loaded.flowId);
+    setState({ status: "ready", config: loaded });
+  }
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         // hold the loading screen a beat so it reads, even on a fast fetch
-        const [loaded] = await Promise.all([
-          loadSharedFlow(code) as Promise<SharedConfig | null>,
+        const [res] = await Promise.all([
+          loadSharedFlowGated(code),
           new Promise((r) => setTimeout(r, MIN_LOAD_MS)),
         ]);
         if (cancelled) return;
-        if (!loaded) setState({ status: "notfound" });
-        else {
-          setDirection(loaded.direction);
-          setActiveFlowId(loaded.variants?.[0]?.flowId ?? loaded.flowId);
-          setState({ status: "ready", config: loaded });
-        }
+        if (res.status === "ok") applyLoaded(res.config as SharedConfig);
+        else if (res.status === "expired") setState({ status: "expired" });
+        // wrong-password without an attempt just means "gated" — show the gate
+        else if (res.status === "locked" || res.status === "wrong-password") setState({ status: "locked" });
+        else setState({ status: "notfound" });
       } catch (err) {
         if (cancelled) return;
         const msg = err instanceof Error ? err.message : "Could not load this flow.";
@@ -148,6 +205,21 @@ export function SharedFlowView({ code }: { code: string }) {
       cancelled = true;
     };
   }, [code]);
+
+  // 2c client gate — retry the read with the supplied password.
+  async function submitPassword(pw: string) {
+    try {
+      const res = await loadSharedFlowGated(code, pw);
+      if (res.status === "ok") applyLoaded(res.config as SharedConfig);
+      else if (res.status === "expired") setState({ status: "expired" });
+      else if (res.status === "notfound") setState({ status: "notfound" });
+      else setState({ status: "locked", wrong: true });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Could not load this flow.";
+      if (msg.includes("not configured")) setState({ status: "unconfigured" });
+      else setState({ status: "error", msg });
+    }
+  }
 
   // deep-link straight to the pricing tab with ?view=pricing
   useEffect(() => {
@@ -168,9 +240,15 @@ export function SharedFlowView({ code }: { code: string }) {
 
   const isMobile = useIsMobile();
   const hasVariants = !!variants && variants.length > 1;
-  const hasPricing = !!config?.pricing;
   const showWelcomeLogo = intro === "welcome";
   const showChrome = intro === "fadeout" || intro === "done"; // header + downloads settle in
+
+  // Pricing source (design 2a): the link's ProposalPricing when present, the
+  // legacy card shape as-is when detected (keeps the live ARQ link rendering),
+  // otherwise the deck defaults. Pricing is therefore always available.
+  const legacyPricing = config?.pricing && isLegacyPricing(config.pricing) ? config.pricing : null;
+  const proposalPricing: ProposalPricing =
+    config?.pricing && !legacyPricing && isProposalPricing(config.pricing) ? config.pricing : deckPricing();
 
   // the FlowConfig handed to the flow renderer (strip the proposal-only extras)
   const fxConfig: FlowConfig | null = config
@@ -180,20 +258,35 @@ export function SharedFlowView({ code }: { code: string }) {
       })()
     : null;
 
+  const pricingEl = config
+    ? legacyPricing
+      ? <LegacyPricingView pricing={legacyPricing} inline={isMobile} />
+      : <PricingView pricing={proposalPricing} clientName={config.clientName} inline={isMobile} />
+    : null;
+
   return (
     <LayoutGroup>
       {/* overflow-x:clip (not hidden) contains horizontal overflow WITHOUT
           making <main> a scroll container — `hidden` would promote overflow-y
           to auto and break the desktop scroll-dive's position:sticky. */}
-      <main className="relative overflow-x-clip bg-[#07090b]">
+      <main className="relative overflow-x-clip bg-surface-page">
+        {/* 1c: 3px mint→cyan strip, above FlowExperience's solid rule */}
+        {(showChrome || state.status === "locked") && (
+          <div
+            aria-hidden
+            className="no-print tf-fade pointer-events-none fixed inset-x-0 top-0 z-[60] h-[3px]"
+            style={{ background: STRIP_GRADIENT }}
+          />
+        )}
+
         {config && fxConfig && (
           isMobile ? (
             /* ── phone: sticky top bar + inline controls + vertical flow ── */
             <>
-              <header className="sticky top-0 z-40 border-b border-white/5 bg-[#07090b]/90 px-4 pb-2.5 pt-3 backdrop-blur">
+              <header className="sticky top-0 z-40 border-b border-white/5 bg-surface-page/90 px-4 pb-2.5 pt-3 backdrop-blur">
                 {showChrome && (
                   <div className="tf-fade">
-                    <div className="mb-2 text-[9.5px] font-semibold uppercase tracking-[0.2em] text-[#6f8a7f]">
+                    <div className="mb-2 font-mono text-[9.5px] font-medium uppercase tracking-[0.34em] text-mint-muted">
                       A Trace Finance Proposal
                     </div>
                     <div className="flex items-center gap-3">
@@ -204,9 +297,7 @@ export function SharedFlowView({ code }: { code: string }) {
                       </div>
                     </div>
                     <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                      {hasPricing && (
-                        <SegToggle value={view} onChange={setView} options={[{ value: "flow", label: "Flow" }, { value: "pricing", label: "Pricing" }]} />
-                      )}
+                      <SegToggle value={view} onChange={setView} options={[{ value: "flow", label: "Flow" }, { value: "pricing", label: "Pricing" }]} />
                       {view === "flow" && (
                         <SegToggle value={direction} onChange={setDirection} options={[{ value: "collection", label: "Pay-in" }, { value: "disbursement", label: "Pay-out" }]} />
                       )}
@@ -218,8 +309,8 @@ export function SharedFlowView({ code }: { code: string }) {
                 )}
               </header>
 
-              {hasPricing && view === "pricing" ? (
-                <PricingView pricing={config.pricing!} inline />
+              {view === "pricing" ? (
+                pricingEl
               ) : (
                 <>
                   <FlowExperience config={fxConfig} presentation onDirectionChange={setDirection} />
@@ -227,29 +318,30 @@ export function SharedFlowView({ code }: { code: string }) {
                     <button
                       onClick={onProposal}
                       disabled={pdf === "working"}
-                      className="flex w-full items-center justify-center gap-2 rounded-xl border border-green-accent/40 bg-[#0e1410] px-5 py-3 text-sm font-semibold text-[#bfe8d4] transition hover:bg-[#13201a] disabled:opacity-60"
+                      className="flex w-full items-center justify-center gap-2 rounded-xl border border-green-accent/40 bg-[#0e1410] px-5 py-3 text-sm font-semibold text-[#bfe8d4] transition duration-200 ease-ds hover:bg-[#13201a] disabled:opacity-60"
                     >
                       {pdf === "working" ? "Building deck…" : pdf === "error" ? "Try again" : "Download Proposal ↓"}
                     </button>
                     <button
                       onClick={onPptx}
                       disabled={ppt === "working"}
-                      className="w-full rounded-xl border border-white/10 bg-[#0e1410] px-4 py-2.5 text-sm font-medium text-subtitle transition hover:text-title disabled:opacity-60"
+                      className="w-full rounded-xl border border-white/10 bg-[#0e1410] px-4 py-2.5 text-sm font-medium text-subtitle transition duration-200 ease-ds hover:text-title disabled:opacity-60"
                     >
                       {ppt === "working" ? "Building…" : ppt === "error" ? "Try again" : "PowerPoint"}
                     </button>
                   </div>
-                  {config.salesperson && <SalespersonClosing sp={config.salesperson} />}
+                  {config.salesperson && <SalespersonClosing sp={config.salesperson} company={config.clientName} />}
                 </>
               )}
             </>
           ) : (
             /* ── desktop: fixed-corner chrome + scroll-dive (unchanged) ── */
             <>
+              {/* top-left: proposal identity */}
               <div className="no-print fixed left-6 top-4 z-[55] flex flex-col items-start gap-3">
                 {showChrome && (
                   <>
-                    <div className="tf-fade text-[10.5px] font-semibold uppercase tracking-[0.2em] text-[#6f8a7f]">
+                    <div className="tf-fade font-mono text-[10.5px] font-medium uppercase tracking-[0.34em] text-mint-muted">
                       A Trace Finance Proposal
                     </div>
                     <div className="flex items-center gap-3">
@@ -259,34 +351,59 @@ export function SharedFlowView({ code }: { code: string }) {
                         {config.clientRep && <div className="text-[11px] text-muted">Prepared for {config.clientRep}</div>}
                       </div>
                     </div>
-                    <div className="tf-fade flex flex-col gap-1.5">
-                      {hasPricing && <ViewSwitch view={view} onChange={setView} />}
-                      <AnimatePresence initial={false}>
-                        {(!hasPricing || view === "flow") && hasVariants && (
-                          <motion.div
-                            key="variants"
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: "auto", opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
-                            className="flex flex-col gap-1.5 overflow-hidden"
-                          >
-                            <span className="pl-1 pt-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">Flows</span>
-                            <FlowSwitch variants={variants!} activeId={flowId} onChange={setActiveFlowId} />
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
                   </>
                 )}
               </div>
 
-              {hasPricing && view === "pricing" ? (
-                <PricingView pricing={config.pricing!} />
+              {/* top-right: toggle cluster (1c) — direction hides on Pricing (2a) */}
+              <div className="no-print fixed right-5 top-4 z-[55] flex flex-col items-end gap-1.5">
+                {showChrome && (
+                  <>
+                    <div className="tf-fade flex items-center gap-2">
+                      <AnimatePresence initial={false}>
+                        {view === "flow" && (
+                          <motion.div
+                            key="direction"
+                            initial={{ opacity: 0, x: 6 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 6 }}
+                            transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
+                          >
+                            <SegToggle
+                              value={direction}
+                              onChange={setDirection}
+                              options={[{ value: "collection", label: "Pay-in" }, { value: "disbursement", label: "Pay-out" }]}
+                            />
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                      <ViewSwitch view={view} onChange={setView} />
+                    </div>
+                    <AnimatePresence initial={false}>
+                      {view === "flow" && hasVariants && (
+                        <motion.div
+                          key="variants"
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
+                          className="flex flex-col items-end gap-1.5 overflow-hidden"
+                        >
+                          <span className="pr-1 pt-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-muted">Flows</span>
+                          <FlowSwitch variants={variants!} activeId={flowId} onChange={setActiveFlowId} />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </>
+                )}
+              </div>
+
+              {view === "pricing" ? (
+                pricingEl
               ) : (
                 <>
-                  <FlowExperience config={fxConfig} presentation onDirectionChange={setDirection} />
-                  {config.salesperson && <SalespersonClosing sp={config.salesperson} />}
+                  <FlowExperience config={fxConfig} presentation />
+                  {config.salesperson && <SalespersonClosing sp={config.salesperson} company={config.clientName} />}
                 </>
               )}
 
@@ -295,14 +412,14 @@ export function SharedFlowView({ code }: { code: string }) {
                   <button
                     onClick={onProposal}
                     disabled={pdf === "working"}
-                    className="flex items-center gap-2 rounded-xl border border-green-accent/40 bg-[#0e1410]/85 px-5 py-3 text-sm font-semibold text-[#bfe8d4] shadow-xl backdrop-blur transition hover:border-green-accent hover:bg-[#13201a] disabled:opacity-60"
+                    className="flex items-center gap-2 rounded-xl border border-green-accent/40 bg-[#0e1410]/85 px-5 py-3 text-sm font-semibold text-[#bfe8d4] shadow-xl backdrop-blur transition duration-200 ease-ds hover:border-green-accent hover:bg-[#13201a] disabled:opacity-60"
                   >
                     {pdf === "working" ? "Building deck…" : pdf === "error" ? "Try again" : "Download Proposal ↓"}
                   </button>
                   <button
                     onClick={onPptx}
                     disabled={ppt === "working"}
-                    className="rounded-xl border border-white/10 bg-[#0e1410]/85 px-4 py-3 text-sm font-medium text-subtitle shadow-xl backdrop-blur transition hover:border-green-accent/40 hover:text-title disabled:opacity-60"
+                    className="rounded-xl border border-white/10 bg-[#0e1410]/85 px-4 py-3 text-sm font-medium text-subtitle shadow-xl backdrop-blur transition duration-200 ease-ds hover:border-green-accent/40 hover:text-title disabled:opacity-60"
                   >
                     {ppt === "working" ? "Building…" : ppt === "error" ? "Try again" : "PowerPoint"}
                   </button>
@@ -312,17 +429,19 @@ export function SharedFlowView({ code }: { code: string }) {
           )
         )}
 
-        {/* intro overlay: opaque backdrop + welcome text, fading out on reveal */}
-        {intro !== "done" && (
+        {/* 2c client gate — or the intro overlay for every other state */}
+        {state.status === "locked" ? (
+          <GateScreen wrong={!!state.wrong} onSubmit={submitPassword} />
+        ) : intro !== "done" ? (
           <div
-            className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#07090b] px-6 text-center"
+            className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-surface-page px-6 text-center"
             style={{ transition: `opacity ${FADE_MS}ms cubic-bezier(.4,0,.2,1)`, opacity: intro === "fadeout" ? 0 : 1, pointerEvents: intro === "fadeout" ? "none" : "auto" }}
           >
             {state.status === "ready" ? (
               <div className="flex flex-col items-center gap-5">
                 <Brandmark size="lg" />
                 {showWelcomeLogo && <ClientLogo config={config!} size="hero" />}
-                <h1 className="text-3xl font-bold tracking-tight text-title md:text-4xl">
+                <h1 className="font-display text-3xl font-semibold tracking-[-0.01em] text-title md:text-4xl">
                   Welcome{repName ? `, ${repName}` : ""}
                 </h1>
                 <p className="max-w-md text-sm text-subtitle">
@@ -338,14 +457,83 @@ export function SharedFlowView({ code }: { code: string }) {
                   {state.status === "loading" && "Loading the flow…"}
                   {state.status === "notfound" && "This link is invalid or has expired."}
                   {state.status === "unconfigured" && "Sharing isn’t configured yet."}
+                  {state.status === "expired" && "This link has expired."}
                   {state.status === "error" && state.msg}
                 </p>
+                {state.status === "expired" && (
+                  <p className="text-[12.5px] text-muted">Ask your Trace contact for a fresh one.</p>
+                )}
               </div>
             )}
           </div>
-        )}
+        ) : null}
       </main>
     </LayoutGroup>
+  );
+}
+
+// 2c — the client link gate: lock in a mint ring, ordinary password field,
+// mint CTA. The password is auto-set at share time; the UI never hints at what
+// it is — the rep communicates it.
+function GateScreen({ wrong, onSubmit }: { wrong: boolean; onSubmit: (pw: string) => Promise<void> }) {
+  const [pw, setPw] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [dirty, setDirty] = useState(false); // typing quiets the error until the next attempt
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    if (!pw.trim() || busy) return;
+    setBusy(true);
+    setDirty(false);
+    try {
+      await onSubmit(pw);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-surface-page px-6">
+      <form onSubmit={submit} className="tf-rise flex w-full max-w-[300px] flex-col items-center text-center">
+        <span className="mb-[18px] flex h-[46px] w-[46px] items-center justify-center rounded-full border border-[rgba(0,242,177,.3)] bg-[#0f1814] text-mint">
+          {/* Lucide-style lock, 2px stroke */}
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <rect x="3" y="11" width="18" height="11" rx="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          </svg>
+        </span>
+        <h1 className="font-display text-[19px] font-semibold tracking-[-0.01em] text-title">This proposal is private</h1>
+        <p className="mb-[22px] mt-2 text-[12.5px] leading-normal text-[#8b948f]">
+          Enter the password your Trace contact shared with you.
+        </p>
+        <input
+          type="password"
+          value={pw}
+          onChange={(e) => {
+            setPw(e.target.value);
+            setDirty(true);
+          }}
+          autoFocus
+          autoComplete="current-password"
+          aria-label="Proposal password"
+          aria-invalid={wrong && !dirty}
+          className="w-full rounded-lg border border-hairline-control bg-surface-input px-3 py-[11px] text-center font-mono text-[15px] tracking-[4px] text-title outline-none transition duration-200 ease-ds focus:border-mint"
+        />
+        {wrong && !dirty && (
+          <p className="mt-2.5 text-[11.5px] text-[#e6b566]" role="alert">
+            That’s not it. Check with your Trace contact.
+          </p>
+        )}
+        <button
+          type="submit"
+          disabled={busy || !pw.trim()}
+          className="mt-2.5 w-full rounded-[9px] bg-mint px-4 py-[11px] text-[13px] font-semibold text-mint-on transition duration-200 ease-ds hover:bg-mint-hover active:bg-mint-press disabled:opacity-60"
+        >
+          {busy ? "Checking…" : "View proposal"}
+        </button>
+        <p className="mt-3.5 text-[11px] text-[#4a5651]">Link expires 30 days after sending.</p>
+      </form>
+    </div>
   );
 }
 
@@ -353,9 +541,10 @@ export function SharedFlowView({ code }: { code: string }) {
 // the centred welcome and its header slot. Honours the logo plate (a dark logo
 // rides a white card; a light/transparent logo sits straight on the deck).
 function ClientLogo({ config, size }: { config: SharedConfig; size: "header" | "hero" }) {
-  if (!config.clientLogoUrl) {
+  const logoSrc = safeSrc(config.clientLogoUrl);
+  if (!logoSrc) {
     if (size === "header") return null;
-    return <div className="text-2xl font-semibold text-title">{config.clientName}</div>;
+    return <div className="font-display text-2xl font-semibold text-title">{config.clientName}</div>;
   }
   const t = { layout: { duration: 0.78, ease: [0.4, 0, 0.2, 1] as [number, number, number, number] } };
   const light = config.clientLogoPlate === "light";
@@ -365,19 +554,19 @@ function ClientLogo({ config, size }: { config: SharedConfig; size: "header" | "
     return (
       <motion.span layoutId="client-logo" transition={t} className={`flex items-center justify-center bg-white ${wrap}`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={config.clientLogoUrl} alt={config.clientName} className={`${img} object-contain`} />
+        <img src={logoSrc} alt={config.clientName} className={`${img} object-contain`} />
       </motion.span>
     );
   }
   const img = size === "header" ? "h-7 max-w-[120px]" : "h-16 max-w-[280px]";
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <motion.img layoutId="client-logo" transition={t} src={config.clientLogoUrl} alt={config.clientName} className={`${img} object-contain`} />
+    <motion.img layoutId="client-logo" transition={t} src={logoSrc} alt={config.clientName} className={`${img} object-contain`} />
   );
 }
 
-// Horizontal Flow | Pricing tab — sits above the variant toggle. Selecting Flow
-// drops the variant lines down; Pricing swaps the main view to the proposal.
+// Horizontal Flow | Pricing tab. Selecting Pricing swaps the main view to the
+// rate cards and hides the direction toggle (rates are direction-independent).
 function ViewSwitch({ view, onChange }: { view: "flow" | "pricing"; onChange: (v: "flow" | "pricing") => void }) {
   return (
     <div className="flex gap-0.5 rounded-[11px] border border-white/10 bg-[#0e1410]/70 p-[3px] backdrop-blur">
@@ -385,8 +574,9 @@ function ViewSwitch({ view, onChange }: { view: "flow" | "pricing"; onChange: (v
         <button
           key={v}
           onClick={() => onChange(v)}
-          className={`rounded-lg px-[15px] py-[6px] text-[12.5px] font-medium tracking-[0.2px] capitalize transition ${
-            view === v ? "bg-[#46d39a24] text-[#bfe8d4]" : "text-[#8b948f] hover:text-[#bfe8d4]"
+          aria-pressed={view === v}
+          className={`rounded-lg px-[15px] py-[6px] text-[12.5px] capitalize tracking-[0.2px] transition duration-200 ease-ds ${
+            view === v ? "bg-mint font-semibold text-mint-on" : "font-medium text-[#8b948f] hover:text-[#bfe8d4]"
           }`}
         >
           {v}
@@ -396,8 +586,8 @@ function ViewSwitch({ view, onChange }: { view: "flow" | "pricing"; onChange: (v
   );
 }
 
-// Horizontal segmented toggle used by the mobile header (Flow/Pricing, Pay-in/out,
-// variant). Same pill styling as the desktop controls.
+// Segmented toggle (Flow/Pricing, Pay-in/out, variants). DS segmented style:
+// active = solid mint + dark text; inactive = transparent + #8b948f.
 function SegToggle<T extends string>({
   options,
   value,
@@ -410,13 +600,14 @@ function SegToggle<T extends string>({
   full?: boolean;
 }) {
   return (
-    <div className={`flex gap-0.5 rounded-[11px] border border-white/10 bg-[#0e1410]/70 p-[3px] ${full ? "w-full" : ""}`}>
+    <div className={`flex gap-0.5 rounded-[11px] border border-white/10 bg-[#0e1410]/70 p-[3px] backdrop-blur ${full ? "w-full" : ""}`}>
       {options.map((o) => (
         <button
           key={o.value}
           onClick={() => onChange(o.value)}
-          className={`rounded-lg px-3 py-[6px] text-[12.5px] font-medium tracking-[0.2px] transition ${full ? "flex-1" : ""} ${
-            value === o.value ? "bg-[#46d39a24] text-[#bfe8d4]" : "text-[#8b948f]"
+          aria-pressed={value === o.value}
+          className={`rounded-lg px-3 py-[6px] text-[12.5px] tracking-[0.2px] transition duration-200 ease-ds ${full ? "flex-1" : ""} ${
+            value === o.value ? "bg-mint font-semibold text-mint-on" : "font-medium text-[#8b948f] hover:text-[#bfe8d4]"
           }`}
         >
           {o.label}
@@ -426,9 +617,124 @@ function SegToggle<T extends string>({
   );
 }
 
-// Pricing view — the pricing slide rebuilt as native, deck-styled web content
-// (selectable, responsive) from config.pricing.
-function PricingView({ pricing, inline }: { pricing: Pricing; inline?: boolean }) {
+// ── 2a Pricing view ──────────────────────────────────────────────────────────
+// "What {Client} pays" — proof chips + two rate cards rendered from the
+// proposal's ProposalPricing (tiers or a flat rate). No calculator (removed at
+// user request). Direction-independent, so the Pay-in/Pay-out toggle is hidden.
+
+function fmtVol(n: number): string {
+  if (n >= 1_000_000) return `$${+(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `$${+(n / 1_000).toFixed(0)}K`;
+  return `$${n}`;
+}
+
+function bandLabel(tiers: PriceComponent["tiers"], i: number): string {
+  const t = tiers[i];
+  const prev = i > 0 ? tiers[i - 1]?.max : null;
+  if (t.max == null) return prev != null ? `Above ${fmtVol(prev)} / month` : "All volumes";
+  if (prev == null) return `Up to ${fmtVol(t.max)} / month`;
+  return `${fmtVol(prev)} to ${fmtVol(t.max)} / month`;
+}
+
+function componentRows(c: PriceComponent, kind: "pix" | "spread"): PriceRow[] {
+  const fmt = (v: number) => (kind === "pix" ? `$${v.toFixed(2)} / pix` : `${v.toFixed(2)}%`);
+  if (c.type === "flat") {
+    const v = c.flat ?? c.tiers[0]?.value ?? 0;
+    return [{ label: "All volumes", value: fmt(v) }];
+  }
+  return c.tiers.map((t, i) => ({ label: bandLabel(c.tiers, i), value: fmt(t.value) }));
+}
+
+function MintCheck() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#00f2b1" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="shrink-0">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
+const PROOF_CHIPS = ["Cents per Pix, not a %", "Rate falls as you grow", "No minimums or setup"];
+
+function PricingView({ pricing, clientName, inline }: { pricing: ProposalPricing; clientName: string; inline?: boolean }) {
+  const cards = [
+    {
+      badge: "P",
+      badgeBg: "#00f2b1",
+      title: "Pix API",
+      sub: pricing.pix.type === "flat" ? "Per-payment fee (USD), all volumes" : "Per-payment fee (USD), tiered by volume",
+      rows: componentRows(pricing.pix, "pix"),
+    },
+    {
+      badge: "$",
+      badgeBg: "#2be8d6",
+      title: "FX spread",
+      sub: pricing.spread.type === "flat" ? "Spot rate + spread, all volumes" : "Spot rate + spread, tiered by volume",
+      rows: componentRows(pricing.spread, "spread"),
+    },
+  ];
+  return (
+    <div
+      className={inline ? "w-full overflow-x-hidden" : "fixed inset-0 z-10 overflow-y-auto overflow-x-hidden"}
+      style={{ background: "radial-gradient(62% 60% at 50% 28%, #15392d40 0%, rgba(7,9,11,0) 70%), #07090b" }}
+    >
+      <div className={`mx-auto flex flex-col ${inline ? "px-4 pb-12 pt-5" : "min-h-full justify-center px-5 pb-20 pt-24 md:px-10"}`} style={{ width: "min(60rem, 100vw)" }}>
+        <div className="text-center">
+          <div className="mb-3 font-mono text-[12px] font-medium uppercase leading-none tracking-[0.34em] text-mint-muted">
+            Transparent pricing
+          </div>
+          <h1 className="font-display text-[28px] font-semibold leading-[1.05] tracking-[-0.02em] text-title md:text-[37px]">
+            What <span className="text-mint">{clientName}</span> pays
+          </h1>
+          <p className="mx-auto mt-3 max-w-[64ch] text-[13.5px] leading-normal text-[#8b948f]">
+            Two line items, nothing hidden. A few cents per payment, never a percentage on Pix, plus a tight FX spread
+            over spot. No monthly minimum, no setup fee.
+          </p>
+        </div>
+
+        <div className="mt-4 flex flex-wrap justify-center gap-2">
+          {PROOF_CHIPS.map((label) => (
+            <span
+              key={label}
+              className="inline-flex items-center gap-1.5 rounded-full border border-hairline-minted bg-[rgba(0,242,177,.06)] px-3 py-1.5 text-[11.5px] font-medium text-[#bfe8d4]"
+            >
+              <MintCheck />
+              {label}
+            </span>
+          ))}
+        </div>
+
+        <div className="mt-6 grid gap-5 md:grid-cols-2">
+          {cards.map((card) => (
+            <div key={card.title} className="tf-rise min-w-0 rounded-2xl border border-hairline-card bg-white/[0.02] px-[22px] py-5" style={{ maxWidth: "calc(100vw - 2rem)" }}>
+              <div className="mb-3.5 flex items-center gap-[11px]">
+                <span
+                  className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full font-display text-[15px] font-bold text-mint-on"
+                  style={{ background: card.badgeBg }}
+                >
+                  {card.badge}
+                </span>
+                <div className="min-w-0">
+                  <div className="font-display text-[15px] font-semibold text-title">{card.title}</div>
+                  <div className="text-[11px] text-muted">{card.sub}</div>
+                </div>
+              </div>
+              {card.rows.map((r) => (
+                <div key={r.label} className="flex items-center justify-between gap-3 border-t border-hairline-row py-[6.5px]">
+                  <span className="min-w-0 truncate text-[12.5px] text-node-text">{r.label}</span>
+                  <span className="shrink-0 font-mono text-[12.5px] font-medium text-mint">{r.value}</span>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Legacy pricing renderer — the pricing slide as stored on older links (region +
+// hand-built cards, e.g. the live ARQ proposal). Data renders as-is.
+function LegacyPricingView({ pricing, inline }: { pricing: LegacyPricing; inline?: boolean }) {
   return (
     <div
       className={inline ? "w-full overflow-x-hidden" : "fixed inset-0 z-10 overflow-y-auto overflow-x-hidden"}
@@ -438,14 +744,14 @@ function PricingView({ pricing, inline }: { pricing: Pricing; inline?: boolean }
         <div className="mb-7">
           <div className="flex items-center gap-3">
             {pricing.flag && <span className="shrink-0 text-4xl leading-none">{pricing.flag}</span>}
-            <h2 className="text-3xl font-bold tracking-tight text-title md:text-4xl">{pricing.region}</h2>
+            <h2 className="font-display text-3xl font-semibold tracking-tight text-title md:text-4xl">{pricing.region}</h2>
           </div>
           {pricing.subtitle && <p className="mt-1.5 text-sm text-green-accent md:text-[15px]">{pricing.subtitle}</p>}
         </div>
 
         <div className="space-y-5 md:grid md:grid-cols-2 md:gap-5 md:space-y-0">
           {pricing.cards.map((card, i) => (
-            <div key={i} className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.02] p-5 shadow-xl md:p-6" style={{ maxWidth: "calc(100vw - 2.5rem)" }}>
+            <div key={i} className="tf-rise min-w-0 rounded-2xl border border-white/10 bg-white/[0.02] p-5 shadow-xl md:p-6" style={{ maxWidth: "calc(100vw - 2.5rem)" }}>
               <div className="flex items-center gap-3">
                 <div
                   className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-lg font-bold text-[#06120c]"
@@ -454,7 +760,7 @@ function PricingView({ pricing, inline }: { pricing: Pricing; inline?: boolean }
                   {card.badge}
                 </div>
                 <div className="min-w-0">
-                  <div className="text-xl font-bold text-title">{card.title}</div>
+                  <div className="font-display text-xl font-semibold text-title">{card.title}</div>
                   {card.sub && <div className="text-[13px] text-subtitle">{card.sub}</div>}
                 </div>
               </div>
@@ -483,41 +789,47 @@ function PricingView({ pricing, inline }: { pricing: Pricing; inline?: boolean }
 
 // Closing "last deck" — the salesperson's profile + contact, at the end of the
 // proposal scroll. Deck-styled to match the rest.
-function SalespersonClosing({ sp }: { sp: Salesperson }) {
+function SalespersonClosing({ sp, company }: { sp: Salesperson; company?: string }) {
   const initials = sp.name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+  const photo = safeSrc(sp.photo);
+  const bookingUrl = safeLink(sp.bookingUrl);
+  // Pre-fill the subject so the client's reply lands with context and the rep
+  // can triage at a glance. Personalised to the company when we have it.
+  const subject = company?.trim() ? `Trace Finance proposal for ${company.trim()}` : "Our Trace Finance proposal";
+  const emailHref = sp.email ? `mailto:${sp.email}?subject=${encodeURIComponent(subject)}` : undefined;
   return (
     <section
       className="relative flex min-h-screen w-full flex-col items-center justify-center px-6 text-center"
       style={{ background: "radial-gradient(60% 60% at 50% 42%, #15392d40 0%, rgba(7,9,11,0) 70%), #07090b" }}
     >
-      <div className="mb-7 text-[11px] font-medium uppercase tracking-[0.34em] text-[#6f8a7f]">Your Trace Finance contact</div>
+      <div className="mb-7 font-mono text-[11px] font-medium uppercase tracking-[0.34em] text-mint-muted">Your Trace Finance contact</div>
       <div className="flex max-w-md flex-col items-center gap-5">
-        {sp.photo ? (
+        {photo ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={sp.photo} alt={sp.name} className="h-28 w-28 rounded-full border border-white/10 object-cover" />
+          <img src={photo} alt={sp.name} className="h-28 w-28 rounded-full border border-white/10 object-cover" />
         ) : (
           <div className="flex h-28 w-28 items-center justify-center rounded-full border border-green-accent/30 bg-[#0f1814] text-3xl font-semibold text-[#9cc4b3]">
             {initials}
           </div>
         )}
         <div>
-          <div className="text-2xl font-bold tracking-tight text-title">{sp.name}</div>
+          <div className="font-display text-2xl font-semibold tracking-tight text-title">{sp.name}</div>
           {sp.title && <div className="mt-0.5 text-sm text-subtitle">{sp.title}</div>}
         </div>
         {sp.bio && <p className="text-sm leading-relaxed text-subtitle">{sp.bio}</p>}
         <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
-          {sp.bookingUrl && (
-            <a href={sp.bookingUrl} target="_blank" rel="noreferrer" className="rounded-xl bg-green-accent px-5 py-2.5 text-sm font-semibold text-[#06120c] transition hover:brightness-110">
+          {bookingUrl && (
+            <a href={bookingUrl} target="_blank" rel="noreferrer" className="rounded-xl bg-green-accent px-5 py-2.5 text-sm font-semibold text-[#06120c] transition duration-200 ease-ds hover:brightness-110">
               Book a call →
             </a>
           )}
-          {sp.email && (
-            <a href={`mailto:${sp.email}`} className="rounded-xl border border-green-accent/40 px-4 py-2.5 text-sm font-medium text-[#bfe8d4] transition hover:bg-[#13201a]">
+          {sp.email && emailHref && (
+            <a href={emailHref} className="rounded-xl border border-green-accent/40 px-4 py-2.5 text-sm font-medium text-[#bfe8d4] transition duration-200 ease-ds hover:bg-[#13201a]">
               {sp.email}
             </a>
           )}
           {sp.phone && (
-            <a href={`tel:${sp.phone.replace(/[^+\d]/g, "")}`} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-medium text-subtitle transition hover:text-title">
+            <a href={`tel:${sp.phone.replace(/[^+\d]/g, "")}`} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-medium text-subtitle transition duration-200 ease-ds hover:text-title">
               {sp.phone}
             </a>
           )}
@@ -532,7 +844,7 @@ function SalespersonClosing({ sp }: { sp: Salesperson }) {
   );
 }
 
-// Left-side flow switch — same segmented-pill styling as the Pay-in / Pay-out
+// Right-side flow switch — same segmented-pill styling as the Pay-in / Pay-out
 // toggle, but it swaps the whole flow between the prepared variants.
 function FlowSwitch({ variants, activeId, onChange }: { variants: Variant[]; activeId: string; onChange: (id: string) => void }) {
   return (
@@ -541,8 +853,9 @@ function FlowSwitch({ variants, activeId, onChange }: { variants: Variant[]; act
         <button
           key={v.flowId}
           onClick={() => onChange(v.flowId)}
-          className={`w-full rounded-lg px-[15px] py-[6px] text-left text-[12.5px] font-medium tracking-[0.2px] transition ${
-            activeId === v.flowId ? "bg-[#46d39a24] text-[#bfe8d4]" : "text-[#8b948f] hover:text-[#bfe8d4]"
+          aria-pressed={activeId === v.flowId}
+          className={`w-full rounded-lg px-[15px] py-[6px] text-left text-[12.5px] tracking-[0.2px] transition duration-200 ease-ds ${
+            activeId === v.flowId ? "bg-mint font-semibold text-mint-on" : "font-medium text-[#8b948f] hover:text-[#bfe8d4]"
           }`}
         >
           {v.name}

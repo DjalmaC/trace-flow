@@ -127,6 +127,10 @@ export function MachineryStage({
     () => layout.legs.filter((l) => l.convertsTo).map((l) => ({ x: l.mid.x, key: l.index })),
     [layout.legs],
   );
+  // Depend on the specific config fields these actually read (direction +
+  // collected/delivered, via displayCurrency), NOT config's object identity —
+  // otherwise every parent re-render (e.g. typing the client name) rebuilds the
+  // timeline and restarts the rAF relay from the first node.
   const currencies = useMemo(() => {
     const s = new Set<Currency>();
     layout.legs.forEach((l) => {
@@ -134,8 +138,13 @@ export function MachineryStage({
       if (l.convertsTo) s.add(displayCurrency(l.convertsTo, config));
     });
     return [...s];
-  }, [layout.legs, config]);
-  const timeline = useMemo(() => buildTimeline(layout, config, byId), [layout, config, byId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layout.legs, config.direction, config.collected, config.delivered]);
+  const timeline = useMemo(
+    () => buildTimeline(layout, config, byId),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [layout, config.direction, config.collected, config.delivered, byId],
+  );
 
   // when (in the relay cycle) the token arrives at each node centre — used to
   // fire that box's landing ripple. Earliest phase ending at the node's cx.

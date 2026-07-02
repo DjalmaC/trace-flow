@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { FlowExperience } from "@/flow-tool/components/FlowExperience";
 import { ControlPanel } from "@/components/ControlPanel";
 import { defaultConfig } from "@/flow-tool/data";
-import type { FlowConfig, ProposalSetup } from "@/flow-tool/data/schema";
+import { deckPricing, type FlowConfig, type ProposalPricing, type ProposalSetup } from "@/flow-tool/data/schema";
 import { loadSetup } from "@/flow-tool/lib/setup";
 
 export default function BuildPage() {
@@ -13,6 +13,11 @@ export default function BuildPage() {
   const [setup, setSetup] = useState<ProposalSetup | null>(null);
   // Flows the salesperson has added to the proposal deck (in order).
   const [proposalFlows, setProposalFlows] = useState<{ flowId: string; name: string }[]>([]);
+  // Proposal pricing (2b): lives beside proposalFlows and rides into the share
+  // config, so the client's Pricing view and the PDF show the rep's rates.
+  const [pricing, setPricing] = useState<ProposalPricing>(() => deckPricing());
+  // Sandbox mode: links generated while on are tagged and kept off the pipeline.
+  const [sandbox, setSandbox] = useState(false);
 
   // Deep links for screen-share: ?flow=flow-7 preloads a flow, ?present=1 opens
   // straight into presentation mode.
@@ -68,9 +73,12 @@ export default function BuildPage() {
         <FlowExperience config={config} presentation onDirectionChange={setDirection} />
         <button
           onClick={() => setPresent(false)}
-          className="fixed left-4 top-4 z-50 rounded-lg border border-node-stroke bg-[#0c110f]/90 px-3 py-1.5 text-sm text-subtitle backdrop-blur transition hover:text-title"
+          className="fixed left-4 top-4 z-50 flex items-center gap-1.5 rounded-lg border border-node-stroke bg-[#0c110f]/90 px-3 py-1.5 text-sm text-subtitle backdrop-blur transition hover:text-title"
         >
-          ✕ Exit present
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+          Exit present
         </button>
       </main>
     );
@@ -86,10 +94,15 @@ export default function BuildPage() {
         onSetupChange={setSetup}
         proposalFlows={proposalFlows}
         onProposalFlowsChange={setProposalFlows}
+        pricing={pricing}
+        onPricingChange={setPricing}
+        sandbox={sandbox}
+        onSandboxChange={setSandbox}
       />
+      {/* Sits UNDER the rail (z-40 < z-50): reachable when the rail is collapsed. */}
       <a
         href="/"
-        className="fixed bottom-4 left-4 z-50 rounded-lg border border-node-stroke bg-[#0c110f]/90 px-3 py-1.5 text-sm text-subtitle backdrop-blur transition hover:text-title"
+        className="fixed bottom-4 left-4 z-40 rounded-lg border border-node-stroke bg-[#0c110f]/90 px-3 py-1.5 text-sm text-subtitle backdrop-blur transition hover:text-title"
       >
         ← Proposals
       </a>

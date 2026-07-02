@@ -43,9 +43,48 @@ const config: Config = {
         client: "#7fb89f",
         usdc: "#2775CA",
         usdt: "#26A17B",
+        // Trace DS (design handoff) — brand mint + supporting surface/hairline
+        // scale used by the redesigned screens. Mint is the primary CTA color.
+        mint: {
+          DEFAULT: "#00f2b1",
+          hover: "#4cf6c8",
+          press: "#00d89e",
+          on: "#06120c", // text on mint
+          muted: "#6f8a7f",
+          avatar: "#7fe7c0",
+        },
+        cyan2: "#2be8d6",
+        surface: {
+          page: "#07090b",
+          card: "#0f1411",
+          card2: "#0d1210",
+          input: "#0b120e",
+        },
+        hairline: {
+          row: "#17201c",
+          card: "#1c2621",
+          control: "#22302a",
+          minted: "#1c3a2e",
+          selected: "#2b5e48",
+        },
+        status: {
+          viewedBg: "#0f2019",
+          sharedFg: "#2be8d6",
+          sharedBg: "#0c2020",
+          draftFg: "#e6b566",
+          draftBg: "#241d10",
+        },
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "Arial", "sans-serif"],
+        // DS type system: DM Sans is the app default; Poppins for display;
+        // DM Mono for numerics/dates/kbd. Inter remains for the deck/export path.
+        sans: ["var(--font-dm-sans)", "system-ui", "Arial", "sans-serif"],
+        display: ["var(--font-poppins)", "var(--font-dm-sans)", "sans-serif"],
+        mono: ["var(--font-dm-mono)", "ui-monospace", "SFMono-Regular", "monospace"],
+        inter: ["var(--font-inter)", "system-ui", "sans-serif"],
+      },
+      transitionTimingFunction: {
+        ds: "cubic-bezier(.2,.8,.2,1)",
       },
     },
   },

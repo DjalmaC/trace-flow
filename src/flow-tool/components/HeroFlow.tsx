@@ -5,6 +5,7 @@ import type { Currency, Flow, FlowConfig } from "../data/schema";
 import { ASSETS, C, TRACE_LOGO_AR, accentFor, tubeTint } from "./tokens";
 import { displayCurrency } from "./FlowSvg/Tokens";
 import { TraceArrow } from "./FlowSvg/TraceArrow";
+import { Defs } from "./FlowSvg";
 
 // Stage 1 hero — the elevated "desired transaction", ported from
 // trace_hero_mock.html. A horizontal rail: client → tube → the Trace-mark
@@ -155,7 +156,10 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
     : { transition: "fill .55s cubic-bezier(.4,0,.2,1), stroke .55s cubic-bezier(.4,0,.2,1)" };
 
   return (
-    <svg viewBox={VIEWBOX} preserveAspectRatio="xMidYMid meet" style={{ display: "block", width: "100%", maxHeight: "44vh", fontFamily: "Inter, system-ui, sans-serif" }} role="img" aria-label={`What ${config.clientName} wants`}>
+    <svg viewBox={VIEWBOX} preserveAspectRatio="xMidYMid meet" style={{ display: "block", width: "100%", maxHeight: "44vh", fontFamily: "var(--font-inter), system-ui, sans-serif" }} role="img" aria-label={`What ${config.clientName} wants`}>
+      {/* Self-contained defs (e.g. #tf-shadow) so the hero renders correctly even
+          when the machinery SVG that also defines them isn't mounted (surface-only). */}
+      <Defs />
       {/* tubes / conduits — flat channels tinted by direction, running BEHIND the
           station boxes (boxes are drawn after, covering the tube ends flush) */}
       <clipPath id="tf-tube">

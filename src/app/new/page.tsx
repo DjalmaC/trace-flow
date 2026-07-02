@@ -15,7 +15,7 @@ const PROPOSALS: { value: ProposalType; title: string; tag: string; blurb: strin
     value: "standard",
     title: "Standard proposal",
     tag: "Cross-border · USDC ↔ BRL",
-    blurb: "Payins & payouts into and out of Brazil. Tier-based Pix fee + FX spread at Bloomberg.",
+    blurb: "Payins & payouts into and out of Brazil. Tier-based Pix fee + FX spread over spot.",
   },
   {
     value: "brazil-market",
@@ -106,7 +106,7 @@ export default function NewProposalPage() {
           {rep && <span className="text-xs text-muted">as {rep.name}</span>}
         </div>
 
-        <h1 className="text-3xl font-bold tracking-tight md:text-4xl">New proposal</h1>
+        <h1 className="font-display text-3xl font-semibold tracking-tight md:text-4xl">New proposal</h1>
         <p className="mt-2 text-sm text-subtitle">
           Set this up before the call. You&apos;ll build the flow live with the client next.
         </p>
@@ -201,7 +201,7 @@ export default function NewProposalPage() {
               type="month"
               value={ym}
               onChange={(e) => setYm(e.target.value)}
-              className="rounded-lg border border-node-stroke bg-node-fill px-3 py-2.5 text-sm outline-none focus:border-green-accent [color-scheme:dark]"
+              className="rounded-lg border border-node-stroke bg-node-fill px-3 py-2.5 font-mono text-sm outline-none focus:border-green-accent [color-scheme:dark]"
             />
           </Field>
         </div>
