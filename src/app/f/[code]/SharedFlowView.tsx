@@ -100,7 +100,6 @@ export function SharedFlowView({ code }: { code: string }) {
   const [direction, setDirection] = useState<Direction>("collection");
   const [activeFlowId, setActiveFlowId] = useState<string | null>(null);
   const [pdf, setPdf] = useState<"idle" | "working" | "error">("idle");
-  const [ppt, setPpt] = useState<"idle" | "working" | "error">("idle");
   const [view, setView] = useState<"flow" | "pricing">("flow"); // Flow | Pricing tab
 
   const config = state.status === "ready" ? state.config : null;
@@ -158,21 +157,6 @@ export function SharedFlowView({ code }: { code: string }) {
     } catch {
       setPdf("error");
       setTimeout(() => setPdf("idle"), 3000);
-    }
-  }
-
-  // same deck, as an editable PowerPoint
-  async function onPptx() {
-    if (!config) return;
-    setPpt("working");
-    try {
-      const { variants: _v, proposalUrl: _p, ...base } = config;
-      const { downloadFlowPptx } = await import("@/flow-tool/lib/pptx");
-      await downloadFlowPptx({ ...base, direction }, variants);
-      setPpt("idle");
-    } catch {
-      setPpt("error");
-      setTimeout(() => setPpt("idle"), 3000);
     }
   }
 
@@ -327,13 +311,6 @@ export function SharedFlowView({ code }: { code: string }) {
                     >
                       {pdf === "working" ? "Building deck…" : pdf === "error" ? "Try again" : "Download Proposal ↓"}
                     </button>
-                    <button
-                      onClick={onPptx}
-                      disabled={ppt === "working"}
-                      className="w-full rounded-xl border border-white/10 bg-[#0e1410] px-4 py-2.5 text-sm font-medium text-subtitle transition duration-200 ease-ds hover:text-title disabled:opacity-60"
-                    >
-                      {ppt === "working" ? "Building…" : ppt === "error" ? "Try again" : "PowerPoint"}
-                    </button>
                   </div>
                   {config.salesperson && <SalespersonClosing sp={config.salesperson} company={config.clientName} />}
                 </>
@@ -420,13 +397,6 @@ export function SharedFlowView({ code }: { code: string }) {
                     className="flex items-center gap-2 rounded-xl border border-green-accent/40 bg-[#0e1410]/85 px-5 py-3 text-sm font-semibold text-[#bfe8d4] shadow-xl backdrop-blur transition duration-200 ease-ds hover:border-green-accent hover:bg-[#13201a] disabled:opacity-60"
                   >
                     {pdf === "working" ? "Building deck…" : pdf === "error" ? "Try again" : "Download Proposal ↓"}
-                  </button>
-                  <button
-                    onClick={onPptx}
-                    disabled={ppt === "working"}
-                    className="rounded-xl border border-white/10 bg-[#0e1410]/85 px-4 py-3 text-sm font-medium text-subtitle shadow-xl backdrop-blur transition duration-200 ease-ds hover:border-green-accent/40 hover:text-title disabled:opacity-60"
-                  >
-                    {ppt === "working" ? "Building…" : ppt === "error" ? "Try again" : "PowerPoint"}
                   </button>
                 </div>
               )}

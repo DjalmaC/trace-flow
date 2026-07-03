@@ -166,6 +166,10 @@ export function ControlPanel({
       companyLogoPlate: setup?.companyLogoPlate ?? config.clientLogoPlate,
       ...p,
     };
+    // A generated client link is a snapshot of the proposal at generation time.
+    // Switching template type makes that link stale — drop it so the rail
+    // offers to generate a fresh one instead of presenting the old proposal.
+    if (p.proposalType && p.proposalType !== proposalType) setShare({ status: "idle" });
     onSetupChange?.(next);
     saveSetup(next);
   }
