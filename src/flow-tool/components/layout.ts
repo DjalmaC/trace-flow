@@ -353,20 +353,6 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
       gapMid = (byX[i].x + byX[i].w + byX[i + 1].x) / 2;
     }
   }
-  const dividerX = engineNodeL
-    ? engineNodeL.cx // the folded engine straddles the border
-    : brazilNodes.length && abroadNodes.length
-      ? gapMid
-      : width / 2;
-
-  const laneCenter = (ns: NodeLayout[]) => {
-    const x0 = Math.min(...ns.map((n) => n.x));
-    const x1 = Math.max(...ns.map((n) => n.x + n.w));
-    return (x0 + x1) / 2;
-  };
-  const brazilLabelX = brazilNodes.length ? laneCenter(brazilNodes) : dividerX / 2;
-  const abroadLabelX = abroadNodes.length ? laneCenter(abroadNodes) : (dividerX + width) / 2;
-
   // ── legs: straight connectors along the rail; a tributary (off-trunk leg or
   // any leg whose ends sit at different heights) draws as a smooth S-curve
   // merging into its target. ──
@@ -396,6 +382,37 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
       offTrunk: !trunkLegIdx.has(index) || undefined,
     };
   });
+
+  // The divider is the regulatory story, and the FX engine converts AT the
+  // border — so when a leg crosses the lanes, the divider runs through that
+  // leg's hub (its midpoint when nothing converts on it), preferring the rail's
+  // own crossing. Only lane-adjacency (no crossing leg) falls back to the
+  // widest-gap scan above.
+  const crossing = legs.filter((l) => {
+    const a = byId.get(l.from);
+    const b = byId.get(l.to);
+    return a && b && a.lane !== b.lane;
+  });
+  const borderLeg =
+    crossing.find((l) => l.convertsTo && !l.offTrunk) ??
+    crossing.find((l) => l.convertsTo) ??
+    crossing.find((l) => !l.offTrunk) ??
+    crossing[0];
+  const dividerX = engineNodeL
+    ? engineNodeL.cx // the folded engine straddles the border
+    : borderLeg
+      ? borderLeg.mid.x
+      : brazilNodes.length && abroadNodes.length
+        ? gapMid
+        : width / 2;
+
+  const laneCenter = (ns: NodeLayout[]) => {
+    const x0 = Math.min(...ns.map((n) => n.x));
+    const x1 = Math.max(...ns.map((n) => n.x + n.w));
+    return (x0 + x1) / 2;
+  };
+  const brazilLabelX = brazilNodes.length ? laneCenter(brazilNodes) : dividerX / 2;
+  const abroadLabelX = abroadNodes.length ? laneCenter(abroadNodes) : (dividerX + width) / 2;
 
   // ── headline: two foreground nodes above their machinery counterparts ──
   const counterpart = (headlineId: string): NodeLayout | undefined => {
