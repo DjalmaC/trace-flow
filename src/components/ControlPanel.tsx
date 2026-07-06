@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import type {
   Currency,
   Direction,
+  Flow,
   FlowConfig,
   ProposalPricing,
   ProposalSetup,
@@ -10,6 +11,8 @@ import type {
   Stablecoin,
 } from "@/flow-tool/data/schema";
 import { getFlow } from "@/flow-tool/data";
+import { deleteTailoredFlow, listTailoredFlows } from "@/flow-tool/data/custom-flows";
+import { NewTailoredFlowModal, TailoredFlowEditor } from "@/components/TailoredFlowEditor";
 import { TRACE_REPS, getRep } from "@/flow-tool/data/reps";
 import type { IntakeAnswers } from "@/flow-tool/intake/questions";
 import { resolve } from "@/flow-tool/intake/resolver";
@@ -126,6 +129,12 @@ export function ControlPanel({
   const [step, setStep] = useState(0);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [studio, setStudio] = useState<StudioMode | null>(null); // flow studio overlay
+  // Tailored flows (design §4/§6): rep-built drafts from localStorage. Listing
+  // them also registers them, so getFlow resolves drafts across the whole app.
+  const [tailored, setTailored] = useState<Flow[]>([]);
+  const [tailoredDraft, setTailoredDraft] = useState<Flow | null>(null); // editor open
+  const [newTailored, setNewTailored] = useState(false); // fork-first modal
+  useEffect(() => setTailored(listTailoredFlows()), []);
   const [answers, setAnswers] = useState<IntakeAnswers>({});
   const [share, setShare] = useState<{ status: "idle" | "loading" | "done" | "error"; url?: string; msg?: string; copied?: boolean }>({ status: "idle" });
   const [pdf, setPdf] = useState<"idle" | "working" | "error">("idle");
@@ -200,9 +209,16 @@ export function ControlPanel({
       const salesperson = rep
         ? { name: rep.name, title: rep.title, email: rep.email }
         : undefined;
+      // Tailored flows ride inside the link's config (editor state stripped),
+      // so the client view and its PDF resolve them like library flows.
+      const customFlows = [...new Set(list.map((f) => f.flowId))]
+        .map((id) => getFlow(id))
+        .filter((f): f is Flow => !!f?.custom)
+        .map((f) => ({ ...f, editor: undefined }));
       const shareConfig = {
         ...config,
         variants: list.length > 1 ? list : undefined,
+        customFlows: customFlows.length ? customFlows : undefined,
         proposalType,
         date: proposalDate,
         traceRepId,
@@ -336,6 +352,31 @@ export function ControlPanel({
         onResetAnswers={() => setAnswers({})}
         resolution={resolution}
       />
+      {newTailored && (
+        <NewTailoredFlowModal
+          clientName={config.clientName}
+          onCreate={(draft) => {
+            setNewTailored(false);
+            setTailoredDraft(draft);
+          }}
+          onClose={() => setNewTailored(false)}
+        />
+      )}
+      {tailoredDraft && (
+        <TailoredFlowEditor
+          initial={tailoredDraft}
+          config={config}
+          onSave={(saved) => {
+            setTailored(listTailoredFlows());
+            setTailoredDraft(null);
+            patch({ flowId: saved.id }); // put it on the canvas
+          }}
+          onClose={() => {
+            setTailored(listTailoredFlows()); // autosaved drafts survive close
+            setTailoredDraft(null);
+          }}
+        />
+      )}
     </>
   );
 
@@ -463,6 +504,14 @@ export function ControlPanel({
               onAdd={addCurrentFlow}
               onRemove={removeFlow}
               onOpenStudio={setStudio}
+              tailored={tailored}
+              onNewTailored={() => setNewTailored(true)}
+              onEditTailored={(f) => setTailoredDraft(f)}
+              onUseTailored={(f) => patch({ flowId: f.id })}
+              onDeleteTailored={(f) => {
+                deleteTailoredFlow(f.id);
+                setTailored(listTailoredFlows());
+              }}
             />
           )}
 
@@ -683,6 +732,11 @@ function DealStep({
   onAdd,
   onRemove,
   onOpenStudio,
+  tailored,
+  onNewTailored,
+  onEditTailored,
+  onUseTailored,
+  onDeleteTailored,
 }: {
   resolution: ReturnType<typeof resolve>;
   selectedFlowId: string;
@@ -690,6 +744,11 @@ function DealStep({
   onAdd: () => void;
   onRemove: (id: string) => void;
   onOpenStudio: (mode: StudioMode) => void;
+  tailored: Flow[];
+  onNewTailored: () => void;
+  onEditTailored: (f: Flow) => void;
+  onUseTailored: (f: Flow) => void;
+  onDeleteTailored: (f: Flow) => void;
 }) {
   const added = flows.some((x) => x.flowId === selectedFlowId);
   const current = getFlow(selectedFlowId);
@@ -714,6 +773,55 @@ function DealStep({
         <span className="text-[12.5px] font-medium text-subtitle">Browse all flows</span>
         <span className="font-mono text-[12px] text-muted">13</span>
       </button>
+      <button
+        onClick={onNewTailored}
+        className="mt-2 flex w-full items-center justify-between rounded-xl border border-hairline-control px-4 py-3 text-left transition duration-150 ease-ds hover:border-mint/40"
+      >
+        <span>
+          <span className="block text-[12.5px] font-medium text-subtitle">Tailored flow</span>
+          <span className="block text-[10.5px] text-muted">Build a client-specific diagram from scratch</span>
+        </span>
+        <span className="font-mono text-[13px] text-muted">＋</span>
+      </button>
+
+      {tailored.length > 0 && (
+        <div className="mt-3 rounded-xl border border-hairline-card bg-node-fill/40 p-3">
+          <span className="font-mono text-[10px] font-medium uppercase tracking-[.1em] text-mint-muted">
+            Your tailored flows · {tailored.length}
+          </span>
+          <div className="mt-2 space-y-1.5">
+            {tailored.map((f) => (
+              <div key={f.id} className="flex items-center gap-1.5">
+                <button
+                  onClick={() => onUseTailored(f)}
+                  title="Put on canvas"
+                  className={`min-w-0 flex-1 truncate rounded-md border px-2 py-1.5 text-left text-[11.5px] transition duration-150 ease-ds ${
+                    selectedFlowId === f.id
+                      ? "border-hairline-selected text-mint"
+                      : "border-hairline-control text-title hover:border-mint/40"
+                  }`}
+                >
+                  {f.title}
+                </button>
+                <button
+                  onClick={() => onEditTailored(f)}
+                  aria-label={`Edit ${f.title}`}
+                  className="shrink-0 rounded-md border border-hairline-control px-2 py-1.5 text-[11px] text-[#8b948f] transition hover:text-title"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => onDeleteTailored(f)}
+                  aria-label={`Delete ${f.title}`}
+                  className="shrink-0 rounded-md px-1 py-1.5 text-muted transition hover:text-title"
+                >
+                  <XIcon size={9} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* what's on the canvas right now */}
       <div className="mt-4 rounded-xl border border-hairline-card bg-node-fill/40 p-3">

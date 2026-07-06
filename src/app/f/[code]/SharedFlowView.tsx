@@ -6,7 +6,8 @@ import { ASSETS, C, TRACE_LOGO_AR } from "@/flow-tool/components/tokens";
 import { loadSharedFlowGated } from "@/flow-tool/lib/share";
 import { getRep } from "@/flow-tool/data/reps";
 import { deckPricing, flatRowText, normalizePricing, tierText } from "@/flow-tool/data/schema";
-import type { Direction, FlowConfig, PriceCard, ProposalPricing, ProposalType } from "@/flow-tool/data/schema";
+import type { Direction, Flow, FlowConfig, PriceCard, ProposalPricing, ProposalType } from "@/flow-tool/data/schema";
+import { registerCustomFlows } from "@/flow-tool/data/custom-flows";
 
 // A shared link may carry more than one flow "variant" (e.g. a With-IP
 // vs Direct structures). The viewer switches between them with a
@@ -32,6 +33,8 @@ type SharedConfig = FlowConfig & {
   proposalType?: ProposalType;
   date?: string;
   traceRepId?: string;
+  /** Tailored flows this link uses (plain Flow objects, editor state stripped). */
+  customFlows?: Flow[];
 };
 
 // A shared row is only writable by an authenticated rep, but it's still
@@ -161,6 +164,10 @@ export function SharedFlowView({ code }: { code: string }) {
   }
 
   function applyLoaded(loaded: SharedConfig) {
+    // Tailored flows travel inside the link's config; registering them lets
+    // getFlow resolve them everywhere (deck render + PDF export) exactly like
+    // library flows.
+    registerCustomFlows(loaded.customFlows);
     setDirection(loaded.direction);
     setActiveFlowId(loaded.variants?.[0]?.flowId ?? loaded.flowId);
     setState({ status: "ready", config: loaded });

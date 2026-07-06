@@ -94,6 +94,22 @@ export interface Flow {
   nodes: FlowNode[]; // Stage 2 machinery
   legs: Leg[]; // Stage 2 machinery legs, ordered
   sameActor: SameActor[]; // projector links between stages
+
+  // ── Tailored flows (rep-built in the flow editor) ──────────────────────────
+  /** True for rep-built flows. Internal only — the client deck renders a
+   *  tailored flow exactly like a library flow, no CUSTOM chip. */
+  custom?: boolean;
+  /** Client the tailored flow was built for (display only). */
+  customFor?: string;
+  /** Last-edit timestamp (ms) for the drafts list. */
+  updatedAt?: number;
+  /** Editor canvas state, ignored by every renderer: free node positions and
+   *  internal sticky notes. Chain order for the deck comes from nodes[] order,
+   *  which the editor keeps sorted by canvas x. */
+  editor?: {
+    pos: Record<string, { x: number; y: number }>;
+    notes: { id: string; x: number; y: number; text: string }[];
+  };
 }
 
 // ── Proposal layer ────────────────────────────────────────────────────────

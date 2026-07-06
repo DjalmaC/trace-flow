@@ -1,4 +1,5 @@
 import type { Flow, FlowConfig } from "./schema";
+import { getCustomFlow } from "./custom-flows";
 import { flow01 } from "./flows/flow-01";
 import { flow02 } from "./flows/flow-02";
 import { flow03 } from "./flows/flow-03";
@@ -40,7 +41,9 @@ export const FLOW_BY_ID: Record<string, Flow> = Object.fromEntries(
 );
 
 export function getFlow(id: string): Flow | undefined {
-  return FLOW_BY_ID[id];
+  // Library first, then rep-built tailored flows (drafts registered on the
+  // build page; a shared link's own custom flows registered on load).
+  return FLOW_BY_ID[id] ?? getCustomFlow(id);
 }
 
 /** Default config for a flow — used by the manual picker and as intake prefill. */
