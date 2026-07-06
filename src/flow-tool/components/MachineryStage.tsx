@@ -63,7 +63,10 @@ type Phase = {
 /** Build the relay timeline from the legs, oriented for the configured direction. */
 function buildTimeline(layout: FlowLayout, config: FlowConfig, byId: Map<string, NodeLayout>) {
   const reverse = config.direction === "disbursement";
-  const seq = reverse ? layout.legs.slice().reverse() : layout.legs;
+  // The relay travels the trunk only; tributary legs (a second payer merging
+  // in) show a resting token instead — the same vocabulary as reduced motion.
+  const trunkLegs = layout.legs.filter((l) => !l.offTrunk);
+  const seq = reverse ? trunkLegs.slice().reverse() : trunkLegs;
   const D = (c: Currency) => displayCurrency(c, config);
   const phases: Phase[] = [];
   let x: number | null = null;
@@ -119,14 +122,15 @@ export function MachineryStage({
   const reduced = useReducedMotion();
   const run = animate && !reduced;
   const nodes = layout.nodes;
-  const railY = nodes[0]?.cy ?? 412;
+  const railY = layout.railY ?? nodes[0]?.cy ?? 412;
   const accent = accentFor(config.direction);
 
   const byId = useMemo(() => new Map(nodes.map((n) => [n.id, n] as const)), [nodes]);
   const hubs = useMemo(
-    () => layout.legs.filter((l) => l.convertsTo).map((l) => ({ x: l.mid.x, key: l.index })),
+    () => layout.legs.filter((l) => l.convertsTo).map((l) => ({ x: l.mid.x, y: l.mid.y, key: l.index, offTrunk: !!l.offTrunk })),
     [layout.legs],
   );
+  const railHubs = useMemo(() => hubs.filter((h) => !h.offTrunk), [hubs]);
   // Depend on the specific config fields these actually read (direction +
   // collected/delivered, via displayCurrency), NOT config's object identity —
   // otherwise every parent re-render (e.g. typing the client name) rebuilds the
@@ -151,7 +155,9 @@ export function MachineryStage({
   const landings = useMemo(() => {
     const m: Record<string, number> = {};
     const byCx = new Map<number, string>();
-    nodes.forEach((n) => byCx.set(Math.round(n.cx), n.id));
+    // trunk stations only — a tributary stacked in the same column shares its
+    // cx, but the relay never lands on it
+    nodes.filter((n) => n.onTrunk !== false).forEach((n) => byCx.set(Math.round(n.cx), n.id));
     const startId = byCx.get(Math.round(timeline.startX));
     if (startId) m[startId] = 0; // value originates at the first node
     for (const ph of timeline.phases) {
@@ -229,11 +235,11 @@ export function MachineryStage({
       // boxes it stays fully opaque; behind a box it's hidden by z-order while
       // that box lights up (see the box-glow pass below).
       let dmin = Infinity;
-      for (const hb of hubs) {
+      for (const hb of railHubs) {
         const d = Math.abs(x - hb.x);
         if (d < dmin) dmin = d;
       }
-      const op = hubs.length ? clamp01((dmin - R_HIDE) / (R_SHOW - R_HIDE)) : 1;
+      const op = railHubs.length ? clamp01((dmin - R_HIDE) / (R_SHOW - R_HIDE)) : 1;
       if (tokenRef.current) {
         tokenRef.current.setAttribute("transform", `translate(${x.toFixed(1)},${railY})`);
         tokenRef.current.style.opacity = op.toFixed(3);
@@ -288,10 +294,11 @@ export function MachineryStage({
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [run, timeline, railY, config.direction, currencies, hubs, landings, nodes, freezeMs]);
+  }, [run, timeline, railY, config.direction, currencies, hubs, railHubs, landings, nodes, freezeMs]);
 
-  const x0 = nodes[0]?.cx ?? 0;
-  const xN = nodes[nodes.length - 1]?.cx ?? 0;
+  const trunkNodes = nodes.filter((n) => n.onTrunk !== false);
+  const x0 = trunkNodes[0]?.cx ?? nodes[0]?.cx ?? 0;
+  const xN = trunkNodes[trunkNodes.length - 1]?.cx ?? nodes[nodes.length - 1]?.cx ?? 0;
   const railTransition = reduced ? undefined : `fill .55s ${EASE}, stroke .55s ${EASE}`;
   const markW = HUB_R;
   const markH = markW / TRACE_LOGO_AR;
@@ -299,6 +306,18 @@ export function MachineryStage({
   return (
     <g>
       <MachineryContainer layout={layout} showHeading={showHeading} />
+
+      {/* tributary conduits — a second origin merging into the rail. The same
+          recessed-channel material as the rail, drawn as a curve: a soft wide
+          channel plus a hairline spine. Behind everything, like the rail. */}
+      {layout.legs
+        .filter((l) => l.offTrunk)
+        .map((l) => (
+          <g key={`trib-${l.index}`}>
+            <path d={l.d} fill="none" stroke={tubeTint(config.direction)} strokeWidth={30} strokeLinecap="round" style={{ transition: railTransition }} />
+            <path d={l.d} fill="none" stroke={accent} strokeOpacity={0.3} strokeWidth={1} style={{ transition: railTransition }} />
+          </g>
+        ))}
 
       {/* ONE continuous rail behind all boxes — interrupted only by the hub.
           Ends are tucked under the first/last box centers so it never protrudes. */}
@@ -328,11 +347,22 @@ export function MachineryStage({
         layout.legs
           .filter((l) => !l.convertsTo)
           .map((l) => (
-            <g key={l.index} transform={`translate(${l.mid.x},${railY})`}>
+            <g key={l.index} transform={`translate(${l.mid.x},${l.mid.y})`}>
               <CurrencyToken currency={displayCurrency(l.carries, config)} coin={config.stablecoin} />
             </g>
           ))
       )}
+
+      {/* tributary value at rest — the relay travels the trunk, so each merging
+          leg shows its currency resting mid-conduit (reduced-motion vocabulary) */}
+      {run &&
+        layout.legs
+          .filter((l) => l.offTrunk && !l.convertsTo)
+          .map((l) => (
+            <g key={`trib-token-${l.index}`} transform={`translate(${l.mid.x},${l.mid.y})`}>
+              <CurrencyToken currency={displayCurrency(l.carries, config)} coin={config.stablecoin} />
+            </g>
+          ))}
 
       {/* station boxes — cover the rail's ends + the resting token */}
       {nodes.map((node) => (
@@ -354,12 +384,13 @@ export function MachineryStage({
         </g>
       ))}
 
-      {/* conversion hubs — sit ON the line, drawn over the boxes */}
+      {/* conversion hubs — sit ON their conduit (the rail, or a tributary curve),
+          drawn over the boxes */}
       {hubs.map((hb) => (
         <g key={hb.key}>
-          <circle cx={hb.x} cy={railY} r={HUB_R} fill="#0b110d" stroke={C.green} strokeOpacity={0.3} />
-          <circle ref={(el) => { pulseRefs.current[hb.key] = el; }} cx={hb.x} cy={railY} r={HUB_R} fill="none" stroke={C.green} strokeWidth={2} opacity={0} />
-          <g transform={`translate(${hb.x},${railY})`}>
+          <circle cx={hb.x} cy={hb.y} r={HUB_R} fill="#0b110d" stroke={C.green} strokeOpacity={0.3} />
+          <circle ref={(el) => { pulseRefs.current[hb.key] = el; }} cx={hb.x} cy={hb.y} r={HUB_R} fill="none" stroke={C.green} strokeWidth={2} opacity={0} />
+          <g transform={`translate(${hb.x},${hb.y})`}>
             <g ref={(el) => { hubMarkRefs.current[hb.key] = el; }} style={{ willChange: "transform" }}>
               <image href={ASSETS.traceLogo} x={-markW / 2} y={-markH / 2} width={markW} height={markH} />
             </g>
@@ -368,16 +399,19 @@ export function MachineryStage({
       ))}
 
       {/* directional indicators — one per rail segment, sat just ahead of where
-          the token emerges (the source end, which flips with direction). */}
-      {layout.legs.map((l) => (
-        <TraceArrow
-          key={l.index}
-          cx={config.direction === "collection" ? Math.min(l.x1, l.x2) + 22 : Math.max(l.x1, l.x2) - 22}
-          cy={railY}
-          size={22}
-          direction={config.direction}
-        />
-      ))}
+          the token emerges (the source end, which flips with direction). The
+          resting tributary token already tells that conduit's story. */}
+      {layout.legs
+        .filter((l) => !l.offTrunk)
+        .map((l) => (
+          <TraceArrow
+            key={l.index}
+            cx={config.direction === "collection" ? Math.min(l.x1, l.x2) + 22 : Math.max(l.x1, l.x2) - 22}
+            cy={railY}
+            size={22}
+            direction={config.direction}
+          />
+        ))}
     </g>
   );
 }

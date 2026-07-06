@@ -23,15 +23,35 @@ export function MobileFlow({ flow, config }: { flow: Flow; config: FlowConfig })
   const semanticDown = config.direction === "collection";
   const travelDown = config.direction === "collection";
   const nodes = layout.nodes; // authored order (abroad/top -> Brazil/bottom)
-  const legFor = (aId: string, bId: string): LegLayout | undefined =>
-    layout.legs.find((l) => (l.from === aId && l.to === bId) || (l.from === bId && l.to === aId));
+
+  // Group by topological column: parallel origins (two payers into the same
+  // account) sit side-by-side in one row instead of reading as a sequence.
+  const groups: NodeLayout[][] = [];
+  nodes.forEach((n) => {
+    const d = n.depth ?? 0;
+    (groups[d] ??= []).push(n);
+  });
+  const cols = groups.filter((g) => g && g.length);
+  /** The leg connecting two adjacent columns — prefer the trunk (rail) leg. */
+  const legBetween = (a: NodeLayout[], b: NodeLayout[]): LegLayout | undefined => {
+    let tributary: LegLayout | undefined;
+    for (const l of layout.legs) {
+      const fwd = a.some((n) => n.id === l.from) && b.some((n) => n.id === l.to);
+      const rev = b.some((n) => n.id === l.from) && a.some((n) => n.id === l.to);
+      if (fwd || rev) {
+        if (!l.offTrunk) return l;
+        tributary ??= l;
+      }
+    }
+    return tributary;
+  };
 
   // Connectors in DOM (top->bottom) order — their measured spans become the
   // "bright" windows for the gliding coin.
   const connOrder: number[] = [];
-  nodes.forEach((node, i) => {
-    const next = nodes[i + 1];
-    if (next && legFor(node.id, next.id)) connOrder.push(i);
+  cols.forEach((g, gi) => {
+    const next = cols[gi + 1];
+    if (next && legBetween(g, next)) connOrder.push(gi);
   });
   const segCount = connOrder.length;
 
@@ -173,20 +193,31 @@ export function MobileFlow({ flow, config }: { flow: Flow; config: FlowConfig })
         </motion.span>
       )}
 
-      {nodes.map((node, i) => {
-        const next = nodes[i + 1];
-        const leg = next ? legFor(node.id, next.id) : undefined;
-        const ord = connOrder.indexOf(i);
+      {cols.map((g, gi) => {
+        const next = cols[gi + 1];
+        const leg = next ? legBetween(g, next) : undefined;
+        const ord = connOrder.indexOf(gi);
         const isConv = !!leg?.convertsTo;
+        const fromLane = (leg && nodes.find((n) => n.id === leg.from)?.lane) ?? g[0].lane;
+        const toLane = (leg && nodes.find((n) => n.id === leg.to)?.lane) ?? next?.[0]?.lane ?? g[0].lane;
         return (
-          <div key={node.id} className="relative z-10">
-            <NodeCard node={node} primary={node.id === layout.primaryClientId} config={config} />
+          <div key={g[0].id} className="relative z-10">
+            {g.length === 1 ? (
+              <NodeCard node={g[0]} primary={g[0].id === layout.primaryClientId} config={config} />
+            ) : (
+              // parallel origins: side-by-side, both feeding the row below
+              <div className="grid grid-cols-2 gap-2">
+                {g.map((n) => (
+                  <NodeCard key={n.id} node={n} primary={n.id === layout.primaryClientId} config={config} />
+                ))}
+              </div>
+            )}
             {leg && next && (
               <Connector
                 ref={(el) => { connRefs.current[ord] = el; }}
                 leg={leg}
-                topLane={node.lane}
-                botLane={next.lane}
+                topLane={fromLane}
+                botLane={toLane}
                 config={config}
                 accent={accent}
                 reduced={!!reduced}

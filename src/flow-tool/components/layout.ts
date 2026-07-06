@@ -40,6 +40,11 @@ export interface NodeLayout extends Box {
   kind: NodeKindOrEngine;
   lane: Flow["nodes"][number]["lane"];
   lines: string[];
+  /** Topological column (longest distance from a source). Parallel origins —
+   *  two payers into one account — share a column and stack vertically. */
+  depth: number;
+  /** On the main relay path (the rail). Off-trunk nodes are tributaries. */
+  onTrunk: boolean;
   /** For the collapsed "Trace engine": how many internal steps it folds. */
   engineCount?: number;
   /** Render with the client's logo instead of the kind's default badge. */
@@ -50,7 +55,8 @@ export interface LegLayout {
   index: number;
   from: string;
   to: string;
-  /** SVG path for the connector (right edge of `from` → left edge of `to`). */
+  /** SVG path for the connector (right edge of `from` → left edge of `to`).
+   *  Straight along the rail; a smooth curve when a tributary joins it. */
   d: string;
   /** Travel endpoints (already oriented for collection; reverse for disbursement). */
   x1: number;
@@ -61,6 +67,9 @@ export interface LegLayout {
   convertsTo?: Currency;
   /** Mid-leg point where the token/swap sits. */
   mid: { x: number; y: number };
+  /** Not part of the relay rail — drawn as a curved tributary conduit with a
+   *  resting token instead of the travelling one. */
+  offTrunk?: boolean;
 }
 
 export interface HeadlineLayout {
@@ -93,6 +102,8 @@ export interface FlowLayout {
   headline: HeadlineLayout;
   projectors: ProjectorLayout[];
   dividerX: number;
+  /** Vertical centre of the relay rail (trunk nodes sit exactly here). */
+  railY: number;
   brazilLabelX: number;
   abroadLabelX: number;
   reverse: boolean;
@@ -141,6 +152,15 @@ const ENGINE_W = 212;
 /** Detect a contiguous Trace-operated middle (kind trace/operational) strictly
  *  between the two headline counterparts. Collapsible when it folds >= 3 nodes. */
 export function detectEngine(flow: Flow): EngineInfo | null {
+  // Folding assumes one linear chain; a flow with a merge (fan-in) or split
+  // keeps its full machinery.
+  const inDeg = new Map<string, number>();
+  const outDeg = new Map<string, number>();
+  for (const l of flow.legs) {
+    outDeg.set(l.from, (outDeg.get(l.from) ?? 0) + 1);
+    inDeg.set(l.to, (inDeg.get(l.to) ?? 0) + 1);
+  }
+  if (flow.nodes.some((n) => (inDeg.get(n.id) ?? 0) > 1 || (outDeg.get(n.id) ?? 0) > 1)) return null;
   const counterpart = (id: string) =>
     flow.sameActor.find((s) => s.headlineNode === id)?.machineryNode ?? id;
   const ai = flow.nodes.findIndex((n) => n.id === counterpart(flow.headline.partyA));
@@ -208,38 +228,109 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
     srcLegs = flow.legs.map((l) => ({ from: l.from, to: l.to, carries: l.carries, convertsTo: l.convertsTo }));
   }
 
-  // ── machinery nodes: horizontal chain, wider gap before a conversion leg ──
-  const xs: number[] = [];
-  let cursor = PAD_X;
-  srcNodes.forEach((node, i) => {
-    if (i > 0) {
-      const incoming = srcLegs.find((l) => l.to === node.id);
-      const gap = incoming?.convertsTo ? GAP_CONVERT : GAP_PLAIN;
-      cursor += srcNodes[i - 1].w + gap;
+  // ── topological columns (fan-in support) ──
+  // depth = longest path from any source. A chain degenerates to one node per
+  // column, reproducing the classic single-rail layout exactly; parallel
+  // origins (two payers into one account) share a column and stack.
+  const nodeIdx = new Map(srcNodes.map((n, i) => [n.id, i]));
+  const depths = new Array<number>(srcNodes.length).fill(0);
+  for (let pass = 0; pass < srcNodes.length; pass++) {
+    let changed = false;
+    for (const l of srcLegs) {
+      const a = nodeIdx.get(l.from);
+      const b = nodeIdx.get(l.to);
+      if (a == null || b == null) continue;
+      if (depths[b] < depths[a] + 1) {
+        depths[b] = depths[a] + 1;
+        changed = true;
+      }
     }
-    xs.push(cursor);
+    if (!changed) break;
+  }
+  const colCount = srcNodes.length ? Math.max(...depths) + 1 : 0;
+
+  // The trunk — the longest source→sink path — carries the relay; everything
+  // else is a tributary that merges into it.
+  const byDepthOrder = srcNodes.map((_, i) => i).sort((a, b) => depths[a] - depths[b]);
+  const bestLen = new Array<number>(srcNodes.length).fill(0);
+  const bestPrev = new Array<number>(srcNodes.length).fill(-1);
+  const legPrev = new Array<number>(srcNodes.length).fill(-1);
+  for (const i of byDepthOrder) {
+    srcLegs.forEach((l, li) => {
+      if (nodeIdx.get(l.from) !== i) return;
+      const j = nodeIdx.get(l.to);
+      if (j == null) return;
+      if (bestLen[j] < bestLen[i] + 1) {
+        bestLen[j] = bestLen[i] + 1;
+        bestPrev[j] = i;
+        legPrev[j] = li;
+      }
+    });
+  }
+  let trunkEnd = 0;
+  bestLen.forEach((v, i) => {
+    if (v > bestLen[trunkEnd]) trunkEnd = i;
   });
-  const lastW = srcNodes[srcNodes.length - 1]?.w ?? NODE_W;
-  const width = cursor + lastW + PAD_X;
+  const trunkNodeIdx = new Set<number>();
+  const trunkLegIdx = new Set<number>();
+  for (let i = trunkEnd; i >= 0; i = bestPrev[i]) {
+    trunkNodeIdx.add(i);
+    if (legPrev[i] >= 0) trunkLegIdx.add(legPrev[i]);
+    if (bestPrev[i] === -1) break;
+  }
+
+  // ── column x positions: wider gap before a column any conversion enters ──
+  const colMaxW: number[] = new Array(colCount).fill(NODE_W);
+  srcNodes.forEach((n, i) => {
+    colMaxW[depths[i]] = Math.max(colMaxW[depths[i]], n.w);
+  });
+  const colX: number[] = [];
+  let cursor = PAD_X;
+  for (let c = 0; c < colCount; c++) {
+    if (c > 0) {
+      const converts = srcLegs.some((l) => {
+        const j = nodeIdx.get(l.to);
+        return j != null && depths[j] === c && l.convertsTo;
+      });
+      cursor += colMaxW[c - 1] + (converts ? GAP_CONVERT : GAP_PLAIN);
+    }
+    colX.push(cursor);
+  }
+  const width = (colX[colCount - 1] ?? PAD_X) + (colMaxW[colCount - 1] ?? NODE_W) + PAD_X;
+
+  // ── vertical stacking: the trunk member holds the rail; tributaries step off
+  // it (above first, then below) so parallel origins read as parallel. ──
+  const STACK_OFF = 96;
+  const colSlot: number[] = new Array(colCount).fill(0);
+  const cyFor = (i: number): number => {
+    if (trunkNodeIdx.has(i)) return BAND_Y;
+    const c = depths[i];
+    const slot = colSlot[c]++;
+    const step = Math.floor(slot / 2) + 1;
+    return BAND_Y + (slot % 2 === 0 ? -1 : 1) * STACK_OFF * step;
+  };
 
   const nodes: NodeLayout[] = srcNodes.map((node, i) => {
-    const x = xs[i];
+    const c = depths[i];
+    const x = colX[c] + (colMaxW[c] - node.w) / 2;
     const h = node.kind === "engine" ? 88 : NODE_H;
-    const y = BAND_Y - h / 2;
+    const cy = cyFor(i);
     return {
       id: node.id,
       label: node.label,
       kind: node.kind,
       lane: node.lane,
       lines: wrapLabel(node.label),
+      depth: c,
+      onTrunk: trunkNodeIdx.has(i),
       engineCount: node.engineCount,
       brandedClient: node.brandedClient,
       x,
-      y,
+      y: cy - h / 2,
       w: node.w,
       h,
       cx: x + node.w / 2,
-      cy: BAND_Y,
+      cy,
     };
   });
   const byId = new Map(nodes.map((n) => [n.id, n]));
@@ -276,27 +367,33 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
   const brazilLabelX = brazilNodes.length ? laneCenter(brazilNodes) : dividerX / 2;
   const abroadLabelX = abroadNodes.length ? laneCenter(abroadNodes) : (dividerX + width) / 2;
 
-  // ── legs: straight horizontal connectors along the rail ──
+  // ── legs: straight connectors along the rail; a tributary (off-trunk leg or
+  // any leg whose ends sit at different heights) draws as a smooth S-curve
+  // merging into its target. ──
   const legs: LegLayout[] = srcLegs.map((leg, index) => {
     const from = byId.get(leg.from)!;
     const to = byId.get(leg.to)!;
     const x1 = from.x + from.w;
     const x2 = to.x;
-    const y = BAND_Y;
+    const y1 = from.cy;
+    const y2 = to.cy;
     // the folded engine's conversion hub sits AT the engine center
     const midX = leg.hubAtEngine ? to.cx : (x1 + x2) / 2;
+    const straight = y1 === y2;
+    const dx = Math.max(36, Math.abs(x2 - x1) * 0.5);
     return {
       index,
       from: leg.from,
       to: leg.to,
-      d: `M${x1} ${y} L${x2} ${y}`,
+      d: straight ? `M${x1} ${y1} L${x2} ${y2}` : `M${x1} ${y1} C${x1 + dx} ${y1} ${x2 - dx} ${y2} ${x2} ${y2}`,
       x1,
-      y1: y,
+      y1,
       x2,
-      y2: y,
+      y2,
       carries: leg.carries,
       convertsTo: leg.convertsTo,
-      mid: { x: midX, y },
+      mid: { x: midX, y: straight ? y1 : (y1 + y2) / 2 },
+      offTrunk: !trunkLegIdx.has(index) || undefined,
     };
   });
 
@@ -359,6 +456,7 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
     headline,
     projectors,
     dividerX,
+    railY: BAND_Y,
     brazilLabelX,
     abroadLabelX,
     reverse,

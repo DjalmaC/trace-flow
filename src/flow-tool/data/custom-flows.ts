@@ -140,25 +140,36 @@ export function deriveHeadline(flow: Flow): Headline {
 
 export function normalizeTailored(flow: Flow): Flow {
   const byId = new Map(flow.nodes.map((n) => [n.id, n]));
-  // Chain order drives the deck rail. Prefer the leg topology (walk the chain
-  // from the node nothing points at); fall back to editor x-order when the
-  // graph isn't one clean chain.
+  // Story order drives the deck rail. Topological order over the legs (Kahn),
+  // breaking ties by editor x-position — so a merge (two payers into one
+  // account) keeps both origins ahead of the account. Falls back to pure
+  // x-order if the graph has a cycle.
   const pos = flow.editor?.pos ?? {};
-  const byX = (a: FlowNode, b: FlowNode) => (pos[a.id]?.x ?? 0) - (pos[b.id]?.x ?? 0);
+  const px = (n: FlowNode) => pos[n.id]?.x ?? 0;
+  const byX = (a: FlowNode, b: FlowNode) => px(a) - px(b);
   let nodes: FlowNode[] | null = null;
-  const targets = new Set(flow.legs.map((l) => l.to));
-  const outs = new Map(flow.legs.map((l) => [l.from, l.to]));
-  const heads = flow.nodes.filter((n) => !targets.has(n.id) && outs.has(n.id));
-  if (heads.length === 1) {
-    const walked: FlowNode[] = [];
-    let cur: string | undefined = heads[0].id;
-    const seen = new Set<string>();
-    while (cur && byId.has(cur) && !seen.has(cur)) {
-      seen.add(cur);
-      walked.push(byId.get(cur)!);
-      cur = outs.get(cur);
+  {
+    const inDeg = new Map<string, number>(flow.nodes.map((n) => [n.id, 0]));
+    for (const l of flow.legs) if (inDeg.has(l.to) && byId.has(l.from)) inDeg.set(l.to, (inDeg.get(l.to) ?? 0) + 1);
+    const queue = flow.nodes.filter((n) => (inDeg.get(n.id) ?? 0) === 0).sort(byX);
+    const order: FlowNode[] = [];
+    while (queue.length) {
+      const n = queue.shift()!;
+      order.push(n);
+      for (const l of flow.legs) {
+        if (l.from !== n.id || !inDeg.has(l.to)) continue;
+        const d = (inDeg.get(l.to) ?? 1) - 1;
+        inDeg.set(l.to, d);
+        if (d === 0) {
+          const t = byId.get(l.to);
+          if (t) {
+            queue.push(t);
+            queue.sort(byX);
+          }
+        }
+      }
     }
-    if (walked.length === flow.nodes.length) nodes = walked;
+    if (order.length === flow.nodes.length) nodes = order;
   }
   if (!nodes) nodes = [...flow.nodes].sort(byX);
   const legs = flow.legs
@@ -191,13 +202,13 @@ export function deckReadyChecks(flow: Flow): FlowCheck[] {
   const crossing = flow.legs.filter(
     (l) => byId.get(l.from) && byId.get(l.to) && byId.get(l.from)!.lane !== byId.get(l.to)!.lane,
   );
-  const inDeg = new Map<string, number>();
   const outDeg = new Map<string, number>();
   for (const l of flow.legs) {
     outDeg.set(l.from, (outDeg.get(l.from) ?? 0) + 1);
-    inDeg.set(l.to, (inDeg.get(l.to) ?? 0) + 1);
   }
-  const chain = flow.nodes.every((n) => (inDeg.get(n.id) ?? 0) <= 1 && (outDeg.get(n.id) ?? 0) <= 1);
+  // Merges are welcome (two payers into one account render as tributaries);
+  // splits still read wrong on the deck's single relay.
+  const noSplits = flow.nodes.every((n) => (outDeg.get(n.id) ?? 0) <= 1);
   return [
     {
       ok: flow.nodes.some((n) => n.kind === "client"),
@@ -220,9 +231,9 @@ export function deckReadyChecks(flow: Flow): FlowCheck[] {
       hint: "A leg that crosses Brazil | Abroad needs the FX engine (converts to).",
     },
     {
-      ok: chain,
-      label: "Single clean route",
-      hint: "The deck rail reads best as one chain — at most one leg in and out per node.",
+      ok: noSplits,
+      label: "Routes only converge",
+      hint: "Several payers can pay into one account, but an account that splits into two routes reads wrong on the deck.",
     },
   ];
 }
