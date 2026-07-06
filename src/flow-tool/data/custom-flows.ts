@@ -188,6 +188,13 @@ export function normalizeTailored(flow: Flow): Flow {
   };
 }
 
+/** The currency that lands at a node: the output of its (first) incoming leg —
+ *  what a leg out of that node should carry. */
+export function arrivingCurrency(flow: Flow, nodeId: string) {
+  const incoming = flow.legs.find((l) => l.to === nodeId);
+  return incoming ? incoming.convertsTo ?? incoming.carries : undefined;
+}
+
 // ── deck-ready checks (passive; nudge, never block) ──────────────────────────
 
 export interface FlowCheck {
@@ -234,6 +241,16 @@ export function deckReadyChecks(flow: Flow): FlowCheck[] {
       ok: noSplits,
       label: "Routes only converge",
       hint: "Several payers can pay into one account, but an account that splits into two routes reads wrong on the deck.",
+    },
+    {
+      // money leaves each account carrying what arrived; conversion happens
+      // only on a leg, at the FX engine — never silently inside a node
+      ok: flow.legs.every((l) => {
+        const arriving = arrivingCurrency(flow, l.from);
+        return arriving == null || l.carries === arriving;
+      }),
+      label: "Currency is continuous",
+      hint: "A leg leaves an account carrying what arrived there. To change currency, put the FX engine on the leg.",
     },
   ];
 }

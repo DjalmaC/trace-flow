@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Currency, Flow, FlowConfig, FlowNode, Leg, NodeKind } from "@/flow-tool/data/schema";
 import {
+  arrivingCurrency,
   blankFlow,
   deckReadyChecks,
   forkFlow,
@@ -197,7 +198,9 @@ export function TailoredFlowEditor({
     const a = flow.nodes.find((n) => n.id === from)!;
     const b = flow.nodes.find((n) => n.id === to)!;
     const crossing = a.lane !== b.lane;
-    const carries: Currency = a.lane === "brazil" ? "BRL" : "USD/EUR";
+    // Currency continuity: a leg leaves a node carrying whatever arrived there;
+    // only a source node falls back to its lane's native currency.
+    const carries: Currency = arrivingCurrency(flow, from) ?? (a.lane === "brazil" ? "BRL" : "USD/EUR");
     const leg: Leg = crossing
       ? { from, to, carries, convertsTo: carries === "BRL" ? "USD/EUR" : "BRL", crosses: true }
       : { from, to, carries };
@@ -293,7 +296,14 @@ export function TailoredFlowEditor({
     e.stopPropagation();
     if (armed === "engine") {
       const leg = flow.legs[index];
-      patchLeg(index, { convertsTo: leg.convertsTo ?? (leg.carries === "BRL" ? "USD/EUR" : "BRL") });
+      // Turning on the FX engine: money leaves the account as it arrived and
+      // converts AT the engine — so carries snaps to the arriving currency and
+      // the conversion target starts from there.
+      const arriving = arrivingCurrency(flow, leg.from) ?? leg.carries;
+      patchLeg(index, {
+        carries: arriving,
+        convertsTo: leg.convertsTo && leg.convertsTo !== arriving ? leg.convertsTo : arriving === "BRL" ? "USD/EUR" : "BRL",
+      });
       setArmed(null);
     } else if (armed === "pill") setArmed(null);
     setSelection({ type: "leg", index });
@@ -724,7 +734,17 @@ export function TailoredFlowEditor({
                     <button
                       role="switch"
                       aria-checked={!!selLeg.convertsTo}
-                      onClick={() => patchLeg(selLegIndex, { convertsTo: selLeg.convertsTo ? undefined : selLeg.carries === "BRL" ? "USD/EUR" : "BRL" })}
+                      onClick={() => {
+                        if (selLeg.convertsTo) {
+                          patchLeg(selLegIndex, { convertsTo: undefined });
+                          return;
+                        }
+                        // money leaves the account as it arrived; the FX engine
+                        // converts on the leg — carries snaps to the arriving
+                        // currency, the target starts from there
+                        const arriving = arrivingCurrency(flow, selLeg.from) ?? selLeg.carries;
+                        patchLeg(selLegIndex, { carries: arriving, convertsTo: arriving === "BRL" ? "USD/EUR" : "BRL" });
+                      }}
                       className="relative h-[18px] w-[32px] rounded-full transition"
                       style={{ background: selLeg.convertsTo ? P.mint : "#d8d5cb" }}
                     >
