@@ -359,14 +359,18 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
   const legs: LegLayout[] = srcLegs.map((leg, index) => {
     const from = byId.get(leg.from)!;
     const to = byId.get(leg.to)!;
-    const x1 = from.x + from.w;
-    const x2 = to.x;
     const y1 = from.cy;
     const y2 = to.cy;
+    const straight = y1 === y2;
+    // Straight rail legs span box edge to box edge. A curved tributary anchors
+    // at the box CENTERS instead — its round caps hide under the boxes exactly
+    // the way the rail tucks its own ends — and approaches with a flat tangent,
+    // so it merges into the rail parallel, like a tributary joining a river.
+    const x1 = straight ? from.x + from.w : from.cx;
+    const x2 = straight ? to.x : to.cx;
     // the folded engine's conversion hub sits AT the engine center
     const midX = leg.hubAtEngine ? to.cx : (x1 + x2) / 2;
-    const straight = y1 === y2;
-    const dx = Math.max(36, Math.abs(x2 - x1) * 0.5);
+    const dx = Math.max(64, Math.abs(x2 - x1) * 0.55);
     return {
       index,
       from: leg.from,
