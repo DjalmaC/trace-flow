@@ -1,0 +1,25 @@
+{
+  "company": "Stripe",
+  "domain": "stripe.com",
+  "contact": "João Almeida",
+  "repId": "diogo-cassinelli",
+  "dials": {
+    "direction": "collection",
+    "model": "efx-nra",
+    "nra": "third-party",
+    "rail": "treasury-fiat",
+    "liquidity": "liquidity-provider"
+  },
+  "dialEvidence": {
+    "direction": "we want Trace collecting into Brazil for us, the pay-in side",
+    "model": "you're acting as the FX service provider for your Brazilian merchants ... settlement should land in your own non-resident account",
+    "nra": "We already hold the NRA",
+    "rail": "No stablecoins, please. Fiat only, through your treasury.",
+    "liquidity": "Pix Inc funds your NRA as the liquidity provider and runs the FX on our treasury"
+  },
+  "pricingCommitments": [
+    { "product": "spread", "tier": "Above $50M / month", "value": 0.30, "quote": "I can commit the FX spread at 0.30% above fifty million a month" }
+  ],
+  "stablecoin": "USDT",
+  "proposalType": "standard"
+}

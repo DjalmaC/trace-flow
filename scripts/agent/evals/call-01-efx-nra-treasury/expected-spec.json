@@ -1,0 +1,93 @@
+{
+ "company": "Stripe",
+ "contact": "João Almeida",
+ "domain": "stripe.com",
+ "repId": "diogo-cassinelli",
+ "proposalType": "standard",
+ "direction": "collection",
+ "stablecoin": "USDT",
+ "flows": [
+  {
+   "flowId": "flow-7"
+  }
+ ],
+ "pricing": {
+  "mode": "custom",
+  "cards": [
+   {
+    "key": "pix",
+    "title": "Pix API",
+    "sub": "Per-payment fee (USD), tiered by volume",
+    "prefix": "$",
+    "suffix": " / pix",
+    "badge": "pix",
+    "accent": "green",
+    "type": "tiered",
+    "tiers": [
+     {
+      "label": "Up to $5M / month",
+      "value": 0.1
+     },
+     {
+      "label": "$5M to $10M / month",
+      "value": 0.08
+     },
+     {
+      "label": "$10M to $30M / month",
+      "value": 0.06
+     },
+     {
+      "label": "$30M to $50M / month",
+      "value": 0.04
+     },
+     {
+      "label": "Above $50M / month",
+      "value": 0.02
+     }
+    ]
+   },
+   {
+    "key": "spread",
+    "title": "FX spread",
+    "sub": "Spot rate + spread, tiered by volume",
+    "suffix": "%",
+    "badge": "dollar",
+    "accent": "blue",
+    "type": "tiered",
+    "tiers": [
+     {
+      "label": "Up to $5M / month",
+      "value": 0.7
+     },
+     {
+      "label": "$5M to $10M / month",
+      "value": 0.65
+     },
+     {
+      "label": "$10M to $30M / month",
+      "value": 0.55
+     },
+     {
+      "label": "$30M to $50M / month",
+      "value": 0.5
+     },
+     {
+      "label": "Above $50M / month",
+      "value": 0.3
+     }
+    ]
+   }
+  ]
+ },
+ "pricingEvidence": [
+  {
+   "product": "spread",
+   "tier": "Above $50M / month",
+   "value": 0.3,
+   "quote": "I can commit the FX spread at 0.30% above fifty million a month"
+  }
+ ],
+ "logo": {
+  "note": "logo omitted from the eval fixture (data URL is environment-dependent); expected source: google-favicon, treatment: auto, plate: light"
+ }
+}
