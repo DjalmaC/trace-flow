@@ -16,21 +16,22 @@ export const flow10: Flow = {
   dials: { model: "VA+NRA", rail: "VA-delivery", nraOwnership: "pix-own", pixRole: "settler", localLp: true },
   traceRole: ["VASP", "Correspondente Cambial"],
   directions: ["collection", "disbursement"],
+  // The Local LP that sources Pix Inc's liquidity is Trace's own supplier
+  // relationship — it stays in the dials (the resolver's coordinate) and this
+  // internal note, but the CLIENT-FACING machinery never shows it: Pix Inc
+  // converts and settles directly.
   narrative:
     "A Brazilian end user pays BRL into the Pix Inc Non Resident Account held by Trace's banking " +
-    "partner. Pix Inc sources liquidity from a Local Liquidity Provider and converts BRL to USDC/USDT, " +
-    "settling the virtual asset to the NRA Holder abroad.",
+    "partner. Pix Inc converts BRL to USDC/USDT and settles the virtual asset to the NRA Holder abroad.",
   headline: { partyA: "enduser", partyB: "nraholder", carries: "BRL", convertsTo: "USDC/USDT" },
   nodes: [
     { id: "enduser", label: "Brazilian end user", kind: "operational", lane: "brazil" },
     { id: "pixnra", label: "Pix Inc NRA", kind: "trace", lane: "brazil" },
-    { id: "locallp", label: "Local LP", kind: "operational", lane: "brazil" },
     { id: "nraholder", label: "NRA Holder", kind: "client", lane: "abroad" },
   ],
   legs: [
     { from: "enduser", to: "pixnra", carries: "BRL" },
-    { from: "pixnra", to: "locallp", carries: "BRL" },
-    { from: "locallp", to: "nraholder", carries: "BRL", convertsTo: "USDC/USDT", crosses: true },
+    { from: "pixnra", to: "nraholder", carries: "BRL", convertsTo: "USDC/USDT", crosses: true },
   ],
   sameActor: [
     { headlineNode: "enduser", machineryNode: "enduser" },
