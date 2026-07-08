@@ -611,21 +611,7 @@ function cardRows(card: PriceCard): PriceRow[] {
 
 const CARD_BADGE: Record<PriceCard["badge"], string> = { pix: "P", dollar: "$", percent: "%", up: "↑", down: "↓" };
 
-function MintCheck() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#00f2b1" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="shrink-0">
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
-  );
-}
-
-const PROOF_CHIPS = ["Cents per Pix, not a %", "Rate falls as you grow", "No minimums or setup"];
-const BRAZIL_PROOF_CHIPS = ["Rate falls as you grow", "No minimums or setup", "USDT ↔ BRL on demand"];
-
 function PricingView({ pricing, clientName, inline }: { pricing: ProposalPricing; clientName: string; inline?: boolean }) {
-  // Brazil-market prices five products; its intro copy can't promise the
-  // standard deck's "never a percentage on Pix".
-  const isBrazil = pricing.cards.some((c) => c.key === "nonres");
   const cards = pricing.cards.map((card) => ({
     badge: CARD_BADGE[card.badge] ?? "$",
     badgeBg: card.accent === "blue" ? "#2be8d6" : "#00f2b1",
@@ -646,26 +632,12 @@ function PricingView({ pricing, clientName, inline }: { pricing: ProposalPricing
           <h1 className="font-display text-[28px] font-semibold leading-[1.05] tracking-[-0.02em] text-title md:text-[37px]">
             What <span className="text-mint">{clientName}</span> pays
           </h1>
-          <p className="mx-auto mt-3 max-w-[64ch] text-[13.5px] leading-normal text-[#8b948f]">
-            {isBrazil
-              ? "Every rate on the table: payins, payouts and the stablecoin ramp, tiered by volume. No monthly minimum, no setup fee."
-              : "Two line items, nothing hidden. A few cents per payment, never a percentage on Pix, plus a tight FX spread over spot. No monthly minimum, no setup fee."}
+          <p className="mx-auto mt-3 text-[13.5px] leading-normal text-[#8b948f]">
+            Rates that fall as your volume grows.
           </p>
         </div>
 
-        <div className="mt-4 flex flex-wrap justify-center gap-2">
-          {(isBrazil ? BRAZIL_PROOF_CHIPS : PROOF_CHIPS).map((label) => (
-            <span
-              key={label}
-              className="inline-flex items-center gap-1.5 rounded-full border border-hairline-minted bg-[rgba(0,242,177,.06)] px-3 py-1.5 text-[11.5px] font-medium text-[#bfe8d4]"
-            >
-              <MintCheck />
-              {label}
-            </span>
-          ))}
-        </div>
-
-        <div className="mt-6 grid gap-5 md:grid-cols-2">
+        <div className="mt-7 grid gap-5 md:grid-cols-2">
           {cards.map((card) => (
             <div key={card.title} className="tf-rise min-w-0 rounded-2xl border border-hairline-card bg-white/[0.02] px-[22px] py-5" style={{ maxWidth: "calc(100vw - 2rem)" }}>
               <div className="mb-3.5 flex items-center gap-[11px]">
