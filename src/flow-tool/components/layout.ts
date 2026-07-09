@@ -190,6 +190,8 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
   const collapsed = !!opts.collapsed && !!engine;
 
   const D = (c: Currency) => c; // currency mapping happens at render time
+  // per-proposal renames (double-click on the build canvas)
+  const labelOf = (n: { id: string; label: string }) => config.nodeLabels?.[`${flow.id}:${n.id}`] ?? n.label;
 
   // ── build the effective node/leg lists (full, or with the engine folded) ──
   let srcNodes: SrcNode[];
@@ -212,7 +214,7 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
     srcNodes = [];
     flow.nodes.forEach((n) => {
       if (n.id === first) srcNodes.push(engineNode);
-      if (!idSet.has(n.id)) srcNodes.push({ id: n.id, label: n.label, kind: n.kind, lane: n.lane, w: NODE_W, brandedClient: n.brandedClient });
+      if (!idSet.has(n.id)) srcNodes.push({ id: n.id, label: labelOf(n), kind: n.kind, lane: n.lane, w: NODE_W, brandedClient: n.brandedClient });
     });
     srcLegs = [];
     flow.legs.forEach((l) => {
@@ -224,7 +226,7 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
       else srcLegs.push({ from: l.from, to: l.to, carries: D(l.carries), convertsTo: l.convertsTo });
     });
   } else {
-    srcNodes = flow.nodes.map((n) => ({ id: n.id, label: n.label, kind: n.kind, lane: n.lane, w: NODE_W, brandedClient: n.brandedClient }));
+    srcNodes = flow.nodes.map((n) => ({ id: n.id, label: labelOf(n), kind: n.kind, lane: n.lane, w: NODE_W, brandedClient: n.brandedClient }));
     srcLegs = flow.legs.map((l) => ({ from: l.from, to: l.to, carries: l.carries, convertsTo: l.convertsTo }));
   }
 

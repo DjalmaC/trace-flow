@@ -143,7 +143,7 @@ export function Dashboard({ rep, onSwitch }: { rep: TraceRep; onSwitch: () => vo
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterTab>("all");
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [busy, setBusy] = useState<Record<string, "pdf" | "del">>({});
+  const [busy, setBusy] = useState<Record<string, "pdf" | "del" | "edit" | undefined>>({});
   const [copied, setCopied] = useState<string | null>(null);
 
   async function load() {
@@ -184,6 +184,21 @@ export function Dashboard({ rep, onSwitch }: { rep: TraceRep; onSwitch: () => vo
     setTimeout(() => setCopied(null), 1500);
   }
 
+  // Reopen a stored proposal in the builder: stash its config + code, then
+  // /build hydrates from the stash and offers "Update client link" in place.
+  async function onEdit(code: string) {
+    setBusy((b) => ({ ...b, [code]: "edit" }));
+    try {
+      const cfg = await loadSharedFlow(code);
+      if (!cfg) throw new Error("missing");
+      sessionStorage.setItem("tf:edit-proposal", JSON.stringify({ code, config: cfg }));
+      window.location.assign(`/build?edit=${encodeURIComponent(code)}`);
+    } catch {
+      setBusy((b) => ({ ...b, [code]: undefined }));
+      setError("Could not open that proposal for editing.");
+    }
+  }
+
   async function onDownload(rec: ProposalRecord) {
     setBusy((b) => ({ ...b, [rec.code]: "pdf" }));
     try {
@@ -199,6 +214,7 @@ export function Dashboard({ rep, onSwitch }: { rep: TraceRep; onSwitch: () => vo
         companyLogoUrl: cfg.clientLogoUrl as string | undefined,
         companyLogoPlate: cfg.clientLogoPlate as "light" | "none" | undefined,
         flows: variants ?? [{ flowId: cfg.flowId as string, name: "Flow" }],
+        nodeLabels: cfg.nodeLabels as Record<string, string> | undefined,
         direction: cfg.direction as never,
         stablecoin: cfg.stablecoin as never,
         collected: cfg.collected as never,
@@ -488,6 +504,13 @@ export function Dashboard({ rep, onSwitch }: { rep: TraceRep; onSwitch: () => vo
                     >
                       <button onClick={() => copyLink(r.code)} className={ghostBtn}>
                         {copied === r.code ? "Copied" : "Copy link"}
+                      </button>
+                      <button
+                        onClick={() => onEdit(r.code)}
+                        disabled={!!busy[r.code]}
+                        className="rounded-[7px] border border-hairline-minted px-[9px] py-[5px] text-[11px] font-medium text-[#bfe8d4] transition-colors duration-150 ease-ds hover:bg-[rgba(0,242,177,.06)] disabled:opacity-60"
+                      >
+                        {busy[r.code] === "edit" ? "Opening…" : "Edit"}
                       </button>
                       <button
                         onClick={() => onDownload(r)}

@@ -364,16 +364,18 @@ export function MachineryStage({
             </g>
           ))}
 
-      {/* station boxes — cover the rail's ends + the resting token */}
+      {/* station boxes — cover the rail's ends + the resting token.
+          data-flow-node lets the build page offer double-click renaming. */}
       {nodes.map((node) => (
-        <FlowNodeShape
-          key={node.id}
-          node={node}
-          isPrimaryClient={node.id === layout.primaryClientId}
-          clientName={config.clientName}
-          clientLogoUrl={config.clientLogoUrl}
-          clientLogoPlate={config.clientLogoPlate}
-        />
+        <g key={node.id} data-flow-node={node.kind === "engine" ? undefined : node.id}>
+          <FlowNodeShape
+            node={node}
+            isPrimaryClient={node.id === layout.primaryClientId}
+            clientName={config.clientName}
+            clientLogoUrl={config.clientLogoUrl}
+            clientLogoPlate={config.clientLogoPlate}
+          />
+        </g>
       ))}
 
       {/* box landing ripples — a single quick green ring each station emits as

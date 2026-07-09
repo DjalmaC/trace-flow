@@ -70,13 +70,16 @@ export function FlowExperience({
   const animate = !reduced;
   const isMobile = useIsMobile();
 
-  // Layout only depends on the flow + travel direction; memoise on those so the
-  // machinery isn't re-laid-out (and its relay restarted) on every keystroke in
-  // the control panel, which hands down a fresh config object each render.
+  // Layout only depends on the flow, travel direction and any per-proposal
+  // node renames; memoise on those so the machinery isn't re-laid-out (and its
+  // relay restarted) on every keystroke in the control panel, which hands down
+  // a fresh config object each render. nodeLabels is compared by value (it
+  // only changes on an actual rename).
+  const nodeLabelsKey = JSON.stringify(config.nodeLabels ?? null);
   const layout = useMemo(
     () => (flow ? computeLayout(flow, config) : null),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [flow, config.direction],
+    [flow, config.direction, nodeLabelsKey],
   );
 
   const sectionRef = useRef<HTMLDivElement>(null);

@@ -17,7 +17,7 @@ import { LogoDrop } from "@/components/LogoDrop";
 import { TRACE_REPS, getRep } from "@/flow-tool/data/reps";
 import type { IntakeAnswers } from "@/flow-tool/intake/questions";
 import { resolve } from "@/flow-tool/intake/resolver";
-import { createShareLink, isShareConfigured } from "@/flow-tool/lib/share";
+import { createShareLink, isShareConfigured, updateShareLink } from "@/flow-tool/lib/share";
 import { loadRepKey } from "@/flow-tool/lib/rep-session";
 import { normalizeLogo } from "@/flow-tool/lib/logo";
 import { downloadProposalPdf } from "@/flow-tool/lib/proposal";
@@ -112,6 +112,7 @@ export function ControlPanel({
   onPricingChange,
   sandbox = false,
   onSandboxChange,
+  editingCode = null,
 }: {
   config: FlowConfig;
   onConfigChange: (next: FlowConfig) => void;
@@ -125,9 +126,15 @@ export function ControlPanel({
   /** Sandbox mode: generated links are tagged and kept off the pipeline. */
   sandbox?: boolean;
   onSandboxChange?: (v: boolean) => void;
+  /** Editing an existing proposal: its share code — enables Update-in-place. */
+  editingCode?: string | null;
 }) {
   const [open, setOpen] = useState(true);
   const [step, setStep] = useState(0);
+  // Editing an existing proposal: open on Present, where Update-in-place lives.
+  useEffect(() => {
+    if (editingCode) setStep(2);
+  }, [editingCode]);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [studio, setStudio] = useState<StudioMode | null>(null); // flow studio overlay
   // Tailored flows (design §4/§6): rep-built drafts from localStorage. Listing
@@ -200,43 +207,58 @@ export function ControlPanel({
       : [{ flowId: config.flowId, name: getFlow(config.flowId)?.title ?? "Flow" }];
   }
 
+  function buildShareConfig() {
+    const list = proposalFlowList();
+    // Attach the closing contact card from the selected Trace rep so the shared
+    // view actually shows "your contact" (the client link has no other source).
+    const rep = getRep(traceRepId);
+    const salesperson = rep
+      ? { name: rep.name, title: rep.title, email: rep.email }
+      : undefined;
+    // Tailored flows ride inside the link's config (editor state stripped),
+    // so the client view and its PDF resolve them like library flows.
+    const customFlows = [...new Set(list.map((f) => f.flowId))]
+      .map((id) => getFlow(id))
+      .filter((f): f is Flow => !!f?.custom)
+      .map((f) => ({ ...f, editor: undefined }));
+    return {
+      ...config,
+      variants: list.length > 1 ? list : undefined,
+      customFlows: customFlows.length ? customFlows : undefined,
+      proposalType,
+      date: proposalDate,
+      traceRepId,
+      salesperson,
+      // 2b pricing: the shared view's new renderer consumes the raw
+      // ProposalPricing directly (legacy region/cards rows from pre-existing
+      // links keep the old renderer).
+      pricing,
+      // 2c client-link gate: the password is auto-set to the client's company
+      // name at share time (the rep communicates it; the UI never says so).
+      gatePassword: config.clientName.trim() || undefined,
+      // Sandbox links are tagged so the dashboard keeps them off the pipeline.
+      sandbox: sandbox || undefined,
+    } as unknown as FlowConfig;
+  }
+
   async function generateProposal() {
     setShare({ status: "loading" });
     try {
-      const list = proposalFlowList();
-      // Attach the closing contact card from the selected Trace rep so the shared
-      // view actually shows "your contact" (the client link has no other source).
-      const rep = getRep(traceRepId);
-      const salesperson = rep
-        ? { name: rep.name, title: rep.title, email: rep.email }
-        : undefined;
-      // Tailored flows ride inside the link's config (editor state stripped),
-      // so the client view and its PDF resolve them like library flows.
-      const customFlows = [...new Set(list.map((f) => f.flowId))]
-        .map((id) => getFlow(id))
-        .filter((f): f is Flow => !!f?.custom)
-        .map((f) => ({ ...f, editor: undefined }));
-      const shareConfig = {
-        ...config,
-        variants: list.length > 1 ? list : undefined,
-        customFlows: customFlows.length ? customFlows : undefined,
-        proposalType,
-        date: proposalDate,
-        traceRepId,
-        salesperson,
-        // 2b pricing: the shared view's new renderer consumes the raw
-        // ProposalPricing directly (legacy region/cards rows from pre-existing
-        // links keep the old renderer).
-        pricing,
-        // 2c client-link gate: the password is auto-set to the client's company
-        // name at share time (the rep communicates it; the UI never says so).
-        gatePassword: config.clientName.trim() || undefined,
-        // Sandbox links are tagged so the dashboard keeps them off the pipeline.
-        sandbox: sandbox || undefined,
-      };
-      const { code } = await createShareLink(shareConfig as unknown as FlowConfig);
+      const { code } = await createShareLink(buildShareConfig());
       const url = `${window.location.origin}/f/${code}`;
       setShare({ status: "done", url });
+    } catch (err) {
+      setShare({ status: "error", msg: err instanceof Error ? err.message : "Something went wrong." });
+    }
+  }
+
+  // Editing an existing proposal: push the edits into the SAME link.
+  async function updateProposal() {
+    if (!editingCode) return;
+    setShare({ status: "loading" });
+    try {
+      await updateShareLink(editingCode, buildShareConfig());
+      setShare({ status: "done", url: `${window.location.origin}/f/${editingCode}` });
     } catch (err) {
       setShare({ status: "error", msg: err instanceof Error ? err.message : "Something went wrong." });
     }
@@ -259,6 +281,7 @@ export function ControlPanel({
         delivered: config.delivered,
         rep: getRep(traceRepId),
         pricing,
+        nodeLabels: config.nodeLabels,
         assetAuth: { repKey: loadRepKey() ?? undefined },
       });
       setPdf("idle");
@@ -663,12 +686,21 @@ export function ControlPanel({
 
               {isShareConfigured() ? (
                 <>
+                  {editingCode && (
+                    <button
+                      onClick={updateProposal}
+                      disabled={share.status === "loading"}
+                      className="w-full rounded-[10px] bg-mint px-3 py-2.5 text-[13px] font-semibold text-mint-on transition duration-150 ease-ds hover:bg-mint-hover disabled:opacity-60"
+                    >
+                      {share.status === "loading" ? "Updating…" : `Update client link · ${editingCode}`}
+                    </button>
+                  )}
                   <button
                     onClick={generateProposal}
                     disabled={share.status === "loading"}
                     className="w-full rounded-[10px] border border-mint/50 px-3 py-2.5 text-[13px] font-medium text-mint transition duration-150 ease-ds hover:bg-mint/10 disabled:opacity-60"
                   >
-                    {share.status === "loading" ? "Generating…" : "Generate client link"}
+                    {share.status === "loading" ? "Generating…" : editingCode ? "Generate a new link instead" : "Generate client link"}
                   </button>
                   {share.status === "done" && share.url && (
                     <div className="space-y-1.5">

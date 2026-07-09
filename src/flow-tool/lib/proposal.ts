@@ -92,6 +92,8 @@ export interface ProposalBuildOpts {
    *  client's Pricing view (standard: the combined rate page; brazil-market:
    *  each edited product's own page). */
   pricing?: ProposalPricing;
+  /** Per-proposal node renames (see FlowConfig.nodeLabels). */
+  nodeLabels?: Record<string, string>;
   /** Credentials for fetching the gated sales-slides deck. */
   assetAuth?: AssetAuth;
 }
@@ -427,6 +429,7 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
     delivered: opts.delivered ?? "USD/EUR",
     direction: opts.direction ?? "collection",
     stablecoin: opts.stablecoin ?? "both",
+    nodeLabels: opts.nodeLabels,
   };
   // ── pricing group surgery (after stamping, so overlay indices were valid) ──
   // Deleting a product's template page or inserting a page for an added one

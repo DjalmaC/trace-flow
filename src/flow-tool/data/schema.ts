@@ -342,6 +342,11 @@ export interface FlowConfig {
   direction: Direction; // default 'collection'
   /** Which coin a 'USDC/USDT' token shows (stablecoin flows only). Default 'both'. */
   stablecoin: Stablecoin;
+  /** Per-proposal node renames (double-click a box on the build canvas),
+   *  keyed "<flowId>:<nodeId>". Applied at layout time, so the canvas, the
+   *  client link, mobile and the PDF all inherit them — works on library
+   *  flows without forking them. */
+  nodeLabels?: Record<string, string>;
 }
 
 // ── Computed-field rules (spec §2.1), kept here so they're auditable ──────────

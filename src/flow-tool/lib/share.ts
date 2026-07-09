@@ -53,6 +53,17 @@ export async function createShareLink(config: FlowConfig): Promise<{ code: strin
   return res.json();
 }
 
+/** Update an existing proposal's config in place — the code (and the link the
+ *  client already holds) stays the same; they see the edit on next open. */
+export async function updateShareLink(code: string, config: FlowConfig): Promise<void> {
+  const res = await fetch(`/api/proposals/${encodeURIComponent(code)}`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ config }),
+  });
+  if (!res.ok) throw await asError(res, "Could not update the proposal.");
+}
+
 /** Outcome of a public flow read — the /f/ page renders each state distinctly. */
 export type SharedFlowResult =
   | { status: "ok"; config: FlowConfig }

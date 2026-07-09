@@ -149,6 +149,7 @@ export function SharedFlowView({ code }: { code: string }) {
           delivered: config.delivered,
           rep: getRep(config.traceRepId),
           pricing: config.pricing && isProposalPricing(config.pricing) ? config.pricing : undefined,
+          nodeLabels: config.nodeLabels,
           assetAuth: { code },
         });
       } else {
