@@ -78,3 +78,35 @@ gracefully.
   logos render on the shared view without a separate storage bucket.
 - Every URL from a stored row that becomes an `href`/`src` on the public `/f/`
   page is scheme-checked (data:/https:/same-origin only) before rendering.
+
+## Remote agent surface (MCP)
+
+The "smart section": a remote MCP server at `/api/mcp/<secret>/mcp` lets a
+Claude (claude.ai custom connector, mobile, any MCP client) build **sandbox**
+proposals from a call transcript or dossier without touching the UI. It wraps
+the same deterministic pipeline the local `/proposal-from-call` skill drives
+(`src/flow-tool/agent/`): intake resolution, spec validation with pricing
+floors, config assembly, link creation, and API-level link checks.
+
+Setup:
+
+1. Generate a secret: `openssl rand -base64 32 | tr '+/' '-_' | tr -d '='`.
+2. Set it as `TRACE_MCP_SECRET` in Vercel env (+ `.env.local` for local runs)
+   and redeploy. Unset, the endpoint 404s.
+3. On claude.ai → Settings → Connectors → Add custom connector, paste
+   `https://<host>/api/mcp/<secret>/mcp`. No OAuth needed.
+4. Paste a call transcript into that Claude and ask for a proposal; review the
+   resulting link in the dashboard's Sandbox tab (rows carry an "Agent" chip)
+   and promote it yourself.
+
+Security posture:
+
+- The tools are **sandbox-only by construction**: no promote/approve path, no
+  PATCH, deletes refuse anything not both `sandbox` and `source: "agent"`, and
+  reads refuse client-live rows. `TRACE_REP_KEY` never transits this surface.
+- Auth is the URL-path secret (claude.ai connectors can't send custom headers
+  yet; OAuth is overkill for a single-team tool). Wrong/missing secret → 404,
+  compared in constant time. Main leak vector is request logs; rotation is
+  changing the env var and re-adding the connector.
+- Consider a Vercel WAF rate-limit rule on `/api/mcp/*` — the in-process
+  limiter is per-instance/best-effort only.

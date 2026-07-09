@@ -12,7 +12,7 @@ commands from the repo root.
 
 ## Hard rules
 
-1. **Sandbox only.** Never pass `--approved` to create-link.mjs. Promoting a link is Diogo's action, on his explicit instruction, after he has seen the sandbox.
+1. **Sandbox only.** Never pass `--approved` to create-link.ts. Promoting a link is Diogo's action, on his explicit instruction, after he has seen the sandbox.
 2. **Never contact the client** or send the link anywhere. Your output is a report to Diogo, in chat.
 3. **Quotes or it didn't happen.** Every dial answer and every pricing override carries a verbatim transcript quote. No quote → deck default (pricing) or open question (dials).
 4. **Stop and ask** instead of guessing when: the resolver isn't `exact` and the transcript doesn't explicitly describe a custom structure; a rate is below floor; the rep on the call can't be matched to the roster; the client company name is unclear.
@@ -27,17 +27,17 @@ Transcript pasted in the message or a file path. Optional overrides: `--client <
 ### 1 · Extract
 Read the transcript carefully. Write `extraction.json` (scratchpad):
 `{ company, domain, contact, repId, dials: {direction, model, nra, rail, liquidity}, dialEvidence: {<id>: "<quote>"}, pricingCommitments: [{product, tier?, value, quote}], stablecoin, proposalType, customStructureNotes }`
-Only include a dial answer when the transcript supports it — read `references/dials-extraction.md` first for the mapping vocabulary and valid option values. Match the rep against the roster in `src/flow-tool/data/reps.ts` (names may be partial: "Bia" → beatriz-lara-de-mello).
+Only include a dial answer when the transcript supports it — read `src/flow-tool/agent/instructions/dials-extraction.md` first for the mapping vocabulary and valid option values. Match the rep against the roster in `src/flow-tool/data/reps.ts` (names may be partial: "Bia" → beatriz-lara-de-mello).
 
 ### 2 · Resolve flows
 ```
 npx tsx scripts/agent/resolve-and-validate.ts resolve <extraction.json>
 ```
 - `exact` → use `exactFlowId`.
-- `partial` / `no-match` → EITHER ask Diogo the `openQuestions` (preferred), OR — only when `customStructureNotes` explicitly describes the route — compose a tailored `Flow` object (see the tailored-flow section of `references/dials-extraction.md`). Multiple flows discussed on the call → multiple entries, each resolved this way.
+- `partial` / `no-match` → EITHER ask Diogo the `openQuestions` (preferred), OR — only when `customStructureNotes` explicitly describes the route — compose a tailored `Flow` object (see the tailored-flow section of `src/flow-tool/agent/instructions/dials-extraction.md`). Multiple flows discussed on the call → multiple entries, each resolved this way.
 
 ### 3 · Pricing
-Read `references/pricing-rules.md`. Start from the deck for the proposal type; apply only quote-backed commitments. Build the full `pricing` cards object.
+Read `src/flow-tool/agent/instructions/pricing-rules.md`. Start from the deck for the proposal type; apply only quote-backed commitments. Build the full `pricing` cards object.
 
 ### 4 · Logo
 ```
@@ -54,7 +54,7 @@ npx tsx scripts/agent/resolve-and-validate.ts validate <spec.json> > <spec-norma
 
 ### 6 · Create the sandbox link
 ```
-node scripts/agent/create-link.mjs <spec-normalized.json>        # add --local for localhost
+npx tsx scripts/agent/create-link.ts <spec-normalized.json>      # add --local for localhost
 ```
 
 ### 7 · Verify the render
