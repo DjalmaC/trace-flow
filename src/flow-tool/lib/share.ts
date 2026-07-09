@@ -120,6 +120,8 @@ export interface ProposalRecord {
   stats?: ViewStats;
   /** Sandbox links stay off the pipeline (separate dashboard tab). */
   sandbox?: boolean;
+  /** "agent" when the row was created through the remote MCP surface. */
+  source?: string;
 }
 
 // The list endpoint projects config fields server-side (logo/plate/type/date/
@@ -135,6 +137,7 @@ type RawRow = {
   pdate?: string | null;
   rep_id?: string | null;
   sandbox?: string | null; // jsonb boolean arrives as "true"
+  source?: string | null;
 };
 
 /** All saved proposals, newest first. Optionally scoped to one Trace rep. */
@@ -156,6 +159,7 @@ export async function listProposals(traceRepId?: string): Promise<ProposalRecord
       createdAt: r.created_at,
       stats: analytics[r.code],
       sandbox: r.sandbox === "true",
+      source: r.source ?? undefined,
     }),
   );
   return traceRepId ? rows.filter((r) => r.traceRepId === traceRepId) : rows;

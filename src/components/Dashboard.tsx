@@ -409,8 +409,17 @@ export function Dashboard({ rep, onSwitch }: { rep: TraceRep; onSwitch: () => vo
                     </div>
 
                     {/* status */}
-                    <span className="justify-self-start">
+                    <span className="flex items-center gap-1.5 justify-self-start">
                       <StatusChip status={status} />
+                      {r.source === "agent" && (
+                        <span
+                          className="inline-flex items-center rounded-[20px] border px-[9px] py-[5px] text-[11px] font-semibold"
+                          style={{ color: "#2be8d6", background: "#0c2020", borderColor: "#163a3a" }}
+                          title="Created by the proposal agent — review before promoting"
+                        >
+                          Agent
+                        </span>
+                      )}
                     </span>
 
                     {/* last activity */}
