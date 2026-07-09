@@ -13,6 +13,7 @@ import type {
 import { getFlow } from "@/flow-tool/data";
 import { deleteTailoredFlow, listTailoredFlows } from "@/flow-tool/data/custom-flows";
 import { NewTailoredFlowModal, TailoredFlowEditor } from "@/components/TailoredFlowEditor";
+import { LogoDrop } from "@/components/LogoDrop";
 import { TRACE_REPS, getRep } from "@/flow-tool/data/reps";
 import type { IntakeAnswers } from "@/flow-tool/intake/questions";
 import { resolve } from "@/flow-tool/intake/resolver";
@@ -292,18 +293,10 @@ export function ControlPanel({
     patch({ clientLogoUrl: r.url, clientLogoPlate: t === "card" ? "light" : r.plate });
   }
 
-  function onLogo(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    // read as a data URI so the logo travels with the shared link (a blob: URL
-    // from createObjectURL would not survive being stored/sent)
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const raw = String(reader.result);
-      setOrigLogo(raw);
-      await applyTreatment("auto", raw); // cut bg + auto-decide on insert
-    };
-    reader.readAsDataURL(file);
+  // data URI (not blob:) so the logo travels with the shared link
+  async function onLogoData(raw: string) {
+    setOrigLogo(raw);
+    await applyTreatment("auto", raw); // cut bg + auto-decide on insert
   }
 
   async function copyLink() {
@@ -537,12 +530,7 @@ export function ControlPanel({
                 </Field>
 
                 <Field label="Logo">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={onLogo}
-                    className="w-full text-xs text-subtitle file:mr-2 file:rounded-md file:border-0 file:bg-node-fill file:px-2.5 file:py-1.5 file:text-subtitle"
-                  />
+                  <LogoDrop compact hasLogo={!!config.clientLogoUrl} onImage={onLogoData} />
                 </Field>
 
                 {config.clientLogoUrl && (

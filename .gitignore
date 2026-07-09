@@ -16,3 +16,4 @@ next-env.d.ts
 /assets/
 /build-docs/
 /MANIFEST.txt
+.claude/launch.json

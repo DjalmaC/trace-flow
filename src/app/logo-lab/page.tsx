@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { normalizeLogo, type MarkColor } from "@/flow-tool/lib/logo";
 import { loadRepKey, saveRepKey } from "@/flow-tool/lib/rep-session";
+import { LogoDrop } from "@/components/LogoDrop";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Logo lab — a rep utility (and the proposal agent's workbench): run any logo
@@ -67,18 +68,6 @@ export default function LogoLab() {
     }
   }
 
-  function onFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const raw = String(reader.result);
-      setSource(raw);
-      setSourceName(file.name);
-      void run(raw);
-    };
-    reader.readAsDataURL(file);
-  }
 
   if (hasKey === null) return null;
   if (!hasKey) {
@@ -122,11 +111,18 @@ export default function LogoLab() {
           looks right and use the same choice in the generator.
         </p>
 
-        <label className="mb-8 flex w-fit cursor-pointer items-center gap-3 rounded-xl border border-hairline-control bg-surface-card2 px-4 py-3 transition hover:border-mint/40">
-          <span className="rounded-lg bg-mint px-3 py-1.5 text-[12px] font-semibold text-mint-on">Choose logo…</span>
-          <span className="text-[12px] text-muted">{sourceName || "PNG, JPG or SVG"}</span>
-          <input type="file" accept="image/*" onChange={onFile} data-testid="logo-file" className="hidden" />
-        </label>
+        <div className="mb-8 max-w-md">
+          <LogoDrop
+            inputTestId="logo-file"
+            hasLogo={!!source}
+            onImage={(raw) => {
+              setSource(raw);
+              setSourceName("dropped image");
+              void run(raw);
+            }}
+          />
+          {sourceName && <p className="mt-1.5 text-[11px] text-muted">{sourceName}</p>}
+        </div>
 
         {status === "working" && <div className="text-[13px] text-muted">Treating…</div>}
         {status === "error" && <div className="text-[13px] text-[#d99a9a]">Could not process this image.</div>}

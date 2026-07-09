@@ -3,6 +3,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { ProposalSetup, ProposalType, TraceRep } from "@/flow-tool/data/schema";
 import { normalizeLogo } from "@/flow-tool/lib/logo";
+import { LogoDrop } from "@/components/LogoDrop";
 
 // Logo treatment for the dark canvas: Auto (decide), White/Mint (force recolor
 // of a one-colour mark), Card (keep brand colours on a white chip).
@@ -63,16 +64,9 @@ export default function NewProposalPage() {
     setLogoPlate(t === "card" ? "light" : r.plate);
   }
 
-  function onLogo(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const raw = String(reader.result);
-      setOrigLogo(raw);
-      await applyTreatment("auto", raw); // cut bg + auto-decide on insert
-    };
-    reader.readAsDataURL(file);
+  async function onLogoData(raw: string) {
+    setOrigLogo(raw);
+    await applyTreatment("auto", raw); // cut bg + auto-decide on insert
   }
 
   function start() {
@@ -134,11 +128,8 @@ export default function NewProposalPage() {
 
           {/* Logo */}
           <Field label="Company logo">
-            <div className="flex flex-wrap items-center gap-3">
-              <label className="cursor-pointer rounded-lg border border-node-stroke bg-node-fill px-3 py-2 text-xs font-medium text-subtitle transition hover:border-green-accent hover:text-title">
-                {logoUrl ? "Replace logo" : "Upload logo"}
-                <input type="file" accept="image/*" onChange={onLogo} className="hidden" />
-              </label>
+            <div className="flex flex-col gap-3">
+              <LogoDrop hasLogo={!!logoUrl} onImage={onLogoData} />
               {logoUrl && (
                 <span
                   className={`flex h-10 items-center rounded-md px-3 ${logoPlate === "light" ? "bg-white" : ""}`}
