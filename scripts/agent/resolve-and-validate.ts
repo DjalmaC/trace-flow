@@ -156,8 +156,12 @@ if (!spec.pricing) {
   pricing = normalizePricing(spec.pricing, spec.proposalType);
   const deck = deckPricing(spec.proposalType);
   const deckKeys = new Set(deck.cards.map((c) => c.key));
+  const removedProducts = deck.cards.filter((dc) => !pricing!.cards.some((c) => c.key === dc.key));
+  if (removedProducts.length)
+    flags.push(`deck products removed from the offer: ${removedProducts.map((c) => c.title).join(", ")} (their PDF pages drop out)`);
   for (const card of pricing.cards) {
-    if (!deckKeys.has(card.key)) errors.push(`pricing card "${card.key}" is not a ${spec.proposalType} product`);
+    if (!deckKeys.has(card.key))
+      flags.push(`pricing card "${card.key}" ("${card.title}") is a custom product group — confirm it belongs in the offer`);
     const floor = floors[card.key];
     const numericTiers = card.type === "flat"
       ? [{ label: "flat", value: card.flat ?? 0, text: card.flatText }]

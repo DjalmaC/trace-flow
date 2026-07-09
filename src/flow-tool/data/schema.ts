@@ -191,6 +191,11 @@ export function cardEqualsDeck(card: PriceCard, deckCard: PriceCard | undefined)
     card.type === deckCard.type &&
     card.type === "tiered" &&
     !card.flatText?.trim() &&
+    // identity text matters too — a renamed product must re-render its page
+    card.title === deckCard.title &&
+    card.sub === deckCard.sub &&
+    (card.prefix ?? "") === (deckCard.prefix ?? "") &&
+    (card.suffix ?? "") === (deckCard.suffix ?? "") &&
     card.tiers.length === deckCard.tiers.length &&
     card.tiers.every((t, i) => t.label === deckCard.tiers[i].label && t.value === deckCard.tiers[i].value && !t.text?.trim())
   );

@@ -2,6 +2,7 @@ import type {
   Currency,
   Direction,
   FlowConfig,
+  PriceCard,
   ProposalPricing,
   ProposalType,
   Stablecoin,
@@ -366,15 +367,25 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
     const page = doc.insertPage(manifest.pricingPage, [DW, DH]);
     page.drawImage(png, { x: 0, y: 0, width: DW, height: DH });
   }
+  // brazil-market: each product has its own template page. Edited cards
+  // replace their page in place (indices stay valid for the overlay loop);
+  // deck products REMOVED from the offer and brand-new products the rep ADDED
+  // are handled after the overlay loop, with index bookkeeping (see below).
+  const removedPages: number[] = [];
+  const addedCards: PriceCard[] = [];
   if (pricingCustomized && manifest.pricingCardPages) {
-    // brazil-market: each product has its own template page. Replace only the
-    // pages whose card was actually edited — untouched products keep the
-    // template's hand-designed page. In-place, so every index stays valid and
-    // the overlay loop below still stamps footers onto the replacements.
     const deck = deckPricing(opts.proposalType);
+    const offeredKeys = new Set(pricing!.cards.map((c) => c.key));
+    for (const [key, pno] of Object.entries(manifest.pricingCardPages)) {
+      if (!offeredKeys.has(key) && typeof pno === "number") removedPages.push(pno);
+    }
     for (const card of pricing!.cards) {
       const pno = manifest.pricingCardPages[card.key];
-      if (typeof pno !== "number" || cardEqualsDeck(card, deck.cards.find((c) => c.key === card.key))) continue;
+      if (typeof pno !== "number") {
+        addedCards.push(card); // no template page — a new product group
+        continue;
+      }
+      if (cardEqualsDeck(card, deck.cards.find((c) => c.key === card.key))) continue;
       const png = await doc.embedPng(dataUrlToBytes(await renderBrazilCardPagePng(card)));
       doc.removePage(pno);
       const page = doc.insertPage(pno, [DW, DH]);
@@ -417,10 +428,36 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
     direction: opts.direction ?? "collection",
     stablecoin: opts.stablecoin ?? "both",
   };
+  // ── pricing group surgery (after stamping, so overlay indices were valid) ──
+  // Deleting a product's template page or inserting a page for an added one
+  // shifts everything downstream; track the shift for the flow insert point
+  // and the closing page.
+  let flowsInsertAt = manifest.flowsInsertAt;
+  let closingPage = manifest.closingPage;
+  for (const pno of [...removedPages].sort((a, b) => b - a)) {
+    doc.removePage(pno);
+    if (pno < flowsInsertAt) flowsInsertAt--;
+    if (pno < closingPage) closingPage--;
+  }
+  if (addedCards.length) {
+    // added product pages join the pricing block, right before the flows,
+    // with the confidential footer baked in (no manifest fields exist for
+    // pages the template never had)
+    const footerField = manifest.fields.find((f) => f.key === "footer");
+    const footerText = footerField ? resolveTemplate(footerField.template, vars).trim() : undefined;
+    for (const card of addedCards) {
+      const png = await doc.embedPng(dataUrlToBytes(await renderBrazilCardPagePng(card, footerText)));
+      const page = doc.insertPage(flowsInsertAt, [DW, DH]);
+      page.drawImage(png, { x: 0, y: 0, width: DW, height: DH });
+      flowsInsertAt++;
+      closingPage++;
+    }
+  }
+
   const flowPngs = opts.flows.length ? await renderProposalFlowPngs(flowConfig, opts.flows) : [];
   for (let k = 0; k < flowPngs.length; k++) {
     const png = await doc.embedPng(dataUrlToBytes(flowPngs[k]));
-    const page = doc.insertPage(manifest.flowsInsertAt + k, [DW, DH]);
+    const page = doc.insertPage(flowsInsertAt + k, [DW, DH]);
     page.drawImage(png, { x: 0, y: 0, width: DW, height: DH });
   }
 
@@ -429,7 +466,7 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
   if (willReplace && repSlideDoc) {
     const [repSlide] = await doc.copyPages(repSlideDoc, [repSlideIndex]);
     // closing page shifted right by the inserted flow pages
-    const closingIdx = manifest.closingPage + flowPngs.length;
+    const closingIdx = closingPage + flowPngs.length;
     doc.removePage(closingIdx);
     doc.insertPage(closingIdx, repSlide);
   }

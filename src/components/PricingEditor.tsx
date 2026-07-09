@@ -104,6 +104,42 @@ export function PricingEditor({
     if (dc) patchCard(card.key, structuredClone(dc));
   }
 
+  // ── product groups: remove from the offer / add back / add a new one ──
+  function removeCard(key: string) {
+    setDrafts({});
+    onChange({ mode: "custom", cards: pricing.cards.filter((c) => c.key !== key) });
+  }
+  function restoreCard(key: string) {
+    const dc = deck.cards.find((c) => c.key === key);
+    if (!dc) return;
+    // back into its deck position among the surviving cards
+    const order = deck.cards.map((c) => c.key);
+    const cards = [...pricing.cards, structuredClone(dc)].sort(
+      (a, b) => (order.indexOf(a.key) + 1 || 99) - (order.indexOf(b.key) + 1 || 99),
+    );
+    onChange({ mode: "custom", cards });
+  }
+  function addNewCard(unit: "%" | "R$" | "$") {
+    const card: PriceCard = {
+      key: `xtra-${Math.random().toString(36).slice(2, 8)}`,
+      title: "New product",
+      sub: unit === "%" ? "% of volume, tiered" : "Per-transaction fee, tiered by volume",
+      pageSub: "Tailored for this proposal",
+      prefix: unit === "%" ? undefined : `${unit} `,
+      suffix: unit === "%" ? "%" : undefined,
+      badge: unit === "%" ? "percent" : "dollar",
+      accent: "green",
+      type: "tiered",
+      tiers: [
+        { label: "Up to BRL 1M", value: 0 },
+        { label: "BRL 1M – 50M", value: 0 },
+        { label: "Above BRL 50M", value: 0 },
+      ],
+    };
+    onChange({ mode: "custom", cards: [...pricing.cards, card] });
+  }
+  const removedDeckCards = deck.cards.filter((dc) => !pricing.cards.some((c) => c.key === dc.key));
+
   const modeCaption: Record<PricingMode, string> = {
     deck: `Values come straight from the ${proposalType === "standard" ? "Standard" : "Brazil-market"} deck. Edit any field and it becomes Custom.`,
     custom: "Everything is editable: rates, band labels, tier count, flat rates, or free text (the Aa toggle) per band.",
@@ -172,9 +208,14 @@ export function PricingEditor({
     const edited = pricing.mode === "custom" && !cardEqualsDeck(card, deckCard);
     return (
       <div key={card.key} className="mb-[18px]">
-        <div className="mb-2 flex items-center justify-between">
-          <span className="font-mono text-[10px] font-medium uppercase tracking-[.1em] text-mint-muted">{card.title}</span>
-          <span className="flex gap-[2px] rounded-[7px] border border-hairline-card bg-surface-input p-[2px]">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <input
+            value={card.title}
+            onChange={(e) => patchCard(card.key, { ...card, title: e.target.value })}
+            aria-label="Product name"
+            className="min-w-0 flex-1 rounded-[5px] border border-transparent bg-transparent px-1 py-[2px] font-mono text-[10px] font-medium uppercase tracking-[.1em] text-mint-muted outline-none transition duration-150 ease-ds hover:border-hairline-control focus:border-hairline-selected focus:bg-surface-input focus:text-title"
+          />
+          <span className="flex shrink-0 gap-[2px] rounded-[7px] border border-hairline-card bg-surface-input p-[2px]">
             {(["tiered", "flat"] as const).map((t) => (
               <button
                 key={t}
@@ -187,6 +228,14 @@ export function PricingEditor({
               </button>
             ))}
           </span>
+          <button
+            onClick={() => removeCard(card.key)}
+            title="Remove this product from the offer"
+            aria-label={`Remove ${card.title}`}
+            className="shrink-0 rounded-[5px] px-1 text-[13px] leading-none text-[#5a655f] transition duration-150 ease-ds hover:text-[#d99a9a]"
+          >
+            ×
+          </button>
         </div>
 
         {card.type === "tiered" ? (
@@ -293,6 +342,35 @@ export function PricingEditor({
         <p className="mb-4 text-[11px] leading-normal text-muted">{modeCaption[pricing.mode]}</p>
 
         {pricing.cards.map(renderCard)}
+
+        {proposalType === "brazil-market" && (
+          <div className="mb-[18px] rounded-lg border border-dashed border-hairline-control p-2.5">
+            <div className="mb-1.5 font-mono text-[9.5px] font-medium tracking-[.12em] text-mint-muted">ADD A PRODUCT GROUP</div>
+            <div className="flex flex-wrap gap-1.5">
+              {removedDeckCards.map((dc) => (
+                <button
+                  key={dc.key}
+                  onClick={() => restoreCard(dc.key)}
+                  className="rounded-full border border-hairline-control px-2.5 py-1 text-[10.5px] font-medium text-[#8b948f] transition duration-150 ease-ds hover:border-mint/40 hover:text-title"
+                >
+                  ↺ {dc.title}
+                </button>
+              ))}
+              {(["%", "R$", "$"] as const).map((u) => (
+                <button
+                  key={u}
+                  onClick={() => addNewCard(u)}
+                  className="rounded-full border border-hairline-minted bg-mint/5 px-2.5 py-1 text-[10.5px] font-medium text-mint transition duration-150 ease-ds hover:bg-mint/10"
+                >
+                  ＋ New ({u})
+                </button>
+              ))}
+            </div>
+            <p className="mt-1.5 text-[10px] leading-snug text-muted">
+              Removed products drop their page from the PDF; new ones get their own rendered page. Click a product&apos;s name to rename it.
+            </p>
+          </div>
+        )}
 
         {proposalType === "standard" && (
           <>
