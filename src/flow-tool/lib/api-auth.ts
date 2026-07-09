@@ -29,7 +29,7 @@ export function isRepKeyConfigured(): boolean {
   return TRACE_REPS.length > 0 || !!MASTER_KEY;
 }
 
-function safeEqual(a: string, b: string): boolean {
+export function safeEqual(a: string, b: string): boolean {
   const ab = Buffer.from(a);
   const bb = Buffer.from(b);
   // Compare against a same-length buffer so length itself doesn't leak via timing.

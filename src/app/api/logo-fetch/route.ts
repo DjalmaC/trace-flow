@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { hasRepKey } from "@/flow-tool/lib/api-auth";
+import { isPrivateHost } from "@/flow-tool/lib/net-guard";
 
 // Rep-gated image proxy for the logo drop zone: lets a rep drag a logo
 // straight from another website tab without downloading it first (the browser
@@ -9,15 +10,6 @@ import { hasRepKey } from "@/flow-tool/lib/api-auth";
 export const runtime = "nodejs";
 
 const MAX_BYTES = 8 * 1024 * 1024;
-
-function isPrivateHost(host: string): boolean {
-  const h = host.toLowerCase();
-  if (h === "localhost" || h.endsWith(".local") || h.endsWith(".internal")) return true;
-  if (/^127\.|^10\.|^192\.168\.|^169\.254\.|^0\./.test(h)) return true;
-  if (/^172\.(1[6-9]|2\d|3[01])\./.test(h)) return true;
-  if (h === "::1" || h.startsWith("[")) return true;
-  return false;
-}
 
 export async function GET(req: Request) {
   if (!hasRepKey(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });

@@ -5,6 +5,8 @@ const nextConfig = {
   // /api/asset serverless function bundle so readFile() can find them at runtime.
   outputFileTracingIncludes: {
     "/api/asset/[name]": ["./private-assets/**"],
+    // get_instructions reads the agent guides from disk at runtime.
+    "/api/mcp/[secret]/[transport]": ["./src/flow-tool/agent/instructions/**"],
   },
   webpack: (config, { isServer, webpack }) => {
     // pptxgenjs (used client-side for the PowerPoint export) references Node
