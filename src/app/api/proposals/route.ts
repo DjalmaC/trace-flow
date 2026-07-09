@@ -1,20 +1,12 @@
 import { NextResponse } from "next/server";
-import { randomBytes } from "node:crypto";
 import { admin, TABLE, isServerShareConfigured } from "@/flow-tool/lib/supabase-server";
 import { hasRepKey, isRepKeyConfigured } from "@/flow-tool/lib/api-auth";
+import { makeCode } from "@/flow-tool/lib/share-codes";
 
 // Privileged proposal collection: list (GET) + create a share link (POST).
 // Both require the shared rep key. Anonymous clients never reach this route;
 // they only read a single flow via /api/flow/[code].
 export const dynamic = "force-dynamic";
-
-const ALPHABET = "abcdefghijkmnpqrstuvwxyz23456789"; // no ambiguous chars
-function makeCode(len = 9): string {
-  const bytes = randomBytes(len);
-  let out = "";
-  for (let i = 0; i < len; i++) out += ALPHABET[bytes[i] % ALPHABET.length];
-  return out;
-}
 
 function guard(req: Request): NextResponse | null {
   if (!isServerShareConfigured() || !isRepKeyConfigured())
@@ -48,7 +40,7 @@ export async function GET(req: Request) {
       "code, client_name, client_rep, created_at, " +
         "logo:config->>clientLogoUrl, plate:config->>clientLogoPlate, " +
         "ptype:config->>proposalType, pdate:config->>date, rep_id:config->>traceRepId, " +
-        "sandbox:config->>sandbox",
+        "sandbox:config->>sandbox, source:config->>source",
     )
     .order("created_at", { ascending: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
