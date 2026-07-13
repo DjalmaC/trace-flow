@@ -26,6 +26,17 @@
       "align": "left"
     },
     {
+      "key": "corridor",
+      "page": 0,
+      "template": "{corridorLine}",
+      "x": 79.2,
+      "baseline": 379.6,
+      "size": 14.0,
+      "color": "#e8ecf0",
+      "font": "regular",
+      "align": "left"
+    },
+    {
       "key": "date",
       "page": 0,
       "template": "{date}",

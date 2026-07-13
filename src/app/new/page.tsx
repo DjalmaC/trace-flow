@@ -15,7 +15,7 @@ const PROPOSALS: { value: ProposalType; title: string; tag: string; blurb: strin
   {
     value: "standard",
     title: "Standard proposal",
-    tag: "Cross-border · USDC ↔ BRL",
+    tag: "Cross-border payins & payouts",
     blurb: "Payins & payouts into and out of Brazil. Tier-based Pix fee + FX spread over spot.",
   },
   {

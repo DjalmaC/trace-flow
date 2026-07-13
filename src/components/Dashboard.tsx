@@ -205,6 +205,10 @@ export function Dashboard({ rep, onSwitch }: { rep: TraceRep; onSwitch: () => vo
       const cfg = (await loadSharedFlow(rec.code)) as Record<string, unknown> | null;
       if (!cfg) throw new Error("missing");
       const variants = cfg.variants as { flowId: string; name: string }[] | undefined;
+      // Tailored flows travel inside the link's config; without registering
+      // them, getFlow can't resolve their pages (or the corridor line).
+      const { registerCustomFlows } = await import("@/flow-tool/data/custom-flows");
+      registerCustomFlows(cfg.customFlows as never);
       const { downloadProposalPdf } = await import("@/flow-tool/lib/proposal");
       await downloadProposalPdf({
         proposalType: (cfg.proposalType as ProposalType) ?? "standard",

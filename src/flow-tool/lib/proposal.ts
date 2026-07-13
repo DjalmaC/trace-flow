@@ -9,6 +9,8 @@ import type {
   TraceRep,
 } from "../data/schema";
 import { cardEqualsDeck, deckPricing, normalizePricing, pricingEqualsDeck } from "../data/schema";
+import { getFlow } from "../data";
+import { displayCurrency } from "../components/FlowSvg/Tokens";
 import { renderBrazilCardPagePng, renderPricingPagePng, renderProposalFlowPngs } from "./pptx";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -312,6 +314,30 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
     repLinkedIn: rep?.linkedin ?? "",
   };
 
+  // ── the proposal's real corridor ──────────────────────────────────────────
+  // Every currency the selected flows actually move, resolved the way the deck
+  // displays them (the delivered-fiat choice; the stablecoin pick narrows
+  // USDC/USDT). Drives the title-slide corridor line and the pricing page
+  // subtitle, so the proposal never advertises a coin that isn't in the flow.
+  const coin = opts.stablecoin ?? "both";
+  const dispCfg = { collected: opts.collected ?? "BRL", delivered: opts.delivered ?? "USD/EUR" } as FlowConfig;
+  const seenCur = new Set<string>();
+  for (const f of opts.flows) {
+    getFlow(f.flowId)?.legs.forEach((l) => {
+      [l.carries, l.convertsTo].forEach((c) => {
+        if (!c) return;
+        let d: string = displayCurrency(c, dispCfg);
+        if (d === "USDC/USDT") d = coin === "both" ? "USDC/USDT" : coin;
+        seenCur.add(d);
+      });
+    });
+  }
+  const foreignCur = [...seenCur].filter((c) => c !== "BRL" && c !== dispCfg.collected).join(" / ");
+  vars.corridorLine =
+    opts.proposalType === "standard"
+      ? `${foreignCur || "USDC"} ↔ local currency. Brazil.`
+      : `Tier-based pricing. ${foreignCur || "USDT"} ↔ BRL.`;
+
   // Try to load the rep's pre-designed contact slide up front. Only if it's
   // actually available (deck present + the page index in range) will we replace
   // the template's closing page; otherwise we stamp the closing page below so it
@@ -362,8 +388,13 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
   const pricingCustomized = !!pricing && !pricingEqualsDeck(pricing, opts.proposalType);
   const pricingSub =
     opts.proposalType === "standard"
-      ? "BRL payins and payouts via Pix / TED · USDC ↔ BRL"
-      : "Cross-border payins and payouts · USDT ↔ BRL";
+      ? `BRL payins and payouts via Pix / TED · ${foreignCur || "USDC"} ↔ BRL`
+      : `Cross-border payins and payouts · ${foreignCur || "USDT"} ↔ BRL`;
+  // The standard template's rate page carries this line as an overlay field
+  // (the baked one was redacted out), so a deck-priced PDF shows the real
+  // corridor too. When the page is live-rendered instead, the render already
+  // includes it and the overlay skips the field (below).
+  vars.pricingSubLine = pricingSub;
   if (pricingCustomized && typeof manifest.pricingPage === "number") {
     // standard: replace the template's own rate page in place (page count
     // unchanged, so every downstream index stays valid). The overlay loop
@@ -406,6 +437,8 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
   for (const pno of pages) {
     if (willReplace && pno === manifest.closingPage) continue;
     let fields = manifest.fields.filter((f) => f.page === pno);
+    // the live-rendered pricing page already draws its own subtitle
+    if (pricingCustomized && pno === manifest.pricingPage) fields = fields.filter((f) => f.key !== "pricingSub");
     // when no company contact, drop the "— company" tail to avoid "Acme — Acme"
     if (!opts.companyRep) {
       fields = fields.map((f) =>
