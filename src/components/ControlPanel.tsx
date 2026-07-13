@@ -282,6 +282,8 @@ export function ControlPanel({
         rep: getRep(traceRepId),
         pricing,
         nodeLabels: config.nodeLabels,
+        nodeOrder: config.nodeOrder,
+        laneLabels: config.laneLabels,
         assetAuth: { repKey: loadRepKey() ?? undefined },
       });
       setPdf("idle");

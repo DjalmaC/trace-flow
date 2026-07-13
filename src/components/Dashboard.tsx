@@ -215,6 +215,8 @@ export function Dashboard({ rep, onSwitch }: { rep: TraceRep; onSwitch: () => vo
         companyLogoPlate: cfg.clientLogoPlate as "light" | "none" | undefined,
         flows: variants ?? [{ flowId: cfg.flowId as string, name: "Flow" }],
         nodeLabels: cfg.nodeLabels as Record<string, string> | undefined,
+        nodeOrder: cfg.nodeOrder as Record<string, string[]> | undefined,
+        laneLabels: cfg.laneLabels as Record<string, { brazil?: string; abroad?: string }> | undefined,
         direction: cfg.direction as never,
         stablecoin: cfg.stablecoin as never,
         collected: cfg.collected as never,

@@ -36,6 +36,8 @@ export type NodeKindOrEngine = Flow["nodes"][number]["kind"] | "engine";
 
 export interface NodeLayout extends Box {
   id: string;
+  /** Content's original node id when reordered (see FlowConfig.nodeOrder). */
+  srcId?: string;
   label: string;
   kind: NodeKindOrEngine;
   lane: Flow["nodes"][number]["lane"];
@@ -80,6 +82,9 @@ export interface HeadlineLayout {
   bIsClient: boolean;
   aLabel: string;
   bLabel: string;
+  /** Rename keys (srcId) of the machinery counterparts, for canvas editing. */
+  aId: string;
+  bId: string;
   /** Arc path A → B. */
   d: string;
   carries: Currency;
@@ -106,6 +111,10 @@ export interface FlowLayout {
   railY: number;
   brazilLabelX: number;
   abroadLabelX: number;
+  /** Lane display names — "Brazil" / "Abroad" unless the proposal renames them
+   *  (FlowConfig.laneLabels). */
+  brazilLabel: string;
+  abroadLabel: string;
   reverse: boolean;
   /** Machinery node that carries the uploaded client logo (the primary client). */
   primaryClientId?: string;
@@ -144,7 +153,7 @@ function wrapLabel(label: string): string[] {
   return l2 ? [l1, l2] : [l1];
 }
 
-type SrcNode = { id: string; label: string; kind: NodeKindOrEngine; lane: Flow["nodes"][number]["lane"]; w: number; engineCount?: number; brandedClient?: boolean };
+type SrcNode = { id: string; srcId?: string; label: string; kind: NodeKindOrEngine; lane: Flow["nodes"][number]["lane"]; w: number; engineCount?: number; brandedClient?: boolean };
 type SrcLeg = { from: string; to: string; carries: Currency; convertsTo?: Currency; hubAtEngine?: boolean };
 
 const ENGINE_W = 212;
@@ -184,14 +193,41 @@ export function detectEngine(flow: Flow): EngineInfo | null {
   return { ids: best.map((i) => flow.nodes[i].id), label: "Trace · cross-border & conversion", count: best.length };
 }
 
+/** Apply a proposal's box reordering (edit mode): permute node CONTENT — label,
+ *  kind, branding — across the flow's fixed slots. Slots keep their id, lane and
+ *  every leg, so currencies, the conversion hub and the Brazil | Abroad border
+ *  stay exactly where the flow put them; only what each box says moves. `srcId`
+ *  remembers the content's home so renames travel with it. Ignores anything
+ *  that isn't a full permutation of the flow's node ids. */
+function applyNodeOrder(flow: Flow, config: FlowConfig): Flow {
+  const order = config.nodeOrder?.[flow.id];
+  if (!order) return flow;
+  const byId = new Map(flow.nodes.map((n) => [n.id, n]));
+  const valid =
+    order.length === flow.nodes.length &&
+    new Set(order).size === order.length &&
+    order.every((id) => byId.has(id));
+  if (!valid || order.every((id, i) => id === flow.nodes[i].id)) return flow;
+  return {
+    ...flow,
+    nodes: flow.nodes.map((slot, i) => {
+      const content = byId.get(order[i])!;
+      return { ...slot, label: content.label, kind: content.kind, brandedClient: content.brandedClient, srcId: content.id };
+    }),
+  };
+}
+
 export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?: boolean } = {}): FlowLayout {
+  flow = applyNodeOrder(flow, config);
   const reverse = config.direction === "disbursement";
   const engine = detectEngine(flow);
   const collapsed = !!opts.collapsed && !!engine;
 
   const D = (c: Currency) => c; // currency mapping happens at render time
-  // per-proposal renames (double-click on the build canvas)
-  const labelOf = (n: { id: string; label: string }) => config.nodeLabels?.[`${flow.id}:${n.id}`] ?? n.label;
+  // per-proposal renames (double-click on the build canvas) — keyed on the
+  // content's original id (srcId), so a rename follows its box through reorders
+  const labelOf = (n: { id: string; label: string; srcId?: string }) =>
+    config.nodeLabels?.[`${flow.id}:${n.srcId ?? n.id}`] ?? n.label;
 
   // ── build the effective node/leg lists (full, or with the engine folded) ──
   let srcNodes: SrcNode[];
@@ -214,7 +250,7 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
     srcNodes = [];
     flow.nodes.forEach((n) => {
       if (n.id === first) srcNodes.push(engineNode);
-      if (!idSet.has(n.id)) srcNodes.push({ id: n.id, label: labelOf(n), kind: n.kind, lane: n.lane, w: NODE_W, brandedClient: n.brandedClient });
+      if (!idSet.has(n.id)) srcNodes.push({ id: n.id, srcId: n.srcId, label: labelOf(n), kind: n.kind, lane: n.lane, w: NODE_W, brandedClient: n.brandedClient });
     });
     srcLegs = [];
     flow.legs.forEach((l) => {
@@ -226,7 +262,7 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
       else srcLegs.push({ from: l.from, to: l.to, carries: D(l.carries), convertsTo: l.convertsTo });
     });
   } else {
-    srcNodes = flow.nodes.map((n) => ({ id: n.id, label: labelOf(n), kind: n.kind, lane: n.lane, w: NODE_W, brandedClient: n.brandedClient }));
+    srcNodes = flow.nodes.map((n) => ({ id: n.id, srcId: n.srcId, label: labelOf(n), kind: n.kind, lane: n.lane, w: NODE_W, brandedClient: n.brandedClient }));
     srcLegs = flow.legs.map((l) => ({ from: l.from, to: l.to, carries: l.carries, convertsTo: l.convertsTo }));
   }
 
@@ -319,6 +355,7 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
     const cy = cyFor(i);
     return {
       id: node.id,
+      srcId: node.srcId,
       label: node.label,
       kind: node.kind,
       lane: node.lane,
@@ -449,8 +486,17 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
   // the client-kind headline endpoint (prefer A). Other client-kind nodes (a
   // second customer) render their own label until two-logo input lands in v2.
   const aIsPrimary = aMach.kind === "client" || bMach.kind !== "client";
+  // When a reorder moved the client box off its headline slot, the logo travels
+  // with it — otherwise the primary stays a headline endpoint, as always.
+  const reordered = flow.nodes.some((n) => n.srcId && n.srcId !== n.id);
   const primaryClientMach =
-    aMach.kind === "client" ? aMach : bMach.kind === "client" ? bMach : undefined;
+    aMach.kind === "client"
+      ? aMach
+      : bMach.kind === "client"
+        ? bMach
+        : reordered
+          ? nodes.find((n) => n.kind === "client")
+          : undefined;
 
   const headline: HeadlineLayout = {
     a,
@@ -459,6 +505,8 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
     bIsClient: !aIsPrimary && bMach.kind === "client",
     aLabel: aMach.label,
     bLabel: bMach.label,
+    aId: aMach.srcId ?? aMach.id,
+    bId: bMach.srcId ?? bMach.id,
     d: `M${ax} ${arcY} Q${arcMidX} ${dipY} ${bx} ${arcY}`,
     carries: flow.headline.carries,
     convertsTo: flow.headline.convertsTo,
@@ -482,6 +530,8 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
     railY: BAND_Y,
     brazilLabelX,
     abroadLabelX,
+    brazilLabel: config.laneLabels?.[flow.id]?.brazil?.trim() || "Brazil",
+    abroadLabel: config.laneLabels?.[flow.id]?.abroad?.trim() || "Abroad",
     reverse,
     primaryClientId: primaryClientMach?.id,
     engine: engine ?? undefined,

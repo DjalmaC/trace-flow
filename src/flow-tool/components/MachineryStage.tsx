@@ -367,7 +367,7 @@ export function MachineryStage({
       {/* station boxes — cover the rail's ends + the resting token.
           data-flow-node lets the build page offer double-click renaming. */}
       {nodes.map((node) => (
-        <g key={node.id} data-flow-node={node.kind === "engine" ? undefined : node.id}>
+        <g key={node.id} data-flow-node={node.kind === "engine" ? undefined : node.srcId ?? node.id}>
           <FlowNodeShape
             node={node}
             isPrimaryClient={node.id === layout.primaryClientId}

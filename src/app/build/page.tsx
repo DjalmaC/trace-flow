@@ -37,9 +37,16 @@ export default function BuildPage() {
   const [sandbox, setSandbox] = useState(false);
   // Editing an existing proposal (dashboard → Edit): its share code.
   const [editingCode, setEditingCode] = useState<string | null>(null);
-  // Double-click rename overlay for the flow boxes on the canvas.
-  const [rename, setRename] = useState<{ key: string; original: string; value: string; left: number; top: number; width: number } | null>(null);
+  // Double-click rename overlay for the flow boxes / lane names on the canvas.
+  const [rename, setRename] = useState<{ key: string; lane?: "brazil" | "abroad"; original: string; value: string; left: number; top: number; width: number } | null>(null);
   const renameRef = useRef<HTMLInputElement>(null);
+  // Edit mode ("Arrange boxes"): drag a box onto another to swap places, or
+  // into a rail gap to move it. Stored as config.nodeOrder, so the client
+  // link, mobile and the PDF all inherit the new order.
+  const [editMode, setEditMode] = useState(false);
+  const [dragLabel, setDragLabel] = useState<string | null>(null);
+  const ghostRef = useRef<HTMLDivElement>(null);
+  const caretRef = useRef<HTMLDivElement>(null);
 
   // The deck's rate cards are proposal-type-specific (Standard prices two
   // components; Brazil-market prices five products), so switching type re-seeds
@@ -138,8 +145,24 @@ export default function BuildPage() {
 
   const setDirection = (direction: typeof config.direction) => setConfig((c) => ({ ...c, direction }));
 
-  // ── double-click a flow box to rename it (this proposal only) ──
+  // ── double-click a flow box or a lane name to rename it (this proposal only) ──
   function onCanvasDoubleClick(e: React.MouseEvent) {
+    const laneEl = (e.target as Element).closest?.("[data-flow-lane]");
+    if (laneEl) {
+      const lane = laneEl.getAttribute("data-flow-lane") as "brazil" | "abroad";
+      const original = lane === "brazil" ? "Brazil" : "Abroad";
+      const r = laneEl.getBoundingClientRect();
+      setRename({
+        key: lane,
+        lane,
+        original,
+        value: config.laneLabels?.[config.flowId]?.[lane] ?? original,
+        left: r.left + r.width / 2 - 90,
+        top: r.top + r.height / 2 - 17,
+        width: 180,
+      });
+      return;
+    }
     const el = (e.target as Element).closest?.("[data-flow-node]");
     const id = el?.getAttribute("data-flow-node");
     if (!el || !id) return;
@@ -158,6 +181,20 @@ export default function BuildPage() {
   function commitRename() {
     if (!rename) return;
     const v = rename.value.trim();
+    if (rename.lane) {
+      const lane = rename.lane;
+      setConfig((c) => {
+        const all = { ...(c.laneLabels ?? {}) };
+        const cur = { ...(all[c.flowId] ?? {}) };
+        if (!v || v === rename.original) delete cur[lane]; // empty = back to Brazil/Abroad
+        else cur[lane] = v;
+        if (Object.keys(cur).length) all[c.flowId] = cur;
+        else delete all[c.flowId];
+        return { ...c, laneLabels: Object.keys(all).length ? all : undefined };
+      });
+      setRename(null);
+      return;
+    }
     setConfig((c) => {
       const labels = { ...(c.nodeLabels ?? {}) };
       if (!v || v === rename.original) delete labels[rename.key]; // empty = back to the flow's own name
@@ -166,6 +203,203 @@ export default function BuildPage() {
     });
     setRename(null);
   }
+  // ── edit mode: box reordering ──
+  // The label a box currently shows (rename override, else the flow's own).
+  const displayedLabel = (id: string) =>
+    config.nodeLabels?.[`${config.flowId}:${id}`] ?? getFlow(config.flowId)?.nodes.find((n) => n.id === id)?.label ?? id;
+
+  // Current content order across the flow's slots (identity unless reordered).
+  function currentOrder(): string[] | null {
+    const flow = getFlow(config.flowId);
+    if (!flow) return null;
+    const ids = flow.nodes.map((n) => n.id);
+    const o = config.nodeOrder?.[config.flowId];
+    const valid = o && o.length === ids.length && new Set(o).size === o.length && o.every((x) => ids.includes(x));
+    return valid ? [...o] : ids;
+  }
+  function commitOrder(next: string[]) {
+    const flow = getFlow(config.flowId);
+    if (!flow) return;
+    const identity = next.every((id, i) => id === flow.nodes[i].id);
+    setConfig((c) => {
+      const m = { ...(c.nodeOrder ?? {}) };
+      if (identity) delete m[flow.id];
+      else m[flow.id] = next;
+      return { ...c, nodeOrder: Object.keys(m).length ? m : undefined };
+    });
+  }
+
+  function onCanvasPointerDown(e: React.PointerEvent) {
+    if (!editMode || e.button !== 0 || rename) return;
+    const start = (e.target as Element).closest?.("[data-flow-node]") as SVGGElement | null;
+    if (!start || start.closest("[data-headline]")) return;
+    const svg = start.closest("svg");
+    if (!svg) return;
+    const id = start.getAttribute("data-flow-node")!;
+    // Every box in this stage, and the rail row (the largest same-height group)
+    // whose gaps are the insertion points for a move. Rects are frozen at grab
+    // time — the canvas doesn't scroll mid-drag.
+    const boxes = Array.from(svg.querySelectorAll<SVGGElement>("g[data-flow-node]"))
+      .filter((b) => !b.closest("[data-headline]"))
+      .map((b) => ({ id: b.getAttribute("data-flow-node")!, el: b, r: b.getBoundingClientRect() }));
+    if (boxes.length < 2) return;
+    const rows = new Map<number, typeof boxes>();
+    for (const b of boxes) {
+      const k = Math.round((b.r.top + b.r.height / 2) / 14);
+      rows.set(k, [...(rows.get(k) ?? []), b]);
+    }
+    const row = [...rows.values()].sort((a, b) => b.length - a.length)[0].slice().sort((a, b) => a.r.left - b.r.left);
+    const gaps: { x: number; y: number; h: number; index: number }[] = [];
+    for (let i = 0; i <= row.length; i++) {
+      const left = i > 0 ? row[i - 1].r : null;
+      const right = i < row.length ? row[i].r : null;
+      gaps.push({
+        x: left && right ? (left.right + right.left) / 2 : left ? left.right + 20 : right!.left - 20,
+        y: (left ?? right!).top,
+        h: (left ?? right!).height,
+        index: i,
+      });
+    }
+    const d = { active: false, hover: null as SVGGElement | null, gapIndex: null as number | null };
+    e.preventDefault();
+
+    const clearHover = () => {
+      if (d.hover) d.hover.style.filter = "";
+      d.hover = null;
+    };
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const move = (ev: PointerEvent) => {
+      // a real drag starts after a small threshold, so double-click still renames
+      if (!d.active) {
+        if (Math.hypot(ev.clientX - startX, ev.clientY - startY) < 5) return;
+        d.active = true;
+        start.style.opacity = "0.4";
+        setDragLabel(displayedLabel(id));
+      }
+      if (ghostRef.current) {
+        ghostRef.current.style.left = `${ev.clientX + 14}px`;
+        ghostRef.current.style.top = `${ev.clientY + 12}px`;
+      }
+      const hit = (document.elementFromPoint(ev.clientX, ev.clientY)?.closest?.("[data-flow-node]") ?? null) as SVGGElement | null;
+      const target = hit && !hit.closest("[data-headline]") && hit.getAttribute("data-flow-node") !== id ? hit : null;
+      if (target !== d.hover) {
+        clearHover();
+        if (target) {
+          d.hover = target;
+          target.style.filter = "drop-shadow(0 0 9px rgba(0,242,177,0.95))";
+        }
+      }
+      d.gapIndex = null;
+      if (!target && row.some((b) => b.id === id)) {
+        const near = gaps.find(
+          (g) => Math.abs(ev.clientX - g.x) < 34 && ev.clientY > g.y - 90 && ev.clientY < g.y + g.h + 90,
+        );
+        if (near) d.gapIndex = near.index;
+      }
+      if (caretRef.current) {
+        const g = d.gapIndex != null ? gaps[d.gapIndex] : null;
+        caretRef.current.style.display = g ? "block" : "none";
+        if (g) {
+          caretRef.current.style.left = `${g.x - 1.5}px`;
+          caretRef.current.style.top = `${g.y - 6}px`;
+          caretRef.current.style.height = `${g.h + 12}px`;
+        }
+      }
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", cancel);
+      start.style.opacity = "";
+      const hoverId = d.hover?.getAttribute("data-flow-node") ?? null;
+      clearHover();
+      setDragLabel(null);
+      if (!d.active) return;
+      const order = currentOrder();
+      if (!order) return;
+      if (hoverId) {
+        // dropped ON a box → the two swap places
+        const ai = order.indexOf(id);
+        const bi = order.indexOf(hoverId);
+        if (ai < 0 || bi < 0) return;
+        [order[ai], order[bi]] = [order[bi], order[ai]];
+        commitOrder(order);
+      } else if (d.gapIndex != null) {
+        // dropped in a rail gap → move there, everything between shifts over
+        const rowIds = row.map((b) => b.id);
+        const di = rowIds.indexOf(id);
+        if (di < 0) return;
+        const slotIdx = rowIds.map((cid) => order.indexOf(cid));
+        if (slotIdx.some((i) => i < 0)) return;
+        let at = d.gapIndex;
+        if (at > di) at -= 1;
+        const seq = rowIds.filter((c) => c !== id);
+        seq.splice(at, 0, id);
+        const next = [...order];
+        slotIdx.forEach((si, j) => {
+          next[si] = seq[j];
+        });
+        commitOrder(next);
+      }
+    };
+    const cancel = () => {
+      clearHover();
+      d.gapIndex = null;
+      up();
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", cancel);
+  }
+
+  const editControls = (
+    <div className="fixed bottom-4 right-4 z-40 flex items-center gap-2">
+      {editMode && (
+        <span className="rounded-lg bg-[#0c110f]/85 px-2.5 py-1.5 text-xs text-subtitle backdrop-blur">
+          Drag a box onto another to swap · into a gap to move · double-click any text to edit
+        </span>
+      )}
+      {editMode && config.nodeOrder?.[config.flowId] && (
+        <button
+          onClick={() => commitOrder(getFlow(config.flowId)?.nodes.map((n) => n.id) ?? [])}
+          className="rounded-lg border border-node-stroke bg-[#0c110f]/90 px-3 py-1.5 text-sm text-subtitle backdrop-blur transition hover:text-title"
+        >
+          Reset order
+        </button>
+      )}
+      <button
+        onClick={() => setEditMode((v) => !v)}
+        className={`rounded-lg border px-3 py-1.5 text-sm backdrop-blur transition ${
+          editMode ? "border-mint bg-[#0c110f] text-title" : "border-node-stroke bg-[#0c110f]/90 text-subtitle hover:text-title"
+        }`}
+      >
+        {editMode ? "Done arranging" : "Arrange boxes"}
+      </button>
+    </div>
+  );
+  const dragChrome = (
+    <>
+      {editMode && <style>{`g[data-flow-node]{cursor:grab} g[data-flow-node]:active{cursor:grabbing} [data-flow-lane]{cursor:text}`}</style>}
+      {dragLabel && (
+        <>
+          <div
+            ref={ghostRef}
+            className="pointer-events-none fixed z-[90] rounded-lg border border-mint bg-[#0c110f]/95 px-3 py-1.5 text-[13px] font-semibold text-title shadow-xl"
+            style={{ left: -999, top: -999 }}
+          >
+            {dragLabel}
+          </div>
+          <div
+            ref={caretRef}
+            className="pointer-events-none fixed z-[85] w-[3px] rounded bg-mint"
+            style={{ left: -999, top: -999, height: 64, display: "none" }}
+          />
+        </>
+      )}
+    </>
+  );
+
   const renameOverlay = rename && (
     <input
       ref={renameRef}
@@ -186,9 +420,11 @@ export default function BuildPage() {
 
   if (present) {
     return (
-      <main className="relative" onDoubleClick={onCanvasDoubleClick}>
+      <main className="relative" onDoubleClick={onCanvasDoubleClick} onPointerDown={onCanvasPointerDown}>
         <FlowExperience config={config} presentation onDirectionChange={setDirection} />
         {renameOverlay}
+        {editControls}
+        {dragChrome}
         <button
           onClick={() => setPresent(false)}
           className="fixed left-4 top-4 z-50 flex items-center gap-1.5 rounded-lg border border-node-stroke bg-[#0c110f]/90 px-3 py-1.5 text-sm text-subtitle backdrop-blur transition hover:text-title"
@@ -203,7 +439,7 @@ export default function BuildPage() {
   }
 
   return (
-    <main className="relative" onDoubleClick={onCanvasDoubleClick}>
+    <main className="relative" onDoubleClick={onCanvasDoubleClick} onPointerDown={onCanvasPointerDown}>
       <ControlPanel
         config={config}
         onConfigChange={setConfig}
@@ -219,6 +455,8 @@ export default function BuildPage() {
         editingCode={editingCode}
       />
       {renameOverlay}
+      {editControls}
+      {dragChrome}
       {/* Sits UNDER the rail (z-40 < z-50): reachable when the rail is collapsed. */}
       <a
         href="/"

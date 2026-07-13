@@ -49,6 +49,12 @@ export interface FlowNode {
   /** Render this node with the client's logo (e.g. the client's own in-country
    *  entity) instead of its kind's default badge/mark. */
   brandedClient?: boolean;
+  /** Layout-internal: when a proposal reorders boxes (FlowConfig.nodeOrder),
+   *  the layout permutes node CONTENT (label/kind/branding) across the flow's
+   *  fixed slots. `srcId` is the content's original node id — renames and the
+   *  build canvas's edit handles key on it so they travel with the box. Never
+   *  set in flow data. */
+  srcId?: string;
 }
 
 export interface Leg {
@@ -347,6 +353,17 @@ export interface FlowConfig {
    *  client link, mobile and the PDF all inherit them — works on library
    *  flows without forking them. */
   nodeLabels?: Record<string, string>;
+  /** Per-proposal box reordering (edit mode: drag a box onto another to swap,
+   *  or into a gap to move it). Keyed by flowId; the value is the flow's node
+   *  ids in their new display order across the flow's ORIGINAL slots. The
+   *  structure (legs, currencies, lanes, the border) stays put — only the box
+   *  content (label, kind, branding) permutes. Ignored unless it is a full
+   *  permutation of the flow's node ids. */
+  nodeOrder?: Record<string, string[]>;
+  /** Per-proposal lane renames (double-click "Brazil" / "Abroad" on the build
+   *  canvas), keyed by flowId — e.g. a Canada corridor. Applied at layout
+   *  time like nodeLabels. */
+  laneLabels?: Record<string, { brazil?: string; abroad?: string }>;
 }
 
 // ── Computed-field rules (spec §2.1), kept here so they're auditable ──────────

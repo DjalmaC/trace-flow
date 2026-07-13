@@ -28,6 +28,10 @@ export function MachineryContainer({
   showHeading?: boolean;
 }) {
   const { width, dividerX, brazilLabelX, abroadLabelX } = layout;
+  // Lane names are per-proposal editable (double-click on the build canvas);
+  // data-flow-lane is the edit handle the build page delegates to.
+  const brazilLabel = layout.brazilLabel ?? "Brazil";
+  const abroadLabel = layout.abroadLabel ?? "Abroad";
   return (
     <g opacity={0.95}>
       <rect
@@ -47,11 +51,11 @@ export function MachineryContainer({
           How Trace makes it happen
         </text>
       )}
-      <text x={brazilLabelX} y={CONT_Y + 56} fontSize={12} fill={C.muted} textAnchor="middle">
-        Brazil
+      <text x={brazilLabelX} y={CONT_Y + 56} fontSize={12} fill={C.muted} textAnchor="middle" data-flow-lane="brazil">
+        {brazilLabel}
       </text>
-      <text x={abroadLabelX} y={CONT_Y + 56} fontSize={12} fill={C.muted} textAnchor="middle">
-        Abroad
+      <text x={abroadLabelX} y={CONT_Y + 56} fontSize={12} fill={C.muted} textAnchor="middle" data-flow-lane="abroad">
+        {abroadLabel}
       </text>
       <line
         x1={dividerX}

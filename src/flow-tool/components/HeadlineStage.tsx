@@ -14,15 +14,20 @@ function HeadlineNode({
   isClient,
   label,
   config,
+  editId,
 }: {
   box: FlowLayout["headline"]["a"];
   isClient: boolean;
   label: string;
   config: FlowConfig;
+  /** Rename key of the machinery counterpart — double-click renames it here
+   *  too. The client pill shows config.clientName (edited in the rail), so it
+   *  gets no handle. data-headline keeps it out of drag-reorder. */
+  editId?: string;
 }) {
   const { x, y, w, h, cx } = box;
   return (
-    <g>
+    <g data-flow-node={isClient ? undefined : editId} data-headline="1">
       <rect x={x} y={y} width={w} height={h} rx={9} fill={C.greenFill} stroke={C.green} />
       {isClient ? (
         <>
@@ -98,8 +103,8 @@ export function HeadlineStage({
         the desired transaction
       </text>
 
-      <HeadlineNode box={h.a} isClient={h.aIsClient} label={h.aLabel} config={config} />
-      <HeadlineNode box={h.b} isClient={h.bIsClient} label={h.bLabel} config={config} />
+      <HeadlineNode box={h.a} isClient={h.aIsClient} label={h.aLabel} config={config} editId={h.aId} />
+      <HeadlineNode box={h.b} isClient={h.bIsClient} label={h.bLabel} config={config} editId={h.bId} />
 
       {/* conversion capsule on the arc */}
       {convertsTo && (

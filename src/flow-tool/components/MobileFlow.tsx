@@ -171,6 +171,13 @@ export function MobileFlow({ flow, config }: { flow: Flow; config: FlowConfig })
     return 0.5 + 0.5 * ((f - (hf + HUB_G)) / (HUB_W - HUB_G));
   });
 
+  // Per-proposal lane renames (FlowConfig.laneLabels, resolved by the layout).
+  // Mobile keeps its own defaults ("Brasil", "Brasil 🇧🇷") unless renamed.
+  const laneOverrides: Record<string, string | undefined> = {
+    brazil: layout.brazilLabel !== "Brazil" ? layout.brazilLabel : undefined,
+    abroad: layout.abroadLabel !== "Abroad" ? layout.abroadLabel : undefined,
+  };
+
   return (
     <div ref={containerRef} className="relative mx-auto w-full max-w-md">
       {/* continuous rail behind the cards */}
@@ -203,12 +210,12 @@ export function MobileFlow({ flow, config }: { flow: Flow; config: FlowConfig })
         return (
           <div key={g[0].id} className="relative z-10">
             {g.length === 1 ? (
-              <NodeCard node={g[0]} primary={g[0].id === layout.primaryClientId} config={config} />
+              <NodeCard node={g[0]} primary={g[0].id === layout.primaryClientId} config={config} laneOverrides={laneOverrides} />
             ) : (
               // parallel origins: side-by-side, both feeding the row below
               <div className="grid grid-cols-2 gap-2">
                 {g.map((n) => (
-                  <NodeCard key={n.id} node={n} primary={n.id === layout.primaryClientId} config={config} />
+                  <NodeCard key={n.id} node={n} primary={n.id === layout.primaryClientId} config={config} laneOverrides={laneOverrides} />
                 ))}
               </div>
             )}
@@ -222,6 +229,7 @@ export function MobileFlow({ flow, config }: { flow: Flow; config: FlowConfig })
                 accent={accent}
                 reduced={!!reduced}
                 semanticDown={semanticDown}
+                laneOverrides={laneOverrides}
                 hubRef={isConv ? hubRef : undefined}
                 hubRotation={isConv ? hubRotation : undefined}
               />
@@ -233,8 +241,8 @@ export function MobileFlow({ flow, config }: { flow: Flow; config: FlowConfig })
   );
 }
 
-function NodeCard({ node, primary, config }: { node: NodeLayout; primary: boolean; config: FlowConfig }) {
-  const lane = node.lane === "brazil" ? "Brasil" : "Abroad";
+function NodeCard({ node, primary, config, laneOverrides }: { node: NodeLayout; primary: boolean; config: FlowConfig; laneOverrides?: Record<string, string | undefined> }) {
+  const lane = laneOverrides?.[node.lane] ?? (node.lane === "brazil" ? "Brasil" : "Abroad");
   // The primary client and any branded-client node (e.g. the client's own
   // in-country entity) carry the uploaded client logo.
   const hasLogo = (primary || node.brandedClient) && !!config.clientLogoUrl;
@@ -289,16 +297,18 @@ const Connector = forwardRef<
     accent: string;
     reduced: boolean;
     semanticDown: boolean;
+    laneOverrides?: Record<string, string | undefined>;
     hubRef?: React.Ref<HTMLSpanElement>;
     hubRotation?: MotionValue<number>;
   }
->(function Connector({ leg, topLane, botLane, config, accent, reduced, semanticDown, hubRef, hubRotation }, ref) {
+>(function Connector({ leg, topLane, botLane, config, accent, reduced, semanticDown, laneOverrides, hubRef, hubRotation }, ref) {
   const isConv = !!leg.convertsTo;
   // currency in the value-flow direction (Pay-in: carries -> convertsTo)
   const fromCur: Currency = isConv ? (semanticDown ? leg.carries : leg.convertsTo!) : leg.carries;
   const toCur: Currency = isConv ? (semanticDown ? leg.convertsTo! : leg.carries) : leg.carries;
   const crossing = topLane !== botLane;
-  const intoLane = (semanticDown ? botLane : topLane) === "brazil" ? "Brasil 🇧🇷" : "Abroad";
+  const intoLaneKey = semanticDown ? botLane : topLane;
+  const intoLane = laneOverrides?.[intoLaneKey] ?? (intoLaneKey === "brazil" ? "Brasil 🇧🇷" : "Abroad");
 
   return (
     <div ref={ref} className="relative flex flex-col items-center justify-center" style={{ minHeight: 58 }}>

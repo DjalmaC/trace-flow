@@ -150,6 +150,8 @@ export function SharedFlowView({ code }: { code: string }) {
           rep: getRep(config.traceRepId),
           pricing: config.pricing && isProposalPricing(config.pricing) ? config.pricing : undefined,
           nodeLabels: config.nodeLabels,
+          nodeOrder: config.nodeOrder,
+          laneLabels: config.laneLabels,
           assetAuth: { code },
         });
       } else {

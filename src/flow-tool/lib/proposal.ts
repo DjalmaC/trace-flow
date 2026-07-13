@@ -94,6 +94,10 @@ export interface ProposalBuildOpts {
   pricing?: ProposalPricing;
   /** Per-proposal node renames (see FlowConfig.nodeLabels). */
   nodeLabels?: Record<string, string>;
+  /** Per-proposal box reordering (see FlowConfig.nodeOrder). */
+  nodeOrder?: Record<string, string[]>;
+  /** Per-proposal lane renames (see FlowConfig.laneLabels). */
+  laneLabels?: Record<string, { brazil?: string; abroad?: string }>;
   /** Credentials for fetching the gated sales-slides deck. */
   assetAuth?: AssetAuth;
 }
@@ -430,6 +434,8 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
     direction: opts.direction ?? "collection",
     stablecoin: opts.stablecoin ?? "both",
     nodeLabels: opts.nodeLabels,
+    nodeOrder: opts.nodeOrder,
+    laneLabels: opts.laneLabels,
   };
   // ── pricing group surgery (after stamping, so overlay indices were valid) ──
   // Deleting a product's template page or inserting a page for an added one
