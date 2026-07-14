@@ -126,8 +126,13 @@ export function deriveHeadline(flow: Flow): Headline {
   // Prefer real counterparts for the stage-1 arc: the first/last client-ish
   // node, falling back to the chain ends.
   const clientish = (n: FlowNode) => n.kind === "client" || n.kind === "merchant";
-  const partyA = flow.nodes.find(clientish) ?? first;
-  const partyB = [...flow.nodes].reverse().find((n) => clientish(n) && n.id !== partyA?.id) ?? last;
+  // Pick the RIGHT endpoint first, then the left one excluding it — a flow
+  // whose only client-ish box sits at the chain's end must not collapse both
+  // headline endpoints onto that one box (overlapping stage-1 pills).
+  const partyB = [...flow.nodes].reverse().find(clientish) ?? last;
+  const partyA =
+    flow.nodes.find((n) => clientish(n) && n.id !== partyB?.id) ??
+    (first?.id !== partyB?.id ? first : flow.nodes.find((n) => n.id !== partyB?.id) ?? first);
   const firstLeg = flow.legs[0];
   const lastConvert = [...flow.legs].reverse().find((l) => l.convertsTo);
   return {

@@ -109,6 +109,9 @@ export function TailoredFlowEditor({
   const [legDraft, setLegDraft] = useState<{ from: string; x: number; y: number } | null>(null);
   const [preview, setPreview] = useState(false);
   const [checksOpen, setChecksOpen] = useState(false);
+  // FX popover: the alternate-output chips stay tucked behind "+ Add more"
+  // until used, so the common single-currency case looks exactly as before.
+  const [showAltOutputs, setShowAltOutputs] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const [wrapBox, setWrapBox] = useState({ w: 1, h: 1 });
@@ -321,6 +324,8 @@ export function TailoredFlowEditor({
 
   const selNode = selection?.type === "node" ? flow.nodes.find((n) => n.id === selection.id) : null;
   const selLegIndex = selection?.type === "leg" ? selection.index : null;
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useEffect(() => setShowAltOutputs(false), [selLegIndex]);
   const selLeg = selLegIndex != null ? flow.legs[selLegIndex] : null;
   const selNote = selection?.type === "note" ? ed.notes.find((n) => n.id === selection.id) : null;
 
@@ -771,10 +776,21 @@ export function TailoredFlowEditor({
                           {c}
                         </button>
                       ))}
-                      <span className="w-full pt-1 text-[10px] font-medium" style={{ color: P.sub }}>
-                        Can also deliver — the deck alternates the outputs:
-                      </span>
-                      {CURRENCIES.filter((c) => c !== selLeg.carries && c !== selLeg.convertsTo).map((c) => {
+                      {!showAltOutputs && !selLeg.alsoConvertsTo?.length && (
+                        <button
+                          onClick={() => setShowAltOutputs(true)}
+                          className="w-fit rounded-full px-2 py-0.5 text-[10px] font-medium transition"
+                          style={{ border: `1px dashed ${P.mintLine}`, color: P.mintInk, background: "#fff" }}
+                        >
+                          + Add more
+                        </button>
+                      )}
+                      {(showAltOutputs || !!selLeg.alsoConvertsTo?.length) && (
+                        <span className="w-full pt-1 text-[10px] font-medium" style={{ color: P.sub }}>
+                          Can also deliver — the deck alternates the outputs:
+                        </span>
+                      )}
+                      {(showAltOutputs || !!selLeg.alsoConvertsTo?.length) && CURRENCIES.filter((c) => c !== selLeg.carries && c !== selLeg.convertsTo).map((c) => {
                         const on = !!selLeg.alsoConvertsTo?.includes(c);
                         return (
                           <button
