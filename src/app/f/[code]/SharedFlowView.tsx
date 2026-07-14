@@ -152,6 +152,7 @@ export function SharedFlowView({ code }: { code: string }) {
           nodeLabels: config.nodeLabels,
           nodeOrder: config.nodeOrder,
           laneLabels: config.laneLabels,
+          heroSupport: config.heroSupport,
           assetAuth: { code },
         });
       } else {

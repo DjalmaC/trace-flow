@@ -284,6 +284,7 @@ export function ControlPanel({
         nodeLabels: config.nodeLabels,
         nodeOrder: config.nodeOrder,
         laneLabels: config.laneLabels,
+        heroSupport: config.heroSupport,
         assetAuth: { repKey: loadRepKey() ?? undefined },
       });
       setPdf("idle");

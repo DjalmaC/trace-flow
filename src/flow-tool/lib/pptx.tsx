@@ -145,6 +145,15 @@ function titleSlide(config: FlowConfig) {
   );
 }
 
+/** Hero subtitle for a flow page: per-proposal override (FlowConfig.heroSupport,
+ *  keyed "<flowId>:<direction>") first, then the flow's own copy. */
+function supportFor(config: FlowConfig, flow: Flow, direction = config.direction): string | undefined {
+  return (
+    config.heroSupport?.[`${flow.id}:${direction}`] ??
+    (flow.heroSupport ? flow.heroSupport[direction] : undefined)
+  );
+}
+
 // The client-facing flow label is POSITIONAL — "what flow is this to the client":
 // Flow 1, Flow 2, … by order in the proposal, or "The Flow" if there's only one.
 function deckFlowLabel(index: number, total: number): string {
@@ -467,7 +476,7 @@ export async function renderProposalFlowPngs(
   for (let i = 0; i < valid.length; i++) {
     const it = valid[i];
     const flow = getFlow(it.flowId)!;
-    const support = flow.heroSupport ? flow.heroSupport[config.direction] : undefined;
+    const support = supportFor(config, flow);
     out.push(await renderDeckPng(flowSlide({ ...config, flowId: it.flowId }, flow, it.name, deckFlowLabel(i, valid.length), support)));
   }
   return out;
@@ -477,7 +486,7 @@ export async function renderProposalFlowPngs(
 export async function previewDeckPng(flowId: string, kind: "title" | "flow"): Promise<string> {
   const flow = getFlow(flowId)!;
   const config: FlowConfig = { ...defaultConfig(flowId, "Acme"), clientRep: "Jane Doe", clientLogoPlate: "none" };
-  return renderDeckPng(kind === "title" ? titleSlide(config) : flowSlide(config, flow, flow.title, deckFlowLabel(0, 1), flow.heroSupport?.collection));
+  return renderDeckPng(kind === "title" ? titleSlide(config) : flowSlide(config, flow, flow.title, deckFlowLabel(0, 1), supportFor(config, flow, "collection")));
 }
 
 type Variant = { flowId: string; name: string };
@@ -513,7 +522,7 @@ async function renderDeckSlides(config: FlowConfig, variants?: Variant[]): Promi
   for (let i = 0; i < valid.length; i++) {
     const it = valid[i];
     const flow = getFlow(it.flowId)!;
-    const support = flow.heroSupport ? flow.heroSupport[config.direction] : undefined;
+    const support = supportFor(config, flow);
     slides.push(await renderDeckPng(flowSlide({ ...config, flowId: it.flowId }, flow, it.name, deckFlowLabel(i, valid.length), support)));
   }
   return slides;
@@ -548,7 +557,7 @@ export async function downloadFlowPptx(config: FlowConfig, variants?: Variant[])
   for (let i = 0; i < valid.length; i++) {
     const it = valid[i];
     const flow = getFlow(it.flowId)!;
-    const support = flow.heroSupport ? flow.heroSupport[config.direction] : undefined;
+    const support = supportFor(config, flow);
     flowPngs.push(await renderDeckPng(flowSlide({ ...config, flowId: it.flowId }, flow, it.name, deckFlowLabel(i, valid.length), support)));
   }
 

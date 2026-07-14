@@ -37,8 +37,9 @@ export default function BuildPage() {
   const [sandbox, setSandbox] = useState(false);
   // Editing an existing proposal (dashboard → Edit): its share code.
   const [editingCode, setEditingCode] = useState<string | null>(null);
-  // Double-click rename overlay for the flow boxes / lane names on the canvas.
-  const [rename, setRename] = useState<{ key: string; lane?: "brazil" | "abroad"; original: string; value: string; left: number; top: number; width: number } | null>(null);
+  // Double-click rename overlay for the flow boxes / lane names / hero
+  // subtitle on the canvas.
+  const [rename, setRename] = useState<{ key: string; lane?: "brazil" | "abroad"; hero?: boolean; original: string; value: string; left: number; top: number; width: number } | null>(null);
   const renameRef = useRef<HTMLInputElement>(null);
   // Edit mode ("Arrange boxes"): drag a box onto another to swap places, or
   // into a rail gap to move it. Stored as config.nodeOrder, so the client
@@ -145,8 +146,31 @@ export default function BuildPage() {
 
   const setDirection = (direction: typeof config.direction) => setConfig((c) => ({ ...c, direction }));
 
-  // ── double-click a flow box or a lane name to rename it (this proposal only) ──
+  // ── double-click a flow box, a lane name, or the hero subtitle to edit it
+  // (this proposal only) ──
   function onCanvasDoubleClick(e: React.MouseEvent) {
+    const heroEl = (e.target as Element).closest?.("[data-hero-support]");
+    if (heroEl) {
+      const flow = getFlow(config.flowId);
+      const original =
+        (flow?.heroSupport ? flow.heroSupport[config.direction] : undefined) ??
+        (config.direction === "collection"
+          ? "Collect in Brazil, settle to their merchant abroad, in one move."
+          : "Fund from abroad, pay out into Brazil, in one move.");
+      const key = `${config.flowId}:${config.direction}`;
+      const r = heroEl.getBoundingClientRect();
+      const width = Math.min(640, Math.max(r.width + 90, 380));
+      setRename({
+        key,
+        hero: true,
+        original,
+        value: config.heroSupport?.[key] ?? original,
+        left: r.left + r.width / 2 - width / 2,
+        top: r.top + r.height / 2 - 17,
+        width,
+      });
+      return;
+    }
     const laneEl = (e.target as Element).closest?.("[data-flow-lane]");
     if (laneEl) {
       const lane = laneEl.getAttribute("data-flow-lane") as "brazil" | "abroad";
@@ -181,6 +205,16 @@ export default function BuildPage() {
   function commitRename() {
     if (!rename) return;
     const v = rename.value.trim();
+    if (rename.hero) {
+      setConfig((c) => {
+        const m = { ...(c.heroSupport ?? {}) };
+        if (!v || v === rename.original) delete m[rename.key]; // empty = back to the flow's own copy
+        else m[rename.key] = v;
+        return { ...c, heroSupport: Object.keys(m).length ? m : undefined };
+      });
+      setRename(null);
+      return;
+    }
     if (rename.lane) {
       const lane = rename.lane;
       setConfig((c) => {

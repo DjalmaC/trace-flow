@@ -380,6 +380,10 @@ export interface FlowConfig {
    *  canvas), keyed by flowId — e.g. a Canada corridor. Applied at layout
    *  time like nodeLabels. */
   laneLabels?: Record<string, { brazil?: string; abroad?: string }>;
+  /** Per-proposal hero subtitle overrides (double-click the line under "The
+   *  desired transaction" on the build canvas), keyed "<flowId>:<direction>".
+   *  Shown on the hero and the PDF flow page. */
+  heroSupport?: Record<string, string>;
 }
 
 // ── Settlement options ────────────────────────────────────────────────────────

@@ -194,11 +194,15 @@ export function FlowExperience({
     `radial-gradient(62% 62% at 50% 46%, ${C.ambientGlow1} 0%, ${C.ambientGlow2} 58%, rgba(7,9,11,0) 100%),` +
     `radial-gradient(72% 72% at 50% 50%, rgba(7,9,11,0) 58%, ${C.vignette} 100%)`;
 
-  const support = flow.heroSupport
-    ? flow.heroSupport[config.direction]
-    : config.direction === "collection"
-      ? "Collect in Brazil, settle to their merchant abroad, in one move."
-      : "Fund from abroad, pay out into Brazil, in one move.";
+  // Per-proposal override first (double-click the line on the build canvas),
+  // then the flow's own copy, then the direction defaults.
+  const support =
+    config.heroSupport?.[`${config.flowId}:${config.direction}`] ??
+    (flow.heroSupport
+      ? flow.heroSupport[config.direction]
+      : config.direction === "collection"
+        ? "Collect in Brazil, settle to their merchant abroad, in one move."
+        : "Fund from abroad, pay out into Brazil, in one move.");
 
   const SurfaceHeading = (
     <div className="mx-auto mb-5 text-center" style={{ width: "min(36rem, calc(100vw - 2rem))" }}>
@@ -208,7 +212,9 @@ export function FlowExperience({
       <h1 className="font-display text-3xl font-semibold tracking-[-0.01em] text-[#f2f5f3] md:text-5xl">
         What <span className="text-mint">{config.clientName}</span> wants
       </h1>
-      <p className="mt-3 text-sm font-normal text-[#8b948f] md:text-base">{support}</p>
+      <p className="mt-3 text-sm font-normal text-[#8b948f] md:text-base" data-hero-support>
+        {support}
+      </p>
     </div>
   );
 

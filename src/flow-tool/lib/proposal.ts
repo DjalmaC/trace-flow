@@ -100,6 +100,8 @@ export interface ProposalBuildOpts {
   nodeOrder?: Record<string, string[]>;
   /** Per-proposal lane renames (see FlowConfig.laneLabels). */
   laneLabels?: Record<string, { brazil?: string; abroad?: string }>;
+  /** Per-proposal hero subtitle overrides (see FlowConfig.heroSupport). */
+  heroSupport?: Record<string, string>;
   /** Credentials for fetching the gated sales-slides deck. */
   assetAuth?: AssetAuth;
 }
@@ -469,6 +471,7 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
     nodeLabels: opts.nodeLabels,
     nodeOrder: opts.nodeOrder,
     laneLabels: opts.laneLabels,
+    heroSupport: opts.heroSupport,
   };
   // ── pricing group surgery (after stamping, so overlay indices were valid) ──
   // Deleting a product's template page or inserting a page for an added one
