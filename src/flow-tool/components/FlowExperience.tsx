@@ -22,10 +22,11 @@ export function useIsMobile() {
   }, []);
   return mobile;
 }
-import type { FlowConfig } from "../data/schema";
+import type { FlowConfig, SettlementOption } from "../data/schema";
+import { applySettlement, settlementChoices } from "../data/schema";
 import { getFlow } from "../data";
 import { computeLayout, CONT_Y, CONT_H } from "./layout";
-import { Defs } from "./FlowSvg";
+import { Defs, displayCurrency } from "./FlowSvg";
 import { HeroFlow } from "./HeroFlow";
 import { MachineryStage } from "./MachineryStage";
 import { ASSETS, C, TRACE_LOGO_AR } from "./tokens";
@@ -56,7 +57,48 @@ export function FlowExperience({
   /** Force the stacked, non-dive layout (used for print / PDF export). */
   forceStatic?: boolean;
 }) {
-  const flow = getFlow(config.flowId);
+  const baseFlow = getFlow(config.flowId);
+
+  // ── settlement toggle: one rail, more than one settlement ────────────────
+  // A flow can offer settlement options (Leg.settlements). The active option
+  // is applied as a pure flow transform BEFORE layout, so every renderer just
+  // sees "a flow". Left idle, the toggle flips itself after two full relay
+  // passes — the moving control narrates the currency change; any manual
+  // click takes over for the session.
+  const choices = useMemo(() => (baseFlow ? settlementChoices(baseFlow) : []), [baseFlow]);
+  const [settlementIdx, setSettlementIdx] = useState(0);
+  const manualSettle = useRef(false);
+  const passCount = useRef(0);
+  useEffect(() => {
+    setSettlementIdx(0);
+    manualSettle.current = false;
+    passCount.current = 0;
+    // QA hook: ?settle=<i> pins an option deterministically
+    const v = new URLSearchParams(window.location.search).get("settle");
+    if (v != null) {
+      setSettlementIdx(Math.max(0, Number(v) || 0));
+      manualSettle.current = true;
+    }
+  }, [config.flowId]);
+  const flow = useMemo(
+    () =>
+      baseFlow && choices.length > 1
+        ? applySettlement(baseFlow, Math.min(settlementIdx, choices.length - 1))
+        : baseFlow,
+    [baseFlow, choices, settlementIdx],
+  );
+  const pickSettlement = (i: number) => {
+    manualSettle.current = true;
+    setSettlementIdx(i);
+  };
+  const onPassComplete = () => {
+    if (manualSettle.current || choices.length < 2) return;
+    passCount.current += 1;
+    if (passCount.current >= 2) {
+      passCount.current = 0;
+      setSettlementIdx((i) => (i + 1) % choices.length);
+    }
+  };
 
   // Reduced-motion is null during SSR and on the first client render, then true
   // on a reduced-motion machine — branching on it directly would flip the whole
@@ -132,8 +174,19 @@ export function FlowExperience({
       aria-label={`How Trace makes it happen — ${flow.title}`}
     >
       <Defs />
-      <MachineryStage layout={layout} config={config} animate={animate} showHeading={false} />
+      <MachineryStage layout={layout} config={config} animate={animate} showHeading={false} onPassComplete={onPassComplete} />
     </svg>
+  );
+
+  const settlementToggle = choices.length > 1 && (
+    <div className="relative z-30 mb-2.5 flex w-full max-w-[1500px] justify-end pr-1">
+      <SettlementToggle
+        choices={choices}
+        active={Math.min(settlementIdx, choices.length - 1)}
+        onChange={pickSettlement}
+        config={config}
+      />
+    </div>
   );
 
   // ambient: a single soft radial light + vignette over the near-black page.
@@ -177,6 +230,7 @@ export function FlowExperience({
       <div className="relative flex min-h-screen w-full flex-col items-center justify-center px-6" style={{ background: deckGlow }}>
         <div className="absolute left-0 top-0 h-[3px] w-full" style={{ background: C.rule }} />
         {only === "surface" ? SurfaceHeading : DepthHeading}
+        {only === "depth" && settlementToggle}
         <div className={only === "surface" ? "w-full max-w-[1200px]" : "w-full max-w-[1500px]"}>
           {only === "surface" ? SurfaceSvg : MachinerySvg}
         </div>
@@ -198,6 +252,16 @@ export function FlowExperience({
           <DirectionToggle direction={config.direction} onChange={onDirectionChange} fixed />
         )}
         {SurfaceHeading}
+        {choices.length > 1 && (
+          <div className="mb-3 flex w-full justify-center">
+            <SettlementToggle
+              choices={choices}
+              active={Math.min(settlementIdx, choices.length - 1)}
+              onChange={pickSettlement}
+              config={config}
+            />
+          </div>
+        )}
         <MobileFlow flow={flow} config={config} />
       </div>
     );
@@ -214,6 +278,7 @@ export function FlowExperience({
         </section>
         <section className="flex min-h-screen flex-col items-center justify-center px-6" style={{ background: deckGlow }}>
           {DepthHeading}
+          {settlementToggle}
           <div className="w-full max-w-[1500px]">{MachinerySvg}</div>
         </section>
         <Lockup />
@@ -242,6 +307,7 @@ export function FlowExperience({
           className="absolute inset-0 z-10 flex flex-col items-center justify-center px-6"
         >
           <motion.div style={{ opacity: depthHeadingOpacity }}>{DepthHeading}</motion.div>
+          {settlementToggle}
           <div className="w-full max-w-[1500px]">{MachinerySvg}</div>
         </motion.div>
 
@@ -284,6 +350,43 @@ function Lockup() {
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={ASSETS.traceLogo} alt="" style={{ height: 22, width: 22 * TRACE_LOGO_AR }} />
       <span className="text-[15px] font-semibold text-title">Trace Finance</span>
+    </div>
+  );
+}
+
+/** The on-canvas settlement picker — same visual vocabulary as Pay-in/Pay-out.
+ *  Sits right above the machinery, only when the flow offers options. */
+function SettlementToggle({
+  choices,
+  active,
+  onChange,
+  config,
+}: {
+  choices: SettlementOption[];
+  active: number;
+  onChange: (i: number) => void;
+  config: FlowConfig;
+}) {
+  const labelOf = (c: SettlementOption) => {
+    if (c.label?.trim()) return c.label.trim();
+    const d = displayCurrency(c.out, config);
+    return d === "USDC/USDT" ? (config.stablecoin === "both" ? "USDC/USDT" : config.stablecoin) : d;
+  };
+  return (
+    <div className="pointer-events-auto flex items-center gap-0.5 rounded-[11px] border border-white/10 bg-[#0e1410]/70 p-[3px] backdrop-blur">
+      <span className="px-2 text-[10px] font-medium uppercase tracking-[0.16em] text-muted">Settle in</span>
+      {choices.map((c, i) => (
+        <button
+          key={i}
+          onClick={() => onChange(i)}
+          aria-pressed={active === i}
+          className={`rounded-lg px-[13px] py-[5px] text-[12px] font-medium tracking-[0.2px] transition ${
+            active === i ? "bg-[#46d39a24] text-[#bfe8d4]" : "text-[#8b948f] hover:text-[#bfe8d4]"
+          }`}
+        >
+          {labelOf(c)}
+        </button>
+      ))}
     </div>
   );
 }

@@ -113,14 +113,21 @@ export function MachineryStage({
   config,
   animate,
   showHeading = true,
+  onPassComplete,
 }: {
   layout: FlowLayout;
   config: FlowConfig;
   animate: boolean;
   showHeading?: boolean;
+  /** Fires each time the relay finishes a full pass (used by the settlement
+   *  toggle's idle auto-flip). Never fires when frozen (?frame QA hook). */
+  onPassComplete?: () => void;
 }) {
   const reduced = useReducedMotion();
   const run = animate && !reduced;
+  // ref'd so the rAF effect doesn't restart the relay when the parent re-renders
+  const passCbRef = useRef(onPassComplete);
+  passCbRef.current = onPassComplete;
   const nodes = layout.nodes;
   const railY = layout.railY ?? nodes[0]?.cy ?? 412;
   const accent = accentFor(config.direction);
@@ -287,9 +294,19 @@ export function MachineryStage({
       return;
     }
     let raf = 0;
+    let lastPass = 0;
     const start = performance.now();
     const tick = (now: number) => {
-      render((now - start) % total);
+      // rAF timestamps can precede the performance.now() captured above by a
+      // frame — clamp, and only ever count passes FORWARD, or the first two
+      // frames read as a whole spurious pass.
+      const e = Math.max(0, now - start);
+      const pass = Math.floor(e / total);
+      if (pass > lastPass) {
+        lastPass = pass;
+        passCbRef.current?.();
+      }
+      render(e % total);
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);

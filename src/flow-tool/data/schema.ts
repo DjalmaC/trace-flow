@@ -57,12 +57,28 @@ export interface FlowNode {
   srcId?: string;
 }
 
+/** An additional settlement the FX engine can deliver on a converting leg —
+ *  the primary is the leg's own convertsTo. The deck shows a settlement
+ *  toggle when a flow offers options; the PDF shows the primary plus a short
+ *  "also settles in ..." note. */
+export interface SettlementOption {
+  /** Toggle pill label; empty = the display currency. */
+  label?: string;
+  out: Currency;
+  /** Per-option relabeling of boxes (nodeId -> label), e.g. the beneficiary
+   *  box reading "bank account" on the fiat option and "wallet" on the
+   *  stablecoin one. */
+  nodeLabels?: Record<string, string>;
+}
+
 export interface Leg {
   from: string;
   to: string;
   carries: Currency;
   /** Set => a swap capsule converts mid-leg (usually the border crossing). */
   convertsTo?: Currency;
+  /** Additional settlement options this conversion offers (see above). */
+  settlements?: SettlementOption[];
   /** Does this leg cross the Brazil | Abroad divide? (the conversion usually sits here) */
   crosses?: boolean;
 }
@@ -364,6 +380,50 @@ export interface FlowConfig {
    *  canvas), keyed by flowId — e.g. a Canada corridor. Applied at layout
    *  time like nodeLabels. */
   laneLabels?: Record<string, { brazil?: string; abroad?: string }>;
+}
+
+// ── Settlement options ────────────────────────────────────────────────────────
+// A flow with settlement options is rendered through applySettlement: a pure
+// flow→flow transform, so the layout engine and every renderer stay untouched.
+// The deck's toggle just picks which variant of the flow they see.
+
+/** The settlement choices a flow offers: the converting leg's primary output
+ *  first, then its extra options. Empty when the flow has none. */
+export function settlementChoices(flow: Pick<Flow, "legs">): SettlementOption[] {
+  const leg = flow.legs.find((l) => l.convertsTo && l.settlements?.length);
+  if (!leg) return [];
+  return [{ out: leg.convertsTo! }, ...leg.settlements!];
+}
+
+/** The flow as settlement option `i` tells it: the converting leg delivers
+ *  that option's currency, downstream legs carry it onward (currency
+ *  continuity), the headline mirrors it, and the option's box relabels apply.
+ *  i = 0 (or no options) returns the flow unchanged. */
+export function applySettlement(flow: Flow, i: number): Flow {
+  const choices = settlementChoices(flow);
+  const opt = choices[i];
+  if (!opt || i === 0) return flow;
+  const legIdx = flow.legs.findIndex((l) => l.convertsTo && l.settlements?.length);
+  const primary = flow.legs[legIdx].convertsTo!;
+  let past = false;
+  let carry = false;
+  const legs = flow.legs.map((l, li) => {
+    if (li === legIdx) {
+      past = true;
+      carry = true;
+      return { ...l, convertsTo: opt.out };
+    }
+    if (!past || !carry) return l;
+    if (l.carries === primary) return { ...l, carries: opt.out };
+    carry = false; // continuity ended — stop substituting
+    return l;
+  });
+  const nodes = opt.nodeLabels
+    ? flow.nodes.map((n) => (opt.nodeLabels![n.id]?.trim() ? { ...n, label: opt.nodeLabels![n.id].trim() } : n))
+    : flow.nodes;
+  const headline =
+    flow.headline.convertsTo === primary ? { ...flow.headline, convertsTo: opt.out } : flow.headline;
+  return { ...flow, legs, nodes, headline };
 }
 
 // ── Computed-field rules (spec §2.1), kept here so they're auditable ──────────

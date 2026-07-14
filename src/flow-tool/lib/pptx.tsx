@@ -3,7 +3,8 @@ import { Defs } from "../components/FlowSvg";
 import { MachineryStage } from "../components/MachineryStage";
 import { ASSETS } from "../components/tokens";
 import { getFlow, defaultConfig } from "../data";
-import { tierText, flatRowText } from "../data/schema";
+import { tierText, flatRowText, settlementChoices } from "../data/schema";
+import { displayCurrency } from "../components/FlowSvg/Tokens";
 import type { Flow, FlowConfig, PriceCard, ProposalPricing } from "../data/schema";
 
 // Personalised PowerPoint export, styled to match the flow 1-10 decks on the web
@@ -152,6 +153,18 @@ function deckFlowLabel(index: number, total: number): string {
 
 function flowSlide(config: FlowConfig, flow: Flow, name: string, label: string, support?: string) {
   const layout = computeLayout(flow, config);
+  // A flow with settlement options prints its PRIMARY settlement; the live
+  // link carries the toggle. A short note names the other option(s).
+  const disp = (c: Flow["legs"][number]["carries"]) => {
+    const d = displayCurrency(c, config);
+    return d === "USDC/USDT" ? (config.stablecoin === "both" ? "USDC/USDT" : config.stablecoin) : d;
+  };
+  const settleAlts = settlementChoices(flow).slice(1);
+  const convLeg = flow.legs.find((l) => l.convertsTo && l.settlements?.length);
+  const settleNote =
+    settleAlts.length && convLeg
+      ? `Also supported: ${disp(convLeg.carries)} → ${settleAlts.map((o) => disp(o.out)).join(" or ")}`
+      : null;
   const mw = layout.width;
   const mh = CONT_H + 30;
   const areaTop = 122;
@@ -182,6 +195,11 @@ function flowSlide(config: FlowConfig, flow: Flow, name: string, label: string, 
       <svg x={x2} y={y2} width={w2} height={h2} viewBox={`0 ${CONT_Y - 12} ${mw} ${mh}`} preserveAspectRatio="xMidYMid meet">
         <MachineryStage layout={layout} config={config} animate={false} showHeading={false} />
       </svg>
+      {settleNote && (
+        <text x={48} y={514} fontSize={10.5} fill={SUB} opacity={0.9}>
+          {settleNote}
+        </text>
+      )}
     </Frame>
   );
 }

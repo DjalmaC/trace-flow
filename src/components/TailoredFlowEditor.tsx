@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Currency, Flow, FlowConfig, FlowNode, Leg, NodeKind } from "@/flow-tool/data/schema";
+import type { Currency, Flow, FlowConfig, FlowNode, Leg, NodeKind, SettlementOption } from "@/flow-tool/data/schema";
 import {
   arrivingCurrency,
   blankFlow,
@@ -530,7 +530,8 @@ export function TailoredFlowEditor({
                   <circle cx={L.x2} cy={L.y2} r={3.2} fill={selected ? P.mintDeep : "#2ec79b"} />
                   {leg.convertsTo ? (
                     (() => {
-                      const label = `${leg.carries} → ${leg.convertsTo} · spot + spread`;
+                      const alts = (leg.settlements ?? []).map((o) => o.out).join(" or ");
+                      const label = `${leg.carries} → ${leg.convertsTo}${alts ? ` or ${alts}` : ""} · spot + spread`;
                       const w = label.length * 6.1 + 26;
                       return (
                         <g transform={`translate(${mx - w / 2}, ${my - 21})`}>
@@ -773,6 +774,84 @@ export function TailoredFlowEditor({
                       <span className="w-full pt-0.5 text-[9.5px]" style={{ color: P.mintInk, opacity: 0.8 }}>
                         via Trace FX engine · spot + spread
                       </span>
+                      {(selLeg.settlements ?? []).map((opt, oi) => {
+                        const di = flow.nodes.findIndex((n) => n.id === selLeg.to);
+                        const downstream = di >= 0 ? flow.nodes.slice(di) : [];
+                        const patchOpt = (pp: Partial<SettlementOption>) => {
+                          const next = (selLeg.settlements ?? []).map((o, i) => (i === oi ? { ...o, ...pp } : o));
+                          patchLeg(selLegIndex, { settlements: next });
+                        };
+                        return (
+                          <div key={oi} className="mt-1.5 w-full rounded-lg p-2" style={{ border: `1px dashed ${P.mintLine}`, background: "#fff" }}>
+                            <div className="flex items-center justify-between">
+                              <span className="font-mono text-[10px]" style={{ color: P.mintInk }}>
+                                or {selLeg.carries} →
+                              </span>
+                              <button
+                                aria-label="Remove settlement option"
+                                onClick={() => {
+                                  const next = (selLeg.settlements ?? []).filter((_, i) => i !== oi);
+                                  patchLeg(selLegIndex, { settlements: next.length ? next : undefined });
+                                }}
+                                className="px-1 text-[12px] leading-none transition hover:opacity-70"
+                                style={{ color: P.sub }}
+                              >
+                                ×
+                              </button>
+                            </div>
+                            <div className="mt-1 flex flex-wrap items-center gap-1">
+                              {CURRENCIES.filter((c) => c !== selLeg.carries && c !== selLeg.convertsTo).map((c) => (
+                                <button
+                                  key={c}
+                                  onClick={() => patchOpt({ out: c })}
+                                  className="rounded-full px-1.5 py-0.5 font-mono text-[10px] transition"
+                                  style={
+                                    opt.out === c
+                                      ? { border: `1.4px solid ${P.mintDeep}`, color: P.mintInk, background: "#fff" }
+                                      : { border: `1px solid ${P.mintLine}`, color: P.sub }
+                                  }
+                                >
+                                  {c}
+                                </button>
+                              ))}
+                            </div>
+                            <input
+                              value={opt.label ?? ""}
+                              onChange={(e) => patchOpt({ label: e.target.value || undefined })}
+                              placeholder={`Toggle label (default: ${opt.out})`}
+                              className="mt-1.5 w-full rounded-md px-2 py-1 text-[11px] outline-none"
+                              style={{ border: `1px solid ${P.line}`, color: P.ink }}
+                            />
+                            {downstream.map((n) => (
+                              <input
+                                key={n.id}
+                                value={opt.nodeLabels?.[n.id] ?? ""}
+                                onChange={(e) => {
+                                  const mm = { ...(opt.nodeLabels ?? {}) };
+                                  if (e.target.value) mm[n.id] = e.target.value;
+                                  else delete mm[n.id];
+                                  patchOpt({ nodeLabels: Object.keys(mm).length ? mm : undefined });
+                                }}
+                                placeholder={`“${n.label}” in this option (optional)`}
+                                className="mt-1 w-full rounded-md px-2 py-1 text-[11px] outline-none"
+                                style={{ border: `1px solid ${P.line}`, color: P.ink }}
+                              />
+                            ))}
+                          </div>
+                        );
+                      })}
+                      {!flow.legs.some((l, i) => i !== selLegIndex && l.settlements?.length) && (
+                        <button
+                          onClick={() => {
+                            const firstAlt = CURRENCIES.find((c) => c !== selLeg.carries && c !== selLeg.convertsTo)!;
+                            patchLeg(selLegIndex, { settlements: [...(selLeg.settlements ?? []), { out: firstAlt }] });
+                          }}
+                          className="mt-1.5 w-fit rounded-full px-2 py-0.5 text-[10px] font-medium transition"
+                          style={{ border: `1px dashed ${P.mintLine}`, color: P.mintInk, background: "#fff" }}
+                        >
+                          + Add settlement option
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
