@@ -63,6 +63,11 @@ export interface Leg {
   carries: Currency;
   /** Set => a swap capsule converts mid-leg (usually the border crossing). */
   convertsTo?: Currency;
+  /** Additional currencies the FX engine can deliver on this leg ("we can do
+   *  both"). The machinery relay alternates the output per pass — convertsTo
+   *  first, then each of these — while static views (reduced motion, the PDF,
+   *  the headline capsule) show the combined set. */
+  alsoConvertsTo?: Currency[];
   /** Does this leg cross the Brazil | Abroad divide? (the conversion usually sits here) */
   crosses?: boolean;
 }
@@ -73,6 +78,8 @@ export interface Headline {
   partyB: string; // anchor id of the ultimate beneficiary
   carries: Currency;
   convertsTo?: Currency;
+  /** Mirrors the converting leg's alternate outputs (see Leg.alsoConvertsTo). */
+  alsoConvertsTo?: Currency[];
 }
 
 /** Projector link tying a headline endpoint to its machinery counterpart. */

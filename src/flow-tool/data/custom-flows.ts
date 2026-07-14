@@ -135,6 +135,7 @@ export function deriveHeadline(flow: Flow): Headline {
     partyB: partyB?.id ?? last?.id ?? "",
     carries: firstLeg?.carries ?? "BRL",
     convertsTo: lastConvert?.convertsTo,
+    alsoConvertsTo: lastConvert?.alsoConvertsTo,
   };
 }
 

@@ -3,7 +3,7 @@ import { useEffect, useRef } from "react";
 import { useReducedMotion } from "framer-motion";
 import type { Currency, Flow, FlowConfig } from "../data/schema";
 import { ASSETS, C, TRACE_LOGO_AR, accentFor, tubeTint } from "./tokens";
-import { displayCurrency } from "./FlowSvg/Tokens";
+import { displayCurrency, fxOutputs, outputsLabel } from "./FlowSvg/Tokens";
 import { TraceArrow } from "./FlowSvg/TraceArrow";
 import { Defs } from "./FlowSvg";
 
@@ -79,7 +79,13 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
   const pulseRef = useRef<SVGCircleElement>(null);
 
   const carries = displayCurrency(flow.headline.carries, config);
-  const convertsTo = displayCurrency(flow.headline.convertsTo ?? flow.headline.carries, config);
+  // Multi-output FX shows the combined set here ("EUR / USDC"); the machinery
+  // relay is what alternates the outputs pass by pass.
+  const heroOuts = fxOutputs(flow.headline);
+  const convertsTo =
+    heroOuts.length > 1
+      ? (outputsLabel(heroOuts, config) as Currency)
+      : displayCurrency(flow.headline.convertsTo ?? flow.headline.carries, config);
   const dir = config.direction;
 
   // labels

@@ -16,6 +16,24 @@ export function displayCurrency(c: Currency, config: FlowConfig): Currency {
   return c;
 }
 
+/** The full FX output set of a leg/headline: primary + alternates. */
+export function fxOutputs(x: { convertsTo?: Currency; alsoConvertsTo?: Currency[] }): Currency[] {
+  return x.convertsTo ? [x.convertsTo, ...(x.alsoConvertsTo ?? [])] : [];
+}
+
+/** One combined text label for a multi-output conversion ("EUR / USDC") —
+ *  static views (reduced motion, PDF, the headline capsule) show the set
+ *  while the machinery relay alternates the outputs per pass. */
+export function outputsLabel(outputs: Currency[], config: FlowConfig): string {
+  const coin = config.stablecoin ?? "both";
+  return outputs
+    .map((c) => {
+      const d = displayCurrency(c, config);
+      return d === "USDC/USDT" ? (coin === "both" ? "USDC/USDT" : coin) : d;
+    })
+    .join(" / ");
+}
+
 /** Pixel width of a token, for centering / capsule sizing. */
 export function tokenWidth(c: Currency, coin: Stablecoin = "both"): number {
   if (c === "USDC/USDT") return coin === "both" ? 38 : 22;

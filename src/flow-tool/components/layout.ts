@@ -67,6 +67,8 @@ export interface LegLayout {
   y2: number;
   carries: Currency;
   convertsTo?: Currency;
+  /** Alternate FX outputs (see Leg.alsoConvertsTo) — the relay cycles them. */
+  alsoConvertsTo?: Currency[];
   /** Mid-leg point where the token/swap sits. */
   mid: { x: number; y: number };
   /** Not part of the relay rail — drawn as a curved tributary conduit with a
@@ -89,6 +91,7 @@ export interface HeadlineLayout {
   d: string;
   carries: Currency;
   convertsTo?: Currency;
+  alsoConvertsTo?: Currency[];
   mid: { x: number; y: number };
 }
 
@@ -154,7 +157,7 @@ function wrapLabel(label: string): string[] {
 }
 
 type SrcNode = { id: string; srcId?: string; label: string; kind: NodeKindOrEngine; lane: Flow["nodes"][number]["lane"]; w: number; engineCount?: number; brandedClient?: boolean };
-type SrcLeg = { from: string; to: string; carries: Currency; convertsTo?: Currency; hubAtEngine?: boolean };
+type SrcLeg = { from: string; to: string; carries: Currency; convertsTo?: Currency; alsoConvertsTo?: Currency[]; hubAtEngine?: boolean };
 
 const ENGINE_W = 212;
 
@@ -257,13 +260,13 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
       const fromIn = idSet.has(l.from);
       const toIn = idSet.has(l.to);
       if (fromIn && toIn) return; // internal — folded away
-      if (l.to === first) srcLegs.push({ from: l.from, to: ENGINE_ID, carries: D(l.carries), convertsTo: D(outputCurrency), hubAtEngine: true });
+      if (l.to === first) srcLegs.push({ from: l.from, to: ENGINE_ID, carries: D(l.carries), convertsTo: D(outputCurrency), alsoConvertsTo: exitLeg.alsoConvertsTo, hubAtEngine: true });
       else if (l.from === last) srcLegs.push({ from: ENGINE_ID, to: l.to, carries: D(outputCurrency) });
-      else srcLegs.push({ from: l.from, to: l.to, carries: D(l.carries), convertsTo: l.convertsTo });
+      else srcLegs.push({ from: l.from, to: l.to, carries: D(l.carries), convertsTo: l.convertsTo, alsoConvertsTo: l.alsoConvertsTo });
     });
   } else {
     srcNodes = flow.nodes.map((n) => ({ id: n.id, srcId: n.srcId, label: labelOf(n), kind: n.kind, lane: n.lane, w: NODE_W, brandedClient: n.brandedClient }));
-    srcLegs = flow.legs.map((l) => ({ from: l.from, to: l.to, carries: l.carries, convertsTo: l.convertsTo }));
+    srcLegs = flow.legs.map((l) => ({ from: l.from, to: l.to, carries: l.carries, convertsTo: l.convertsTo, alsoConvertsTo: l.alsoConvertsTo }));
   }
 
   // ── topological columns (fan-in support) ──
@@ -421,6 +424,7 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
       y2,
       carries: leg.carries,
       convertsTo: leg.convertsTo,
+      alsoConvertsTo: leg.alsoConvertsTo,
       mid: { x: midX, y: straight ? y1 : (y1 + y2) / 2 },
       offTrunk: !trunkLegIdx.has(index) || undefined,
     };
@@ -510,6 +514,7 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
     d: `M${ax} ${arcY} Q${arcMidX} ${dipY} ${bx} ${arcY}`,
     carries: flow.headline.carries,
     convertsTo: flow.headline.convertsTo,
+    alsoConvertsTo: flow.headline.alsoConvertsTo,
     mid: { x: arcMidX, y: dipY - 16 },
   };
 
