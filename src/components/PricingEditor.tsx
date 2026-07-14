@@ -206,6 +206,11 @@ export function PricingEditor({
   function renderCard(card: PriceCard) {
     const deckCard = deck.cards.find((c) => c.key === card.key);
     const edited = pricing.mode === "custom" && !cardEqualsDeck(card, deckCard);
+    // Pix is a flat per-transaction fee by policy — no tiering. (A legacy
+    // tiered card from an older link keeps its data but offers "Make flat".)
+    const flatOnly = card.key === "pix" || card.key === "pixout";
+    // Pix is charged in USD; only the Brazil-market proposal may switch it to R$.
+    const pixUnitToggle = card.key === "pixout" && proposalType === "brazil-market";
     return (
       <div key={card.key} className="mb-[18px]">
         <div className="mb-2 flex items-center justify-between gap-2">
@@ -215,19 +220,52 @@ export function PricingEditor({
             aria-label="Product name"
             className="min-w-0 flex-1 rounded-[5px] border border-transparent bg-transparent px-1 py-[2px] font-mono text-[10px] font-medium uppercase tracking-[.1em] text-mint-muted outline-none transition duration-150 ease-ds hover:border-hairline-control focus:border-hairline-selected focus:bg-surface-input focus:text-title"
           />
-          <span className="flex shrink-0 gap-[2px] rounded-[7px] border border-hairline-card bg-surface-input p-[2px]">
-            {(["tiered", "flat"] as const).map((t) => (
+          {pixUnitToggle && (
+            <span className="flex shrink-0 gap-[2px] rounded-[7px] border border-hairline-card bg-surface-input p-[2px]">
+              {(["$ ", "R$ "] as const).map((u) => (
+                <button
+                  key={u}
+                  onClick={() =>
+                    patchCard(card.key, {
+                      ...card,
+                      prefix: u,
+                      sub: u === "$ " ? card.sub.replace("(BRL)", "(USD)") : card.sub.replace("(USD)", "(BRL)"),
+                    })
+                  }
+                  aria-label={`Charge ${card.title} in ${u.trim()}`}
+                  className={`rounded-[5px] px-2 py-[3px] font-mono text-[9.5px] transition duration-150 ease-ds ${
+                    (card.prefix ?? "") === u ? "bg-mint font-semibold text-mint-on" : "font-medium text-[#8b948f] hover:text-title"
+                  }`}
+                >
+                  {u.trim()}
+                </button>
+              ))}
+            </span>
+          )}
+          {flatOnly ? (
+            card.type === "tiered" && (
               <button
-                key={t}
-                onClick={() => setType(card, t)}
-                className={`rounded-[5px] px-2 py-[3px] text-[9.5px] transition duration-150 ease-ds ${
-                  card.type === t ? "bg-mint font-semibold text-mint-on" : "font-medium text-[#8b948f] hover:text-title"
-                }`}
+                onClick={() => setType(card, "flat")}
+                className="shrink-0 rounded-[7px] border border-dashed border-hairline-control px-2 py-[3px] text-[9.5px] font-medium text-[#8b948f] transition duration-150 ease-ds hover:border-hairline-selected hover:text-title"
               >
-                {t === "tiered" ? "Tiered" : "Flat"}
+                Make flat
               </button>
-            ))}
-          </span>
+            )
+          ) : (
+            <span className="flex shrink-0 gap-[2px] rounded-[7px] border border-hairline-card bg-surface-input p-[2px]">
+              {(["tiered", "flat"] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setType(card, t)}
+                  className={`rounded-[5px] px-2 py-[3px] text-[9.5px] transition duration-150 ease-ds ${
+                    card.type === t ? "bg-mint font-semibold text-mint-on" : "font-medium text-[#8b948f] hover:text-title"
+                  }`}
+                >
+                  {t === "tiered" ? "Tiered" : "Flat"}
+                </button>
+              ))}
+            </span>
+          )}
           <button
             onClick={() => removeCard(card.key)}
             title="Remove this product from the offer"
@@ -290,7 +328,7 @@ export function PricingEditor({
               })}
             </div>
             <p className="text-[10.5px] leading-normal text-muted">
-              One flat rate across all volumes. Switch to Tiered for volume bands.
+              {flatOnly ? "A flat per-transaction fee, at every volume." : "One flat rate across all volumes. Switch to Tiered for volume bands."}
             </p>
           </div>
         )}

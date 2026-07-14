@@ -340,7 +340,7 @@ function PriceCardSvg({
             </text>
             {card.type === "flat" && (
               <text x={x + padX + 27} y={yc + 22} fontSize={10.5} fill={PP.grey}>
-                A single rate across every monthly volume — no tiers to track.
+                A single rate across every monthly volume. No tiers to track.
               </text>
             )}
           </g>

@@ -6,9 +6,11 @@ never invented.
 ## Where numbers come from
 
 1. Start from `deckPricing(proposalType)` — the exact card structure lives in
-   `src/flow-tool/data/schema.ts`. Standard: Pix API (USD/pix, 5 tiers) + FX
+   `src/flow-tool/data/schema.ts`. Standard: Pix API (USD, FLAT $0.06/pix) + FX
    spread (%, 5 tiers). Brazil-market: non-resident account (%), PixInc payins
-   (%), on-ramp BRL→USDT (%), off-ramp USDT→BRL (%), Pix payout (R$), 3 tiers each.
+   (%), on-ramp BRL→USDT (%), off-ramp USDT→BRL (%) — 3 tiers each — and Pix
+   payout (USD, FLAT $0.06/tx; the rep can switch its unit to R$ in this deck).
+   Pix is ALWAYS flat by policy — never propose Pix tiers.
 2. Apply an override ONLY when the call contains a commitment, and record it in
    `pricingEvidence` with the verbatim quote. "We can probably do better on
    spread" is NOT a commitment — flag it as a negotiation note instead.

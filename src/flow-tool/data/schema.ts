@@ -209,24 +209,28 @@ export function flatRowText(card: PriceCard): string {
 
 export function cardEqualsDeck(card: PriceCard, deckCard: PriceCard | undefined): boolean {
   if (!deckCard) return false;
-  return (
+  const identity =
     card.type === deckCard.type &&
-    card.type === "tiered" &&
     !card.flatText?.trim() &&
     // identity text matters too — a renamed product must re-render its page
     card.title === deckCard.title &&
     card.sub === deckCard.sub &&
     (card.prefix ?? "") === (deckCard.prefix ?? "") &&
-    (card.suffix ?? "") === (deckCard.suffix ?? "") &&
+    (card.suffix ?? "") === (deckCard.suffix ?? "");
+  if (!identity) return false;
+  if (card.type === "flat")
+    return (card.flat ?? card.tiers[0]?.value) === (deckCard.flat ?? deckCard.tiers[0]?.value) && !deckCard.flatText?.trim();
+  return (
     card.tiers.length === deckCard.tiers.length &&
     card.tiers.every((t, i) => t.label === deckCard.tiers[i].label && t.value === deckCard.tiers[i].value && !t.text?.trim())
   );
 }
 
-/** True when the pricing is structurally and numerically the deck's own rates —
- *  in that case the proposal PDF keeps its hand-designed template rate pages. */
-export function pricingEqualsDeck(p: ProposalPricing, proposalType: ProposalType = "standard"): boolean {
-  const d = deckPricing(proposalType);
+/** True when the pricing is structurally and numerically the baseline's own
+ *  rates (the live deck by default; pass templatePricing to ask "does the
+ *  hand-designed template page already show this?"). */
+export function pricingEqualsDeck(p: ProposalPricing, proposalType: ProposalType = "standard", against?: ProposalPricing): boolean {
+  const d = against ?? deckPricing(proposalType);
   return p.cards.length === d.cards.length && p.cards.every((c, i) => c.key === d.cards[i].key && cardEqualsDeck(c, d.cards[i]));
 }
 
@@ -263,9 +267,11 @@ export function deckPricing(proposalType: ProposalType = "standard"): ProposalPr
           type: "tiered", tiers: tiersOf(brlBands, [0.3, 0.2, 0.15]),
         },
         {
-          key: "pixout", title: "Pix", sub: "Per-transaction fee (BRL), tiered by volume",
-          pageSub: "BRL payouts via Pix", prefix: "R$ ", badge: "dollar", accent: "green",
-          type: "tiered", tiers: tiersOf(["Below R$ 50k", "R$ 50k – 100k", "Above R$ 100k"], [0.25, 0.2, 0.1]),
+          // Pix is priced FLAT, in USD ($0.06 / tx). The Brazil-market editor
+          // offers a $ / R$ unit switch; the rate itself never tiers.
+          key: "pixout", title: "Pix", sub: "Per-transaction fee (USD), flat",
+          pageSub: "BRL payouts via Pix", prefix: "$ ", badge: "dollar", accent: "green",
+          type: "flat", flat: 0.06, tiers: [{ label: "All volumes", value: 0.06 }],
         },
       ],
     };
@@ -275,9 +281,10 @@ export function deckPricing(proposalType: ProposalType = "standard"): ProposalPr
     mode: "deck",
     cards: [
       {
-        key: "pix", title: "Pix API", sub: "Per-payment fee (USD), tiered by volume",
+        // Pix is priced FLAT, in USD ($0.06 / pix), regardless of volume.
+        key: "pix", title: "Pix API", sub: "Per-payment fee (USD), flat",
         prefix: "$", suffix: " / pix", badge: "pix", accent: "green",
-        type: "tiered", tiers: tiersOf(bands, [0.1, 0.08, 0.06, 0.04, 0.02]),
+        type: "flat", flat: 0.06, tiers: [{ label: "All volumes", value: 0.06 }],
       },
       {
         key: "spread", title: "FX spread", sub: "Spot rate + spread, tiered by volume",
@@ -285,6 +292,43 @@ export function deckPricing(proposalType: ProposalType = "standard"): ProposalPr
         type: "tiered", tiers: tiersOf(bands, [0.7, 0.65, 0.55, 0.5, 0.35]),
       },
     ],
+  };
+}
+
+/** What the template PDFs physically show on their hand-designed rate pages —
+ *  NOT the live deck defaults. Page-replacement decisions compare against
+ *  this: a proposal whose pricing differs from the BAKED page re-renders it
+ *  (so the new flat-$0.06 Pix default always re-renders, since the templates
+ *  still bake the old tiered rates). */
+export function templatePricing(proposalType: ProposalType = "standard"): ProposalPricing {
+  if (proposalType === "brazil-market") {
+    const p = deckPricing("brazil-market");
+    return {
+      mode: "deck",
+      cards: p.cards.map((c) =>
+        c.key === "pixout"
+          ? {
+              ...c, title: "Pix", sub: "Per-transaction fee (BRL), tiered by volume", prefix: "R$ ",
+              type: "tiered", flat: undefined,
+              tiers: tiersOf(["Below R$ 50k", "R$ 50k – 100k", "Above R$ 100k"], [0.25, 0.2, 0.1]),
+            }
+          : c,
+      ),
+    };
+  }
+  const p = deckPricing("standard");
+  const bands = ["Up to $5M / month", "$5M to $10M / month", "$10M to $30M / month", "$30M to $50M / month", "Above $50M / month"];
+  return {
+    mode: "deck",
+    cards: p.cards.map((c) =>
+      c.key === "pix"
+        ? {
+            ...c, sub: "Per-payment fee (USD), tiered by volume",
+            type: "tiered", flat: undefined,
+            tiers: tiersOf(bands, [0.1, 0.08, 0.06, 0.04, 0.02]),
+          }
+        : c,
+    ),
   };
 }
 

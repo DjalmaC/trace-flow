@@ -8,7 +8,7 @@ import type {
   Stablecoin,
   TraceRep,
 } from "../data/schema";
-import { cardEqualsDeck, deckPricing, normalizePricing, pricingEqualsDeck } from "../data/schema";
+import { cardEqualsDeck, normalizePricing, pricingEqualsDeck, templatePricing } from "../data/schema";
 import { getFlow } from "../data";
 import { displayCurrency } from "../components/FlowSvg/Tokens";
 import { renderBrazilCardPagePng, renderPricingPagePng, renderProposalFlowPngs } from "./pptx";
@@ -387,7 +387,10 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
   // from the same ProposalPricing the client's web Pricing view reads, so the
   // download can never disagree with what the client saw on the link.
   const pricing = opts.pricing ? normalizePricing(opts.pricing, opts.proposalType) : undefined;
-  const pricingCustomized = !!pricing && !pricingEqualsDeck(pricing, opts.proposalType);
+  // Compare against what the template PAGES bake, not the live deck defaults:
+  // any difference (including the new flat Pix default vs the template's old
+  // tiered card) re-renders the page so the PDF always matches the web view.
+  const pricingCustomized = !!pricing && !pricingEqualsDeck(pricing, opts.proposalType, templatePricing(opts.proposalType));
   const pricingSub =
     opts.proposalType === "standard"
       ? `BRL payins and payouts via Pix / TED · ${foreignCur || "USDC"} ↔ BRL`
@@ -413,7 +416,7 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
   const removedPages: number[] = [];
   const addedCards: PriceCard[] = [];
   if (pricingCustomized && manifest.pricingCardPages) {
-    const deck = deckPricing(opts.proposalType);
+    const deck = templatePricing(opts.proposalType);
     const offeredKeys = new Set(pricing!.cards.map((c) => c.key));
     for (const [key, pno] of Object.entries(manifest.pricingCardPages)) {
       if (!offeredKeys.has(key) && typeof pno === "number") removedPages.push(pno);
