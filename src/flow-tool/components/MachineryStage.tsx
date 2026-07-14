@@ -10,8 +10,6 @@ import {
   MachineryContainer,
   TraceArrow,
   displayCurrency,
-  fxOutputs,
-  outputsLabel,
 } from "./FlowSvg";
 
 // Stage 2 — "how Trace makes it happen". The machinery reads as ONE continuous
@@ -62,41 +60,14 @@ type Phase = {
   s: number;
 };
 
-/** Per-cycle effective currencies: a multi-output hub (Leg.alsoConvertsTo)
- *  delivers a different currency on each relay pass, and every data-downstream
- *  leg that carried the primary output follows the switch. */
-function cycleCurrencies(layout: FlowLayout, cycle: number) {
-  const carriesOf = new Map<number, Currency>();
-  const outOf = new Map<number, Currency>();
-  let sub: { from: Currency; to: Currency } | null = null;
-  for (const L of layout.legs) {
-    if (L.offTrunk) continue;
-    let carries = L.carries;
-    if (sub) {
-      if (carries === sub.from) carries = sub.to;
-      else sub = null; // currency continuity ended — stop substituting
-    }
-    carriesOf.set(L.index, carries);
-    if (L.convertsTo) {
-      const outs = fxOutputs(L);
-      const chosen = outs[cycle % outs.length];
-      outOf.set(L.index, chosen);
-      sub = chosen !== L.convertsTo ? { from: L.convertsTo, to: chosen } : null;
-    }
-  }
-  return { carriesOf, outOf };
-}
-
-/** Build the relay timeline from the legs, oriented for the configured
- *  direction. `cycle` picks which output a multi-output hub delivers. */
-function buildTimeline(layout: FlowLayout, config: FlowConfig, byId: Map<string, NodeLayout>, cycle = 0) {
+/** Build the relay timeline from the legs, oriented for the configured direction. */
+function buildTimeline(layout: FlowLayout, config: FlowConfig, byId: Map<string, NodeLayout>) {
   const reverse = config.direction === "disbursement";
   // The relay travels the trunk only; tributary legs (a second payer merging
   // in) show a resting token instead — the same vocabulary as reduced motion.
   const trunkLegs = layout.legs.filter((l) => !l.offTrunk);
   const seq = reverse ? trunkLegs.slice().reverse() : trunkLegs;
   const D = (c: Currency) => displayCurrency(c, config);
-  const { carriesOf, outOf } = cycleCurrencies(layout, cycle);
   const phases: Phase[] = [];
   let x: number | null = null;
   // duration ∝ distance → the token holds one steady speed on every leg, and
@@ -107,18 +78,16 @@ function buildTimeline(layout: FlowLayout, config: FlowConfig, byId: Map<string,
     const n0 = byId.get(reverse ? L.to : L.from)!;
     const n1 = byId.get(reverse ? L.from : L.to)!;
     if (x === null) x = n0.cx;
-    const carriesC = carriesOf.get(L.index) ?? L.carries;
     if (L.convertsTo) {
-      const outC = outOf.get(L.index) ?? L.convertsTo;
       const hubX = L.mid.x;
-      const pre = D(reverse ? outC : carriesC);
-      const post = D(reverse ? carriesC : outC);
+      const pre = D(reverse ? L.convertsTo : L.carries);
+      const post = D(reverse ? L.carries : L.convertsTo);
       phases.push({ kind: "go", x0: x, x1: hubX, cur: pre, dur: dur(Math.abs(hubX - x)), s: 0 });
       phases.push({ kind: "conv", x0: hubX, x1: hubX, cur: post, preCur: pre, hub: L.index, dur: SPIN_MS, s: 0 });
       phases.push({ kind: "go", x0: hubX, x1: n1.cx, cur: post, dur: dur(Math.abs(n1.cx - hubX)), s: 0 });
       x = n1.cx;
     } else {
-      const cur = D(carriesC);
+      const cur = D(L.carries);
       phases.push({ kind: "go", x0: x, x1: n1.cx, cur, dur: dur(Math.abs(n1.cx - x)), s: 0 });
       x = n1.cx;
       phases.push({ kind: "pause", x0: x, x1: x, cur, dur: PAUSE_MS, s: 0 });
@@ -170,43 +139,16 @@ export function MachineryStage({
     const s = new Set<Currency>();
     layout.legs.forEach((l) => {
       s.add(displayCurrency(l.carries, config));
-      fxOutputs(l).forEach((c) => s.add(displayCurrency(c, config)));
+      if (l.convertsTo) s.add(displayCurrency(l.convertsTo, config));
     });
     return [...s];
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layout.legs, config.direction, config.collected, config.delivered]);
-  // Static views (reduced motion, the PDF): legs downstream of a multi-output
-  // hub rest a combined label ("EUR / USDC") instead of picking one output.
-  const multiRest = useMemo(() => {
-    const m = new Map<number, string>();
-    let sub: { from: Currency; label: string } | null = null;
-    for (const L of layout.legs) {
-      if (L.offTrunk) continue;
-      if (sub && L.carries === sub.from) m.set(L.index, sub.label);
-      else if (sub) sub = null;
-      const outs = fxOutputs(L);
-      if (outs.length > 1) sub = { from: outs[0], label: outputsLabel(outs, config) };
-      else if (L.convertsTo) sub = null;
-    }
-    return m;
+  const timeline = useMemo(
+    () => buildTimeline(layout, config, byId),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [layout.legs, config.stablecoin, config.collected, config.delivered]);
-  // One timeline per output cycle: a multi-output hub ("we can deliver EUR or
-  // USDC") makes the relay alternate — pass 1 shows the primary, pass 2 the
-  // alternate, and so on. Geometry and durations are identical across cycles.
-  const timelines = useMemo(() => {
-    const gcd = (a: number, b: number): number => (b ? gcd(b, a % b) : a);
-    const n = Math.min(
-      6,
-      layout.legs
-        .filter((l) => !l.offTrunk && l.convertsTo)
-        .map((l) => fxOutputs(l).length)
-        .reduce((a, b) => (a * b) / gcd(a, b), 1),
-    );
-    return Array.from({ length: Math.max(1, n) }, (_, c) => buildTimeline(layout, config, byId, c));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [layout, config.direction, config.collected, config.delivered, byId]);
-  const timeline = timelines[0];
+    [layout, config.direction, config.collected, config.delivered, byId],
+  );
 
   // when (in the relay cycle) the token arrives at each node centre — used to
   // fire that box's landing ripple. Earliest phase ending at the node's cx.
@@ -244,13 +186,11 @@ export function MachineryStage({
   useEffect(() => {
     if (!run || !timeline.phases.length) return;
     const reverse = config.direction === "disbursement";
-    const total = timeline.total; // identical across cycles (same geometry)
-    // `e` is elapsed within the pass; `tl` is that pass's timeline (a
-    // multi-output hub delivers a different currency each pass).
-    const render = (e: number, tl = timeline) => {
-      let p = tl.phases[0];
+    const total = timeline.total;
+    const render = (e: number) => {
+      let p = timeline.phases[0];
       let lp = 0;
-      for (const ph of tl.phases) {
+      for (const ph of timeline.phases) {
         if (e >= ph.s && e < ph.s + ph.dur) {
           p = ph;
           lp = (e - ph.s) / ph.dur;
@@ -343,23 +283,18 @@ export function MachineryStage({
     };
 
     if (freezeMs != null) {
-      // frame > total selects a later pass — QA can freeze any output cycle
-      const f = Math.max(0, freezeMs);
-      render(f % total, timelines[Math.floor(f / total) % timelines.length]);
-      // QA hook: pass timing so a test can aim a frame at a specific pass
-      (window as Window & { __tfRelay?: { total: number; cycles: number } }).__tfRelay = { total, cycles: timelines.length };
+      render(((freezeMs % total) + total) % total);
       return;
     }
     let raf = 0;
     const start = performance.now();
     const tick = (now: number) => {
-      const e = now - start;
-      render(e % total, timelines[Math.floor(e / total) % timelines.length]);
+      render((now - start) % total);
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [run, timeline, timelines, railY, config.direction, currencies, hubs, railHubs, landings, nodes, freezeMs]);
+  }, [run, timeline, railY, config.direction, currencies, hubs, railHubs, landings, nodes, freezeMs]);
 
   const trunkNodes = nodes.filter((n) => n.onTrunk !== false);
   const x0 = trunkNodes[0]?.cx ?? nodes[0]?.cx ?? 0;
@@ -402,19 +337,18 @@ export function MachineryStage({
       {run ? (
         <g ref={tokenRef} transform={`translate(${timeline.startX},${railY})`} style={{ willChange: "transform, opacity" }}>
           {currencies.map((c) => (
-            <g key={c} ref={(el) => { curRefs.current[c] = el; }} style={{ opacity: 0 }} data-token-face={c}>
+            <g key={c} ref={(el) => { curRefs.current[c] = el; }} style={{ opacity: 0 }}>
               <CurrencyToken currency={c} coin={config.stablecoin} accent={accent} />
             </g>
           ))}
         </g>
       ) : (
-        // reduced motion: static value resting in each plain gap (a combined
-        // label after a multi-output hub — the animation is what alternates)
+        // reduced motion: static value resting in each plain gap
         layout.legs
           .filter((l) => !l.convertsTo)
           .map((l) => (
             <g key={l.index} transform={`translate(${l.mid.x},${l.mid.y})`}>
-              <CurrencyToken currency={(multiRest.get(l.index) as Currency) ?? displayCurrency(l.carries, config)} coin={config.stablecoin} />
+              <CurrencyToken currency={displayCurrency(l.carries, config)} coin={config.stablecoin} />
             </g>
           ))
       )}

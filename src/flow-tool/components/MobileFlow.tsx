@@ -1,8 +1,8 @@
 "use client";
-import { forwardRef, useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useRef } from "react";
 import { animate, motion, useMotionValue, useReducedMotion, useTransform, type MotionValue } from "framer-motion";
 import { computeLayout, type NodeLayout, type LegLayout } from "./layout";
-import { displayCurrency, fxOutputs, outputsLabel } from "./FlowSvg/Tokens";
+import { displayCurrency } from "./FlowSvg/Tokens";
 import { TraceArrow } from "./FlowSvg/TraceArrow";
 import { ASSETS, C, TRACE_LOGO_AR, accentFor } from "./tokens";
 import type { Currency, Flow, FlowConfig } from "../data/schema";
@@ -60,10 +60,7 @@ export function MobileFlow({ flow, config }: { flow: Flow; config: FlowConfig })
   const convLeg = layout.legs.find((l) => !!l.convertsTo);
   const fallbackCur: Currency = layout.legs[0]?.carries ?? "BRL";
   const aboveDisp = displayCurrency(convLeg ? convLeg.carries : fallbackCur, config);
-  // A multi-output hub delivers a different currency each pass of the coin.
-  const convOuts = convLeg ? fxOutputs(convLeg) : [];
-  const [fxCycle, setFxCycle] = useState(0);
-  const belowDisp = displayCurrency(convLeg ? convOuts[fxCycle % convOuts.length] ?? convLeg.convertsTo! : fallbackCur, config);
+  const belowDisp = displayCurrency(convLeg ? convLeg.convertsTo! : fallbackCur, config);
 
   // ── the single coin: one looping progress drives position, brightness, spin ──
   const containerRef = useRef<HTMLDivElement>(null);
@@ -100,11 +97,6 @@ export function MobileFlow({ flow, config }: { flow: Flow; config: FlowConfig })
     // switching flows mid-cycle would otherwise loop from wherever the coin was
     // (e.g. 0.6→1 forever) and never traverse the new flow's full stack.
     progress.set(0);
-    let prevP = 0;
-    const offWrap = progress.on("change", (v) => {
-      if (prevP - v > 0.5) setFxCycle((c) => c + 1); // wrapped: next pass, next output
-      prevP = v;
-    });
     const controls = animate(progress, 1, {
       duration: Math.max(2.6, segCount * 0.72),
       ease: "linear",
@@ -112,10 +104,7 @@ export function MobileFlow({ flow, config }: { flow: Flow; config: FlowConfig })
       repeatType: "loop",
       repeatDelay: 0.25,
     });
-    return () => {
-      offWrap();
-      controls.stop();
-    };
+    return () => controls.stop();
   }, [reduced, segCount, config.flowId, progress]);
 
   // coin position: top->bottom on Pay-in, bottom->top on Pay-out
@@ -182,20 +171,6 @@ export function MobileFlow({ flow, config }: { flow: Flow; config: FlowConfig })
     return 0.5 + 0.5 * ((f - (hf + HUB_G)) / (HUB_W - HUB_G));
   });
 
-  // Static chips downstream of a multi-output hub read the combined set.
-  const multiRest = new Map<number, string>();
-  {
-    let sub: { from: Currency; label: string } | null = null;
-    for (const L of layout.legs) {
-      if (L.offTrunk) continue;
-      if (sub && L.carries === sub.from) multiRest.set(L.index, sub.label);
-      else if (sub) sub = null;
-      const outs = fxOutputs(L);
-      if (outs.length > 1) sub = { from: outs[0], label: outputsLabel(outs, config) };
-      else if (L.convertsTo) sub = null;
-    }
-  }
-
   // Per-proposal lane renames (FlowConfig.laneLabels, resolved by the layout).
   // Mobile keeps its own defaults ("Brasil", "Brasil 🇧🇷") unless renamed.
   const laneOverrides: Record<string, string | undefined> = {
@@ -255,7 +230,6 @@ export function MobileFlow({ flow, config }: { flow: Flow; config: FlowConfig })
                 reduced={!!reduced}
                 semanticDown={semanticDown}
                 laneOverrides={laneOverrides}
-                multiLabel={multiRest.get(leg.index)}
                 hubRef={isConv ? hubRef : undefined}
                 hubRotation={isConv ? hubRotation : undefined}
               />
@@ -324,20 +298,14 @@ const Connector = forwardRef<
     reduced: boolean;
     semanticDown: boolean;
     laneOverrides?: Record<string, string | undefined>;
-    multiLabel?: string;
     hubRef?: React.Ref<HTMLSpanElement>;
     hubRotation?: MotionValue<number>;
   }
->(function Connector({ leg, topLane, botLane, config, accent, reduced, semanticDown, laneOverrides, multiLabel, hubRef, hubRotation }, ref) {
+>(function Connector({ leg, topLane, botLane, config, accent, reduced, semanticDown, laneOverrides, hubRef, hubRotation }, ref) {
   const isConv = !!leg.convertsTo;
   // currency in the value-flow direction (Pay-in: carries -> convertsTo)
   const fromCur: Currency = isConv ? (semanticDown ? leg.carries : leg.convertsTo!) : leg.carries;
   const toCur: Currency = isConv ? (semanticDown ? leg.convertsTo! : leg.carries) : leg.carries;
-  // multi-output hub: the converted side of the chip row shows the full set
-  const legOuts = fxOutputs(leg);
-  const convLabel = legOuts.length > 1 ? outputsLabel(legOuts, config) : undefined;
-  const fromLabel = ((isConv && !semanticDown && convLabel) || (!isConv && multiLabel) || displayCurrency(fromCur, config)) as Currency;
-  const toLabel = ((isConv && semanticDown && convLabel) || displayCurrency(toCur, config)) as Currency;
   const crossing = topLane !== botLane;
   const intoLaneKey = semanticDown ? botLane : topLane;
   const intoLane = laneOverrides?.[intoLaneKey] ?? (intoLaneKey === "brazil" ? "Brasil 🇧🇷" : "Abroad");
@@ -363,13 +331,13 @@ const Connector = forwardRef<
                 <img src={ASSETS.traceLogo} alt="" style={{ height: 12, width: 12 * TRACE_LOGO_AR }} />
               </motion.span>
             )}
-            <CurChip currency={fromLabel} config={config} />
+            <CurChip currency={displayCurrency(fromCur, config)} config={config} />
             <span style={{ color: accent }}>→</span>
-            <CurChip currency={toLabel} config={config} />
+            <CurChip currency={displayCurrency(toCur, config)} config={config} />
           </div>
         ) : (
           <div className="mt-1">
-            <CurChip currency={fromLabel} config={config} />
+            <CurChip currency={displayCurrency(fromCur, config)} config={config} />
           </div>
         )}
         {crossing && (

@@ -109,9 +109,6 @@ export function TailoredFlowEditor({
   const [legDraft, setLegDraft] = useState<{ from: string; x: number; y: number } | null>(null);
   const [preview, setPreview] = useState(false);
   const [checksOpen, setChecksOpen] = useState(false);
-  // FX popover: the alternate-output chips stay tucked behind "+ Add more"
-  // until used, so the common single-currency case looks exactly as before.
-  const [showAltOutputs, setShowAltOutputs] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const [wrapBox, setWrapBox] = useState({ w: 1, h: 1 });
@@ -324,8 +321,6 @@ export function TailoredFlowEditor({
 
   const selNode = selection?.type === "node" ? flow.nodes.find((n) => n.id === selection.id) : null;
   const selLegIndex = selection?.type === "leg" ? selection.index : null;
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  useEffect(() => setShowAltOutputs(false), [selLegIndex]);
   const selLeg = selLegIndex != null ? flow.legs[selLegIndex] : null;
   const selNote = selection?.type === "note" ? ed.notes.find((n) => n.id === selection.id) : null;
 
@@ -535,8 +530,7 @@ export function TailoredFlowEditor({
                   <circle cx={L.x2} cy={L.y2} r={3.2} fill={selected ? P.mintDeep : "#2ec79b"} />
                   {leg.convertsTo ? (
                     (() => {
-                      const outs = [leg.convertsTo, ...(leg.alsoConvertsTo ?? [])].join(" / ");
-                      const label = `${leg.carries} → ${outs} · spot + spread`;
+                      const label = `${leg.carries} → ${leg.convertsTo} · spot + spread`;
                       const w = label.length * 6.1 + 26;
                       return (
                         <g transform={`translate(${mx - w / 2}, ${my - 21})`}>
@@ -742,7 +736,7 @@ export function TailoredFlowEditor({
                       aria-checked={!!selLeg.convertsTo}
                       onClick={() => {
                         if (selLeg.convertsTo) {
-                          patchLeg(selLegIndex, { convertsTo: undefined, alsoConvertsTo: undefined });
+                          patchLeg(selLegIndex, { convertsTo: undefined });
                           return;
                         }
                         // money leaves the account as it arrived; the FX engine
@@ -765,7 +759,7 @@ export function TailoredFlowEditor({
                       {CURRENCIES.filter((c) => c !== selLeg.carries).map((c) => (
                         <button
                           key={c}
-                          onClick={() => patchLeg(selLegIndex, { convertsTo: c, alsoConvertsTo: selLeg.alsoConvertsTo?.filter((x) => x !== c).length ? selLeg.alsoConvertsTo.filter((x) => x !== c) : undefined })}
+                          onClick={() => patchLeg(selLegIndex, { convertsTo: c })}
                           className="rounded-full px-1.5 py-0.5 font-mono text-[10px] transition"
                           style={
                             selLeg.convertsTo === c
@@ -776,41 +770,6 @@ export function TailoredFlowEditor({
                           {c}
                         </button>
                       ))}
-                      {!showAltOutputs && !selLeg.alsoConvertsTo?.length && (
-                        <button
-                          onClick={() => setShowAltOutputs(true)}
-                          className="w-fit rounded-full px-2 py-0.5 text-[10px] font-medium transition"
-                          style={{ border: `1px dashed ${P.mintLine}`, color: P.mintInk, background: "#fff" }}
-                        >
-                          + Add more
-                        </button>
-                      )}
-                      {(showAltOutputs || !!selLeg.alsoConvertsTo?.length) && (
-                        <span className="w-full pt-1 text-[10px] font-medium" style={{ color: P.sub }}>
-                          Can also deliver — the deck alternates the outputs:
-                        </span>
-                      )}
-                      {(showAltOutputs || !!selLeg.alsoConvertsTo?.length) && CURRENCIES.filter((c) => c !== selLeg.carries && c !== selLeg.convertsTo).map((c) => {
-                        const on = !!selLeg.alsoConvertsTo?.includes(c);
-                        return (
-                          <button
-                            key={`alt-${c}`}
-                            onClick={() => {
-                              const cur = selLeg.alsoConvertsTo ?? [];
-                              const next = on ? cur.filter((x) => x !== c) : [...cur, c];
-                              patchLeg(selLegIndex, { alsoConvertsTo: next.length ? next : undefined });
-                            }}
-                            className="rounded-full px-1.5 py-0.5 font-mono text-[10px] transition"
-                            style={
-                              on
-                                ? { border: `1.4px solid ${P.mintDeep}`, color: P.mintInk, background: "#fff" }
-                                : { border: `1px dashed ${P.mintLine}`, color: P.sub }
-                            }
-                          >
-                            {on ? "✓ " : "+ "}{c}
-                          </button>
-                        );
-                      })}
                       <span className="w-full pt-0.5 text-[9.5px]" style={{ color: P.mintInk, opacity: 0.8 }}>
                         via Trace FX engine · spot + spread
                       </span>

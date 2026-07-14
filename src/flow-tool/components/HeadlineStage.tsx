@@ -3,7 +3,7 @@ import { motion, useTransform, type MotionValue } from "framer-motion";
 import type { FlowConfig } from "../data/schema";
 import { C } from "./tokens";
 import type { FlowLayout } from "./layout";
-import { AnimatedToken, CurrencyToken, SwapCapsule, displayCurrency, fxOutputs, outputsLabel } from "./FlowSvg";
+import { AnimatedToken, CurrencyToken, SwapCapsule, displayCurrency } from "./FlowSvg";
 
 // Stage 1 — "the desired transaction" (build brief §4). A clean A→B headline:
 // the configured client, a single arc to the beneficiary, and a token of the
@@ -72,11 +72,7 @@ export function HeadlineStage({
 }) {
   const h = layout.headline;
   const carries = displayCurrency(h.carries, config);
-  // Multi-output FX ("EUR or USDC") shows the combined set on the arc — the
-  // machinery relay below is what alternates them pass by pass.
-  const outs = fxOutputs(h);
-  const convertsTo =
-    outs.length > 1 ? (outputsLabel(outs, config) as typeof carries) : h.convertsTo ? displayCurrency(h.convertsTo, config) : undefined;
+  const convertsTo = h.convertsTo ? displayCurrency(h.convertsTo, config) : undefined;
   const reverse = layout.reverse;
   const tokenOpacity = useTransform(loop, [0, 0.07, 0.9, 1], [0, 1, 1, 0]);
 
