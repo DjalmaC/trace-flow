@@ -686,10 +686,19 @@ export function TailoredFlowEditor({
             const mid = toScreen((a.cx + b.cx) / 2, Math.max(a.cy, b.cy) + 40);
             const fromN = flow.nodes.find((n) => n.id === selLeg.from);
             const toN = flow.nodes.find((n) => n.id === selLeg.to);
+            // Legs in the right third open the panel to their LEFT so it never
+            // blankets the boxes at the end of the chain; and the panel caps at
+            // the canvas height and scrolls, so its controls (settlement
+            // options grow it) always stay reachable.
+            const panelLeft =
+              mid.left > wrapBox.w * 0.66
+                ? Math.max(8, mid.left - 320 - 44)
+                : Math.min(Math.max(mid.left - 160, 8), wrapBox.w - 328);
+            const panelTop = Math.max(8, Math.min(mid.top, wrapBox.h - 430));
             return (
               <div
-                className="absolute z-10 w-[320px] rounded-xl bg-white p-3.5 shadow-lg"
-                style={{ border: `1px solid ${P.line}`, left: Math.min(Math.max(mid.left - 160, 8), wrapBox.w - 328), top: Math.max(8, Math.min(mid.top, wrapBox.h - 430)) }}
+                className="absolute z-10 w-[320px] overflow-y-auto rounded-xl bg-white p-3.5 shadow-lg"
+                style={{ border: `1px solid ${P.line}`, left: panelLeft, top: panelTop, maxHeight: Math.max(240, wrapBox.h - panelTop - 10) }}
                 onClick={(e) => e.stopPropagation()}
               >
                 {crossingUnconverted && (
