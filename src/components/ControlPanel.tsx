@@ -244,9 +244,6 @@ export function ControlPanel({
       // ProposalPricing directly (legacy region/cards rows from pre-existing
       // links keep the old renderer).
       pricing,
-      // 2c client-link gate: the password is auto-set to the client's company
-      // name at share time (the rep communicates it; the UI never says so).
-      gatePassword: config.clientName.trim() || undefined,
       // Sandbox links are tagged so the dashboard keeps them off the pipeline.
       sandbox: sandbox || undefined,
     } as unknown as FlowConfig;

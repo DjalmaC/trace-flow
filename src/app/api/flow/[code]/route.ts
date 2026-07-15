@@ -6,18 +6,16 @@ import { hasRepKey } from "@/flow-tool/lib/api-auth";
 // Public read-by-code — the only anonymous data path. Returns exactly one flow's
 // stored config, addressed by its unguessable share code.
 //
-// Design handoff 2c adds two gates and 1b adds analytics:
-//  • password gate — links created with `gatePassword` in the config (auto-set
-//    to the client's company name at share time) require ?pw= to match;
+// Design handoff 2c adds a gate and 1b adds analytics:
 //  • 30-day expiry — links older than 30 days return 410;
+//    (the former password gate is retired — links are open to anyone holding
+//    the unguessable code; stored gatePassword values are ignored/stripped)
 //  • view logging — successful client opens (not rep opens) record a row in
 //    flow_views: timestamp, anonymized device hash, geo-IP country/city from
 //    Vercel's request headers. Logging must never break the read path.
 export const dynamic = "force-dynamic";
 
 const EXPIRY_DAYS = 30;
-
-const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
 
 export async function GET(req: Request, ctx: { params: Promise<{ code: string }> }) {
   const { code } = await ctx.params;
@@ -43,15 +41,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ code: string }>
     }
   }
 
-  // password gate (only for links that carry one; legacy links stay open)
-  const gate = typeof config.gatePassword === "string" ? config.gatePassword : "";
-  if (gate && !isRep) {
-    const pw = new URL(req.url).searchParams.get("pw") ?? "";
-    if (!pw) return NextResponse.json({ error: "locked" }, { status: 401 });
-    if (norm(pw) !== norm(gate)) {
-      return NextResponse.json({ error: "wrong-password" }, { status: 403 });
-    }
-  }
+  // The password gate is retired: anyone holding the link may open it
+  // (stored gatePassword values are stripped from the response below).
 
   // view analytics — client opens only; never let logging break the read
   if (!isRep) {
