@@ -297,7 +297,7 @@ export function FlowExperience({
   // ── reduced motion / print: stack the two sections, no dive ──────────────
   if (reduced || forceStatic) {
     return (
-      <div className="w-full" style={{ background: C.base }}>
+      <div className="w-full" data-flow-dive style={{ background: C.base }}>
         <div className="absolute left-0 top-0 z-10 h-[3px] w-full" style={{ background: C.rule }} />
         <section className="flex min-h-screen flex-col items-center justify-center px-6" style={{ background: deckGlow }}>
           {SurfaceHeading}
@@ -314,7 +314,7 @@ export function FlowExperience({
   }
 
   return (
-    <div ref={sectionRef} className="relative h-[340vh] w-full" style={{ background: C.base }}>
+    <div ref={sectionRef} data-flow-dive className="relative h-[340vh] w-full" style={{ background: C.base }}>
       <div className="sticky top-0 h-screen w-full overflow-hidden" style={{ background: C.base }}>
         <div className="absolute inset-0" style={{ background: deckGlow }} />
         <div className="absolute left-0 top-0 z-30 h-[3px] w-full" style={{ background: C.rule }} />

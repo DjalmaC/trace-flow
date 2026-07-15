@@ -110,6 +110,29 @@ export function SharedFlowView({ code }: { code: string }) {
   const flowId = activeFlowId ?? config?.flowId ?? "";
   const repName = config?.clientRep?.split(",")[0]?.trim();
 
+  // Switching flows re-renders the dive, and some engines (Safari) clamp the
+  // scroll position while the section's height settles — leaving the viewer
+  // stranded past the flow on a blank stretch of page. Picking a flow now
+  // restores the viewer INTO the dive: same relative depth when they were
+  // inside it, the machinery moment when they weren't.
+  function switchFlow(id: string) {
+    const sec = document.querySelector("[data-flow-dive]");
+    const before = sec
+      ? (window.scrollY - (sec.getBoundingClientRect().top + window.scrollY)) / Math.max(1, (sec as HTMLElement).offsetHeight)
+      : null;
+    setActiveFlowId(id);
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        const s = document.querySelector("[data-flow-dive]");
+        if (!s) return;
+        const top = s.getBoundingClientRect().top + window.scrollY;
+        const h = (s as HTMLElement).offsetHeight;
+        const frac = before == null || before < 0 ? 0 : before >= 0.98 ? 0.62 : before;
+        window.scrollTo({ top: top + frac * h, behavior: "auto" });
+      }),
+    );
+  }
+
   // "Download Proposal", in order of preference:
   //   1. a curated proposal PDF attached to the link (proposalUrl),
   //   2. the full templated proposal assembled on the fly (proposalType),
@@ -304,7 +327,7 @@ export function SharedFlowView({ code }: { code: string }) {
                         <SegToggle value={direction} onChange={setDirection} options={[{ value: "collection", label: "Pay-in" }, { value: "disbursement", label: "Pay-out" }]} />
                       )}
                       {view === "flow" && hasVariants && (
-                        <SegToggle full value={flowId} onChange={setActiveFlowId} options={variants!.map((v) => ({ value: v.flowId, label: v.name }))} />
+                        <SegToggle full value={flowId} onChange={switchFlow} options={variants!.map((v) => ({ value: v.flowId, label: v.name }))} />
                       )}
                     </div>
                   </div>
@@ -385,7 +408,7 @@ export function SharedFlowView({ code }: { code: string }) {
                           className="flex flex-col items-end gap-1.5 overflow-hidden"
                         >
                           <span className="pr-1 pt-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-muted">Flows</span>
-                          <FlowSwitch variants={variants!} activeId={flowId} onChange={setActiveFlowId} />
+                          <FlowSwitch variants={variants!} activeId={flowId} onChange={switchFlow} />
                         </motion.div>
                       )}
                     </AnimatePresence>
