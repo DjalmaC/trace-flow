@@ -155,6 +155,11 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
 
   const hubW = 34;
   const hubH = hubW / TRACE_LOGO_AR;
+  // Technology-provider framing on the desired-transaction layer too: the
+  // hero band gets the same quiet brand enclosure + logo chip as the
+  // machinery, and the payer station drops the avatar-circle affordance.
+  const frameColor = config.platform?.color?.trim() || config.brandColor || C.green;
+  const heroFrame = platform ? { x: 176, y: 380, w: 1008, h: 154 } : null;
   const accent = accentFor(dir);
   // tube tint + token accent tween green↔cyan in sync with the arrow (Option A)
   const tubeTransition = reduced
@@ -162,10 +167,42 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
     : { transition: "fill .55s cubic-bezier(.4,0,.2,1), stroke .55s cubic-bezier(.4,0,.2,1)" };
 
   return (
-    <svg viewBox={VIEWBOX} preserveAspectRatio="xMidYMid meet" style={{ display: "block", width: "100%", maxHeight: "44vh", fontFamily: "var(--font-inter), system-ui, sans-serif" }} role="img" aria-label={`Built for ${config.clientName}`}>
+    <svg viewBox={platform ? "150 350 1060 202" : VIEWBOX} preserveAspectRatio="xMidYMid meet" style={{ display: "block", width: "100%", maxHeight: "44vh", fontFamily: "var(--font-inter), system-ui, sans-serif" }} role="img" aria-label={`Built for ${config.clientName}`}>
       {/* Self-contained defs (e.g. #tf-shadow) so the hero renders correctly even
           when the machinery SVG that also defines them isn't mounted (surface-only). */}
       <Defs />
+      {heroFrame && (
+        <g>
+          <rect x={heroFrame.x} y={heroFrame.y} width={heroFrame.w} height={heroFrame.h} rx={18} fill={frameColor} fillOpacity={0.028} stroke={frameColor} strokeOpacity={0.4} strokeWidth={1.2} />
+          {(() => {
+            const hasLogo = !!config.clientLogoUrl;
+            const chipW = hasLogo ? 148 : Math.max(96, config.clientName.length * 8.5 + 36);
+            const chipH = 30;
+            const chipX = heroFrame.x + 22;
+            const chipY = heroFrame.y - chipH / 2;
+            return (
+              <g>
+                <rect x={chipX - 10} y={chipY - 3} width={chipW + 20} height={chipH + 6} rx={11} fill="#08090b" />
+                <rect x={chipX} y={chipY} width={chipW} height={chipH} rx={9} fill="#0c1210" stroke={frameColor} strokeOpacity={0.55} />
+                {hasLogo ? (
+                  config.clientLogoPlate === "light" ? (
+                    <g>
+                      <rect x={chipX + 5} y={chipY + 5} width={chipW - 10} height={chipH - 10} rx={5} fill="#ffffff" />
+                      <image href={config.clientLogoUrl} x={chipX + 12} y={chipY + 7} width={chipW - 24} height={chipH - 14} preserveAspectRatio="xMidYMid meet" />
+                    </g>
+                  ) : (
+                    <image href={config.clientLogoUrl} x={chipX + 10} y={chipY + 6} width={chipW - 20} height={chipH - 12} preserveAspectRatio="xMidYMid meet" />
+                  )
+                ) : (
+                  <text x={chipX + chipW / 2} y={chipY + 19.5} textAnchor="middle" fontSize={12.5} fontWeight={600} fill="#e6ebe8">
+                    {config.clientName}
+                  </text>
+                )}
+              </g>
+            );
+          })()}
+        </g>
+      )}
       {/* tubes / conduits — flat channels tinted by direction, running BEHIND the
           station boxes (boxes are drawn after, covering the tube ends flush) */}
       <clipPath id="tf-tube">
@@ -196,6 +233,17 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
             // light/transparent logo sits straight on the deck, padded to breathe
             <image href={heroClientLogo} x={236} y={429} width={220} height={56} preserveAspectRatio="xMidYMid meet" />
           )
+        ) : platform ? (
+          <text
+            x={346}
+            y={462}
+            textAnchor="middle"
+            fontSize={clientSub.length > 24 ? 14.5 : clientSub.length > 16 ? 17 : 20}
+            fontWeight={600}
+            fill="#f1f4f2"
+          >
+            {clientSub}
+          </text>
         ) : (
           <>
             <circle cx={346} cy={436} r={19} fill="#0f1814" stroke={C.green} strokeOpacity={0.35} />
@@ -205,11 +253,9 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
             <text x={346} y={481} textAnchor="middle" fontSize={20} fontWeight={600} fill="#f1f4f2">
               {heroClientName}
             </text>
-            {(!platform || heroClientName !== clientSub) && (
-              <text x={346} y={502} textAnchor="middle" fontSize={13} fontWeight={400} fill="#6f857b">
-                {clientSub}
-              </text>
-            )}
+            <text x={346} y={502} textAnchor="middle" fontSize={13} fontWeight={400} fill="#6f857b">
+              {clientSub}
+            </text>
           </>
         )}
       </ElevatedNode>
