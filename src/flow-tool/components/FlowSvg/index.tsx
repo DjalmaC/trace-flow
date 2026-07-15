@@ -32,13 +32,16 @@ export function MachineryContainer({
   // data-flow-lane is the edit handle the build page delegates to.
   const brazilLabel = layout.brazilLabel ?? "Brazil";
   const abroadLabel = layout.abroadLabel ?? "Abroad";
+  // container frame: the classic constants unless branch rows grew the stage
+  const cy0 = layout.contY ?? CONT_Y;
+  const ch = layout.contH ?? CONT_H;
   return (
     <g opacity={0.95}>
       <rect
         x={24}
-        y={CONT_Y}
+        y={cy0}
         width={width - 48}
-        height={CONT_H}
+        height={ch}
         rx={16}
         fill="#ffffff"
         fillOpacity={0.018}
@@ -47,21 +50,21 @@ export function MachineryContainer({
         strokeDasharray="3 4"
       />
       {showHeading && (
-        <text x={42} y={CONT_Y + 28} fontSize={14} fontWeight={600} fill={C.subtitle}>
+        <text x={42} y={cy0 + 28} fontSize={14} fontWeight={600} fill={C.subtitle}>
           How Trace makes it happen
         </text>
       )}
-      <text x={brazilLabelX} y={CONT_Y + 56} fontSize={12} fill={C.muted} textAnchor="middle" data-flow-lane="brazil">
+      <text x={brazilLabelX} y={cy0 + 56} fontSize={12} fill={C.muted} textAnchor="middle" data-flow-lane="brazil">
         {brazilLabel}
       </text>
-      <text x={abroadLabelX} y={CONT_Y + 56} fontSize={12} fill={C.muted} textAnchor="middle" data-flow-lane="abroad">
+      <text x={abroadLabelX} y={cy0 + 56} fontSize={12} fill={C.muted} textAnchor="middle" data-flow-lane="abroad">
         {abroadLabel}
       </text>
       <line
         x1={dividerX}
-        y1={CONT_Y - 2}
+        y1={cy0 - 2}
         x2={dividerX}
-        y2={CONT_Y + CONT_H - 6}
+        y2={cy0 + ch - 6}
         stroke={C.divider}
         strokeWidth={1}
         strokeDasharray="3 5"

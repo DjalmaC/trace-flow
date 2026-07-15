@@ -115,6 +115,10 @@ export interface FlowLayout {
    *  (FlowConfig.laneLabels). */
   brazilLabel: string;
   abroadLabel: string;
+  /** Machinery container frame — the CONT_Y/CONT_H defaults, grown vertically
+   *  when branch rows need the room. Renderers frame the stage with these. */
+  contY: number;
+  contH: number;
   reverse: boolean;
   /** Machinery node that carries the uploaded client logo (the primary client). */
   primaryClientId?: string;
@@ -336,17 +340,62 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
   }
   const width = (colX[colCount - 1] ?? PAD_X) + (colMaxW[colCount - 1] ?? NODE_W) + PAD_X;
 
-  // ── vertical stacking: the trunk member holds the rail; tributaries step off
-  // it (above first, then below) so parallel origins read as parallel. ──
+  // ── vertical placement: the trunk holds the rail. Every OFF-trunk node
+  // belongs to a "branch" — a weakly-connected group of off-trunk nodes — and
+  // each branch takes ONE consistent row: branches that FEED the trunk (payers,
+  // sources of value) sit above the rail, branches that RECEIVE from it
+  // (recipients) below, ordered left→right. A complex flow then reads as
+  // parallel lanes meeting the main rail, instead of boxes stacked into
+  // arbitrary up/down slots column by column. ──
   const STACK_OFF = 96;
-  const colSlot: number[] = new Array(colCount).fill(0);
-  const cyFor = (i: number): number => {
-    if (trunkNodeIdx.has(i)) return BAND_Y;
-    const c = depths[i];
-    const slot = colSlot[c]++;
-    const step = Math.floor(slot / 2) + 1;
-    return BAND_Y + (slot % 2 === 0 ? -1 : 1) * STACK_OFF * step;
+  const uf = new Map<number, number>();
+  const findUF = (a: number): number => {
+    let r = a;
+    while (uf.get(r) !== r) r = uf.get(r)!;
+    return r;
   };
+  srcNodes.forEach((_, i) => {
+    if (!trunkNodeIdx.has(i)) uf.set(i, i);
+  });
+  for (const l of srcLegs) {
+    const a = nodeIdx.get(l.from);
+    const b = nodeIdx.get(l.to);
+    if (a != null && b != null && uf.has(a) && uf.has(b)) uf.set(findUF(a), findUF(b));
+  }
+  const branches = new Map<number, number[]>();
+  for (const i of uf.keys()) {
+    const r = findUF(i);
+    branches.set(r, [...(branches.get(r) ?? []), i]);
+  }
+  const rowOf = new Map<number, number>(); // node index -> signed row (0 = rail)
+  {
+    const above: { xs: number; members: number[] }[] = [];
+    const below: { xs: number; members: number[] }[] = [];
+    for (const members of branches.values()) {
+      const inComp = new Set(members);
+      let feeds = false;
+      let receives = false;
+      for (const l of srcLegs) {
+        const a = nodeIdx.get(l.from);
+        const b = nodeIdx.get(l.to);
+        if (a == null || b == null) continue;
+        if (inComp.has(a) && trunkNodeIdx.has(b)) feeds = true;
+        if (trunkNodeIdx.has(a) && inComp.has(b)) receives = true;
+      }
+      const xs = Math.min(...members.map((i) => colX[depths[i]] ?? 0));
+      (feeds && !receives ? above : below).push({ xs, members });
+    }
+    above.sort((p, q) => p.xs - q.xs).forEach((c, r) => c.members.forEach((i) => rowOf.set(i, -(r + 1))));
+    below.sort((p, q) => p.xs - q.xs).forEach((c, r) => c.members.forEach((i) => rowOf.set(i, r + 1)));
+  }
+  const rowsAbove = Math.max(0, ...[...rowOf.values()].map((r) => (r < 0 ? -r : 0)));
+  const rowsBelow = Math.max(0, ...[...rowOf.values()].map((r) => (r > 0 ? r : 0)));
+  const cyFor = (i: number): number => (trunkNodeIdx.has(i) ? BAND_Y : BAND_Y + (rowOf.get(i) ?? 1) * STACK_OFF);
+
+  // The machinery container grows to hold extra rows (the classic single flow
+  // and one-payer fan-ins keep the exact default frame).
+  const contY = Math.min(CONT_Y, BAND_Y - rowsAbove * STACK_OFF - NODE_H / 2 - 44);
+  const contH = Math.max(CONT_Y + CONT_H, BAND_Y + rowsBelow * STACK_OFF + NODE_H / 2 + 28) - contY;
 
   const nodes: NodeLayout[] = srcNodes.map((node, i) => {
     const c = depths[i];
@@ -425,6 +474,26 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
       offTrunk: !trunkLegIdx.has(index) || undefined,
     };
   });
+
+  // A branch curve's resting chip sits at the curve's midpoint — when that
+  // midpoint lands beside a rail conversion hub, slide the chip back along
+  // the curve so the two never crowd each other.
+  const bez = (t: number, p0: number, p1: number, p2: number, p3: number) => {
+    const u = 1 - t;
+    return u * u * u * p0 + 3 * u * u * t * p1 + 3 * u * t * t * p2 + t * t * t * p3;
+  };
+  const railHubXs = legs.filter((l) => l.convertsTo && !l.offTrunk).map((l) => l.mid.x);
+  for (const l of legs) {
+    if (!l.offTrunk || l.y1 === l.y2 || l.convertsTo) continue;
+    if (railHubXs.some((hx) => Math.abs(hx - l.mid.x) < 64)) {
+      const dxc = Math.max(64, Math.abs(l.x2 - l.x1) * 0.55);
+      const t = 0.3;
+      l.mid = {
+        x: bez(t, l.x1, l.x1 + dxc, l.x2 - dxc, l.x2),
+        y: bez(t, l.y1, l.y1, l.y2, l.y2),
+      };
+    }
+  }
 
   // The divider is the regulatory story, and the FX engine converts AT the
   // border — so when a leg crosses the lanes, the divider runs through that
@@ -532,6 +601,8 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
     abroadLabelX,
     brazilLabel: config.laneLabels?.[flow.id]?.brazil?.trim() || "Brazil",
     abroadLabel: config.laneLabels?.[flow.id]?.abroad?.trim() || "Abroad",
+    contY,
+    contH,
     reverse,
     primaryClientId: primaryClientMach?.id,
     engine: engine ?? undefined,

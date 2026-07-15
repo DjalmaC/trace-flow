@@ -153,7 +153,7 @@ export function FlowExperience({
   // One unified machinery diagram per flow — the full chain, always shown and
   // scaled to fit the deck (no collapse/expand split, no horizontal pan).
   const flowTag = `Flow ${flow.displayId} · ${flow.dials.model}`;
-  const machineryVB = `0 ${CONT_Y - 12} ${layout.width} ${CONT_H + 30}`;
+  const machineryVB = `0 ${(layout.contY ?? CONT_Y) - 12} ${layout.width} ${(layout.contH ?? CONT_H) + 30}`;
 
   const svgStyle = {
     display: "block",

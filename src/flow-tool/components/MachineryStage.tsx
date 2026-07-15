@@ -431,6 +431,19 @@ export function MachineryStage({
             direction={config.direction}
           />
         ))}
+      {/* branch lanes get the same arrows on their straight segments, so a
+          branch reads with an explicit direction too */}
+      {layout.legs
+        .filter((l) => l.offTrunk && l.y1 === l.y2)
+        .map((l) => (
+          <TraceArrow
+            key={`ba-${l.index}`}
+            cx={config.direction === "collection" ? Math.min(l.x1, l.x2) + 22 : Math.max(l.x1, l.x2) - 22}
+            cy={l.y1}
+            size={22}
+            direction={config.direction}
+          />
+        ))}
     </g>
   );
 }
