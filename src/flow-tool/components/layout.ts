@@ -1,4 +1,5 @@
 import type { Currency, Flow, FlowConfig } from "../data/schema";
+import { isPlatformFlow } from "../data/schema";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The layout engine. Takes (Flow, FlowConfig) and computes pure geometry — node
@@ -119,6 +120,13 @@ export interface FlowLayout {
    *  when branch rows need the room. Renderers frame the stage with these. */
   contY: number;
   contH: number;
+  /** Technology-provider framing (FlowConfig.platform): the client's branded
+   *  enclosure drawn around the whole machinery. */
+  platformFrame?: { x: number; y: number; w: number; h: number };
+  /** Outer bounds of the stage — the platform frame when present, else the
+   *  container. ViewBoxes frame on these. */
+  stageY: number;
+  stageH: number;
   reverse: boolean;
   /** Machinery node that carries the uploaded client logo (the primary client). */
   primaryClientId?: string;
@@ -555,11 +563,15 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
   // the client-kind headline endpoint (prefer A). Other client-kind nodes (a
   // second customer) render their own label until two-logo input lands in v2.
   const aIsPrimary = aMach.kind === "client" || bMach.kind !== "client";
+  // Technology-provider framing: the client wraps the flow, so no box inside
+  // it carries their name or logo (and the headline pills stay generic).
+  const platform = isPlatformFlow(config, flow.id);
   // When a reorder moved the client box off its headline slot, the logo travels
   // with it — otherwise the primary stays a headline endpoint, as always.
   const reordered = flow.nodes.some((n) => n.srcId && n.srcId !== n.id);
-  const primaryClientMach =
-    aMach.kind === "client"
+  const primaryClientMach = platform
+    ? undefined
+    : aMach.kind === "client"
       ? aMach
       : bMach.kind === "client"
         ? bMach
@@ -570,8 +582,8 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
   const headline: HeadlineLayout = {
     a,
     b,
-    aIsClient: aIsPrimary && aMach.kind === "client",
-    bIsClient: !aIsPrimary && bMach.kind === "client",
+    aIsClient: !platform && aIsPrimary && aMach.kind === "client",
+    bIsClient: !platform && !aIsPrimary && bMach.kind === "client",
     aLabel: aMach.label,
     bLabel: bMach.label,
     aId: aMach.srcId ?? aMach.id,
@@ -603,6 +615,9 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
     abroadLabel: config.laneLabels?.[flow.id]?.abroad?.trim() || "Abroad",
     contY,
     contH,
+    platformFrame: platform ? { x: 6, y: contY - 42, w: width - 12, h: contH + 42 + 44 } : undefined,
+    stageY: platform ? contY - 42 - 16 : contY,
+    stageH: platform ? contH + 42 + 44 + 16 : contH,
     reverse,
     primaryClientId: primaryClientMach?.id,
     engine: engine ?? undefined,

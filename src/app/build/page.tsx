@@ -39,7 +39,7 @@ export default function BuildPage() {
   const [editingCode, setEditingCode] = useState<string | null>(null);
   // Double-click rename overlay for the flow boxes / lane names / hero
   // subtitle on the canvas.
-  const [rename, setRename] = useState<{ key: string; lane?: "brazil" | "abroad"; hero?: boolean; original: string; value: string; left: number; top: number; width: number } | null>(null);
+  const [rename, setRename] = useState<{ key: string; lane?: "brazil" | "abroad"; hero?: boolean; platformCaption?: boolean; original: string; value: string; left: number; top: number; width: number } | null>(null);
   const renameRef = useRef<HTMLInputElement>(null);
   // Edit mode ("Arrange boxes"): drag a box onto another to swap places, or
   // into a rail gap to move it. Stored as config.nodeOrder, so the client
@@ -149,6 +149,23 @@ export default function BuildPage() {
   // ── double-click a flow box, a lane name, or the hero subtitle to edit it
   // (this proposal only) ──
   function onCanvasDoubleClick(e: React.MouseEvent) {
+    const capEl = (e.target as Element).closest?.("[data-platform-caption]");
+    if (capEl) {
+      const original = `Native to the ${config.clientName} platform. Trace operates the rails underneath.`;
+      const r = capEl.getBoundingClientRect();
+      const width = Math.min(640, Math.max(r.width + 90, 400));
+      setRename({
+        key: "platform-caption",
+        hero: false,
+        platformCaption: true,
+        original,
+        value: config.platform?.caption ?? original,
+        left: r.left + r.width / 2 - width / 2,
+        top: r.top + r.height / 2 - 17,
+        width,
+      });
+      return;
+    }
     const heroEl = (e.target as Element).closest?.("[data-hero-support]");
     if (heroEl) {
       const flow = getFlow(config.flowId);
@@ -205,6 +222,14 @@ export default function BuildPage() {
   function commitRename() {
     if (!rename) return;
     const v = rename.value.trim();
+    if (rename.platformCaption) {
+      setConfig((c) => ({
+        ...c,
+        platform: c.platform ? { ...c.platform, caption: !v || v === rename.original ? undefined : v } : c.platform,
+      }));
+      setRename(null);
+      return;
+    }
     if (rename.hero) {
       setConfig((c) => {
         const m = { ...(c.heroSupport ?? {}) };

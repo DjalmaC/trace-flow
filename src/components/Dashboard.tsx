@@ -222,6 +222,8 @@ export function Dashboard({ rep, onSwitch }: { rep: TraceRep; onSwitch: () => vo
         nodeOrder: cfg.nodeOrder as Record<string, string[]> | undefined,
         laneLabels: cfg.laneLabels as Record<string, { brazil?: string; abroad?: string }> | undefined,
         heroSupport: cfg.heroSupport as Record<string, string> | undefined,
+        platform: cfg.platform as never,
+        brandColor: cfg.brandColor as string | undefined,
         direction: cfg.direction as never,
         stablecoin: cfg.stablecoin as never,
         collected: cfg.collected as never,

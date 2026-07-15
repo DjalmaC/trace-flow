@@ -428,6 +428,28 @@ export interface FlowConfig {
    *  desired transaction" on the build canvas), keyed "<flowId>:<direction>".
    *  Shown on the hero and the PDF flow page. */
   heroSupport?: Record<string, string>;
+  /** Technology-provider framing: the client wraps the flow instead of
+   *  appearing in it. The deck draws a quiet brand-colored frame around the
+   *  machinery (logo chip + caption) and suppresses the client's name/logo
+   *  INSIDE the flow: boxes, the hero station, the desired-transaction arc. */
+  platform?: PlatformFraming;
+  /** Dominant color extracted from the uploaded logo (frame default). */
+  brandColor?: string;
+}
+
+export interface PlatformFraming {
+  enabled: boolean;
+  /** Frame color; defaults to brandColor, then Trace mint. */
+  color?: string;
+  /** Client-facing caption on the frame (double-click editable on the canvas). */
+  caption?: string;
+  /** Flow ids that opt OUT of the frame while it's enabled. */
+  except?: string[];
+}
+
+/** Does this flow render inside the client's platform frame? */
+export function isPlatformFlow(config: FlowConfig, flowId: string): boolean {
+  return !!config.platform?.enabled && !config.platform.except?.includes(flowId);
 }
 
 // ── Settlement options ────────────────────────────────────────────────────────

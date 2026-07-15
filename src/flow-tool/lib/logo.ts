@@ -425,3 +425,55 @@ export async function removeBackground(src: string): Promise<string | null> {
     img.src = src;
   });
 }
+
+// ── brand color ───────────────────────────────────────────────────────────────
+
+/** Dominant saturated color of a logo, for the platform frame. Downsamples to a
+ *  small canvas, buckets opaque pixels by hue, and returns the strongest
+ *  saturated bucket's average as hex; null when the mark is effectively
+ *  monochrome (white/black/grey logos should fall back to Trace mint). */
+export async function dominantColor(src: string): Promise<string | null> {
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const i = new Image();
+    i.onload = () => resolve(i);
+    i.onerror = () => reject(new Error("logo load failed"));
+    i.src = src;
+  });
+  const S = 32;
+  const canvas = document.createElement("canvas");
+  canvas.width = S;
+  canvas.height = S;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  ctx.drawImage(img, 0, 0, S, S);
+  const data = ctx.getImageData(0, 0, S, S).data;
+  const buckets = new Map<number, { score: number; r: number; g: number; b: number; n: number }>();
+  for (let i = 0; i < data.length; i += 4) {
+    const [r, g, b, a] = [data[i], data[i + 1], data[i + 2], data[i + 3]];
+    if (a < 200) continue;
+    const mx = Math.max(r, g, b);
+    const mn = Math.min(r, g, b);
+    const v = mx / 255;
+    const sat = mx === 0 ? 0 : (mx - mn) / mx;
+    if (sat < 0.28 || v < 0.18) continue; // grey / near-black: not a brand hue
+    let h = 0;
+    if (mx !== mn) {
+      if (mx === r) h = ((g - b) / (mx - mn) + 6) % 6;
+      else if (mx === g) h = (b - r) / (mx - mn) + 2;
+      else h = (r - g) / (mx - mn) + 4;
+    }
+    const key = Math.round(h * 4) % 24; // 24 hue buckets
+    const cur = buckets.get(key) ?? { score: 0, r: 0, g: 0, b: 0, n: 0 };
+    cur.score += sat * v;
+    cur.r += r;
+    cur.g += g;
+    cur.b += b;
+    cur.n += 1;
+    buckets.set(key, cur);
+  }
+  let best: { score: number; r: number; g: number; b: number; n: number } | null = null;
+  for (const bkt of buckets.values()) if (!best || bkt.score > best.score) best = bkt;
+  if (!best || best.n < 6) return null; // too few saturated pixels to trust
+  const hex = (x: number) => Math.round(x / best!.n).toString(16).padStart(2, "0");
+  return `#${hex(best.r)}${hex(best.g)}${hex(best.b)}`;
+}

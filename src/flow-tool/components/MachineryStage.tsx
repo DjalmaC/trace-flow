@@ -320,8 +320,54 @@ export function MachineryStage({
   const markW = HUB_R;
   const markH = markW / TRACE_LOGO_AR;
 
+  const platformOn = !!layout.platformFrame;
+  const frame = layout.platformFrame;
+  const frameColor = config.platform?.color?.trim() || config.brandColor || C.green;
+  const frameCaption =
+    config.platform?.caption?.trim() ||
+    `Native to the ${config.clientName} platform. Trace operates the rails underneath.`;
+
   return (
     <g>
+      {/* ── technology-provider framing: the client's platform encloses the
+          whole flow — a quiet brand-colored boundary with their logo chip on
+          the top edge and a caption beneath. The client never appears INSIDE
+          the flow in this mode. ── */}
+      {frame && (
+        <g>
+          <rect x={frame.x} y={frame.y} width={frame.w} height={frame.h} rx={22} fill={frameColor} fillOpacity={0.028} stroke={frameColor} strokeOpacity={0.4} strokeWidth={1.2} />
+          {(() => {
+            const hasLogo = !!config.clientLogoUrl;
+            const chipW = hasLogo ? 148 : Math.max(96, config.clientName.length * 8.5 + 36);
+            const chipH = 30;
+            const chipX = frame.x + 28;
+            const chipY = frame.y - chipH / 2;
+            return (
+              <g>
+                <rect x={chipX - 10} y={chipY - 3} width={chipW + 20} height={chipH + 6} rx={11} fill={C.base} />
+                <rect x={chipX} y={chipY} width={chipW} height={chipH} rx={9} fill="#0c1210" stroke={frameColor} strokeOpacity={0.55} />
+                {hasLogo ? (
+                  config.clientLogoPlate === "light" ? (
+                    <g>
+                      <rect x={chipX + 5} y={chipY + 5} width={chipW - 10} height={chipH - 10} rx={5} fill="#ffffff" />
+                      <image href={config.clientLogoUrl} x={chipX + 12} y={chipY + 7} width={chipW - 24} height={chipH - 14} preserveAspectRatio="xMidYMid meet" />
+                    </g>
+                  ) : (
+                    <image href={config.clientLogoUrl} x={chipX + 10} y={chipY + 6} width={chipW - 20} height={chipH - 12} preserveAspectRatio="xMidYMid meet" />
+                  )
+                ) : (
+                  <text x={chipX + chipW / 2} y={chipY + 19.5} textAnchor="middle" fontSize={12.5} fontWeight={600} fill="#e6ebe8">
+                    {config.clientName}
+                  </text>
+                )}
+              </g>
+            );
+          })()}
+          <text x={frame.x + frame.w / 2} y={frame.y + frame.h - 17} textAnchor="middle" fontSize={12} fill={C.muted} data-platform-caption>
+            {frameCaption}
+          </text>
+        </g>
+      )}
       <MachineryContainer layout={layout} showHeading={showHeading} />
 
       {/* tributary conduits — a second origin merging into the rail. The same
@@ -388,8 +434,8 @@ export function MachineryStage({
           <FlowNodeShape
             node={node}
             isPrimaryClient={node.id === layout.primaryClientId}
-            clientName={config.clientName}
-            clientLogoUrl={config.clientLogoUrl}
+            clientName={platformOn ? undefined : config.clientName}
+            clientLogoUrl={platformOn ? undefined : config.clientLogoUrl}
             clientLogoPlate={config.clientLogoPlate}
           />
         </g>

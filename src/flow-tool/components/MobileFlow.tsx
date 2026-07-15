@@ -6,6 +6,7 @@ import { displayCurrency } from "./FlowSvg/Tokens";
 import { TraceArrow } from "./FlowSvg/TraceArrow";
 import { ASSETS, C, TRACE_LOGO_AR, accentFor } from "./tokens";
 import type { Currency, Flow, FlowConfig } from "../data/schema";
+import { isPlatformFlow } from "../data/schema";
 
 // Phone-native VERTICAL flow: the chain reads top -> bottom as full-width cards
 // with the currency on each connector and the conversion / border crossing as a
@@ -17,6 +18,10 @@ import type { Currency, Flow, FlowConfig } from "../data/schema";
 export function MobileFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
   const reduced = useReducedMotion();
   const layout = computeLayout(flow, config);
+  // Technology-provider framing: no client logo inside the flow; the branded
+  // wrapper (rendered by FlowExperience) carries their presence instead.
+  const platform = isPlatformFlow(config, flow.id);
+  const cardConfig = platform ? { ...config, clientLogoUrl: undefined } : config;
   const accent = accentFor(config.direction);
   // Currency/conversion semantics follow the real direction; on-screen the coin
   // travels DOWN for Pay-in (collection) and UP for Pay-out (disbursement).
@@ -210,12 +215,12 @@ export function MobileFlow({ flow, config }: { flow: Flow; config: FlowConfig })
         return (
           <div key={g[0].id} className="relative z-10">
             {g.length === 1 ? (
-              <NodeCard node={g[0]} primary={g[0].id === layout.primaryClientId} config={config} laneOverrides={laneOverrides} />
+              <NodeCard node={g[0]} primary={g[0].id === layout.primaryClientId} config={cardConfig} laneOverrides={laneOverrides} />
             ) : (
               // parallel origins: side-by-side, both feeding the row below
               <div className="grid grid-cols-2 gap-2">
                 {g.map((n) => (
-                  <NodeCard key={n.id} node={n} primary={n.id === layout.primaryClientId} config={config} laneOverrides={laneOverrides} />
+                  <NodeCard key={n.id} node={n} primary={n.id === layout.primaryClientId} config={cardConfig} laneOverrides={laneOverrides} />
                 ))}
               </div>
             )}

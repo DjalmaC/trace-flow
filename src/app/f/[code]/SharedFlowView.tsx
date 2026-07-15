@@ -153,6 +153,8 @@ export function SharedFlowView({ code }: { code: string }) {
           nodeOrder: config.nodeOrder,
           laneLabels: config.laneLabels,
           heroSupport: config.heroSupport,
+          platform: config.platform,
+          brandColor: config.brandColor,
           assetAuth: { code },
         });
       } else {

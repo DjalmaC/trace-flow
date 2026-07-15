@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type {
   Currency,
   Direction,
@@ -19,7 +19,7 @@ import type { IntakeAnswers } from "@/flow-tool/intake/questions";
 import { resolve } from "@/flow-tool/intake/resolver";
 import { createShareLink, isShareConfigured, updateShareLink } from "@/flow-tool/lib/share";
 import { loadRepKey } from "@/flow-tool/lib/rep-session";
-import { normalizeLogo } from "@/flow-tool/lib/logo";
+import { dominantColor, normalizeLogo } from "@/flow-tool/lib/logo";
 import { downloadProposalPdf } from "@/flow-tool/lib/proposal";
 import { defaultProposalDate, saveSetup } from "@/flow-tool/lib/setup";
 import { CommandPalette, type PaletteAction } from "@/components/CommandPalette";
@@ -285,6 +285,8 @@ export function ControlPanel({
         nodeOrder: config.nodeOrder,
         laneLabels: config.laneLabels,
         heroSupport: config.heroSupport,
+        platform: config.platform,
+        brandColor: config.brandColor,
         assetAuth: { repKey: loadRepKey() ?? undefined },
       });
       setPdf("idle");
@@ -312,16 +314,24 @@ export function ControlPanel({
 
   // Re-run the normalizer on the ORIGINAL upload with the chosen treatment, so
   // switching White/Mint/Card is reversible and never compounds.
+  const pendingBrandColor = useRef<string | null>(null);
   async function applyTreatment(t: LogoTreatment, base = origLogo) {
     if (!base) return;
     setTreatment(t);
     const r = await normalizeLogo(base, { mark: t === "card" ? "keep" : t });
-    patch({ clientLogoUrl: r.url, clientLogoPlate: t === "card" ? "light" : r.plate });
+    patch({
+      clientLogoUrl: r.url,
+      clientLogoPlate: t === "card" ? "light" : r.plate,
+      ...(pendingBrandColor.current ? { brandColor: pendingBrandColor.current } : {}),
+    });
   }
 
   // data URI (not blob:) so the logo travels with the shared link
   async function onLogoData(raw: string) {
     setOrigLogo(raw);
+    // brand color for the platform frame, from the untouched upload
+    const brand = await dominantColor(raw).catch(() => null);
+    if (brand) pendingBrandColor.current = brand;
     await applyTreatment("auto", raw); // cut bg + auto-decide on insert
   }
 
@@ -557,6 +567,34 @@ export function ControlPanel({
 
                 <Field label="Logo">
                   <LogoDrop compact hasLogo={!!config.clientLogoUrl} onImage={onLogoData} />
+                </Field>
+
+                <Field label="Role in the flow">
+                  <Segmented
+                    value={config.platform?.enabled ? "platform" : "party"}
+                    options={[
+                      { value: "party", label: "Party in the flow" },
+                      { value: "platform", label: "Technology provider" },
+                    ]}
+                    onChange={(v) =>
+                      patch({ platform: { ...(config.platform ?? {}), enabled: v === "platform" } })
+                    }
+                  />
+                  {config.platform?.enabled && (
+                    <div className="mt-2 flex items-center gap-2.5">
+                      <input
+                        type="color"
+                        value={config.platform.color ?? config.brandColor ?? "#00f2b1"}
+                        onChange={(e) => patch({ platform: { ...(config.platform ?? { enabled: true }), enabled: true, color: e.target.value } })}
+                        aria-label="Platform frame color"
+                        className="h-7 w-9 shrink-0 cursor-pointer rounded-[6px] border border-hairline-control bg-surface-input p-[2px]"
+                      />
+                      <p className="text-[10.5px] leading-normal text-muted">
+                        {config.clientName || "The client"} wraps the flow instead of appearing in it. The deck frames every
+                        flow in their brand; the caption on the canvas is double-click editable.
+                      </p>
+                    </div>
+                  )}
                 </Field>
 
                 {config.clientLogoUrl && (

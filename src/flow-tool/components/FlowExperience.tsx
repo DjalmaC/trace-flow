@@ -23,7 +23,7 @@ export function useIsMobile() {
   return mobile;
 }
 import type { FlowConfig, SettlementOption } from "../data/schema";
-import { applySettlement, settlementChoices } from "../data/schema";
+import { applySettlement, isPlatformFlow, settlementChoices } from "../data/schema";
 import { getFlow } from "../data";
 import { computeLayout, CONT_Y, CONT_H } from "./layout";
 import { Defs, displayCurrency } from "./FlowSvg";
@@ -117,7 +117,13 @@ export function FlowExperience({
   // machinery isn't re-laid-out (and its relay restarted) on every keystroke
   // in the control panel, which hands down a fresh config object each render.
   // The overrides are compared by value (they only change on an actual edit).
-  const editsKey = JSON.stringify([config.nodeLabels ?? null, config.nodeOrder ?? null, config.laneLabels ?? null]);
+  const editsKey = JSON.stringify([
+    config.nodeLabels ?? null,
+    config.nodeOrder ?? null,
+    config.laneLabels ?? null,
+    config.platform ?? null,
+    config.brandColor ?? null,
+  ]);
   const layout = useMemo(
     () => (flow ? computeLayout(flow, config) : null),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -153,7 +159,7 @@ export function FlowExperience({
   // One unified machinery diagram per flow — the full chain, always shown and
   // scaled to fit the deck (no collapse/expand split, no horizontal pan).
   const flowTag = `Flow ${flow.displayId} · ${flow.dials.model}`;
-  const machineryVB = `0 ${(layout.contY ?? CONT_Y) - 12} ${layout.width} ${(layout.contH ?? CONT_H) + 30}`;
+  const machineryVB = `0 ${(layout.stageY ?? CONT_Y) - 12} ${layout.width} ${(layout.stageH ?? CONT_H) + 30}`;
 
   const svgStyle = {
     display: "block",
@@ -268,7 +274,22 @@ export function FlowExperience({
             />
           </div>
         )}
-        <MobileFlow flow={flow} config={config} />
+        {isPlatformFlow(config, config.flowId) ? (
+          <div
+            className="rounded-2xl p-3 pb-4"
+            style={{
+              border: `1px solid ${(config.platform?.color ?? config.brandColor ?? "#00f2b1")}55`,
+              background: `${config.platform?.color ?? config.brandColor ?? "#00f2b1"}07`,
+            }}
+          >
+            <MobileFlow flow={flow} config={config} />
+            <p className="mt-3 text-center text-[11px] leading-normal text-muted">
+              {config.platform?.caption?.trim() || `Native to the ${config.clientName} platform. Trace operates the rails underneath.`}
+            </p>
+          </div>
+        ) : (
+          <MobileFlow flow={flow} config={config} />
+        )}
       </div>
     );
   }

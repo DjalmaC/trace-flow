@@ -175,7 +175,7 @@ function flowSlide(config: FlowConfig, flow: Flow, name: string, label: string, 
       ? `Also supported: ${disp(convLeg.carries)} → ${settleAlts.map((o) => disp(o.out)).join(" or ")}`
       : null;
   const mw = layout.width;
-  const mh = (layout.contH ?? CONT_H) + 30;
+  const mh = (layout.stageH ?? CONT_H) + 30;
   const areaTop = 122;
   const areaBottom = 474;
   const availW = DW - 80;
@@ -201,7 +201,7 @@ function flowSlide(config: FlowConfig, flow: Flow, name: string, label: string, 
           {support}
         </text>
       )}
-      <svg x={x2} y={y2} width={w2} height={h2} viewBox={`0 ${(layout.contY ?? CONT_Y) - 12} ${mw} ${mh}`} preserveAspectRatio="xMidYMid meet">
+      <svg x={x2} y={y2} width={w2} height={h2} viewBox={`0 ${(layout.stageY ?? CONT_Y) - 12} ${mw} ${mh}`} preserveAspectRatio="xMidYMid meet">
         <MachineryStage layout={layout} config={config} animate={false} showHeading={false} />
       </svg>
       {settleNote && (

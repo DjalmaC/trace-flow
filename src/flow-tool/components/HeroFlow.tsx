@@ -2,6 +2,7 @@
 import { useEffect, useRef } from "react";
 import { useReducedMotion } from "framer-motion";
 import type { Currency, Flow, FlowConfig } from "../data/schema";
+import { isPlatformFlow } from "../data/schema";
 import { ASSETS, C, TRACE_LOGO_AR, accentFor, tubeTint } from "./tokens";
 import { displayCurrency } from "./FlowSvg/Tokens";
 import { TraceArrow } from "./FlowSvg/TraceArrow";
@@ -86,6 +87,11 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
   const partyA = flow.nodes.find((n) => n.id === flow.headline.partyA);
   const partyB = flow.nodes.find((n) => n.id === flow.headline.partyB);
   const clientSub = sentenceCase(partyA?.label ?? "Client");
+  // Technology-provider framing: the client wraps the flow instead of being a
+  // station in it — the hero shows the flow's own originating party instead.
+  const platform = isPlatformFlow(config, flow.id);
+  const heroClientName = platform ? clientSub : config.clientName;
+  const heroClientLogo = platform ? undefined : config.clientLogoUrl;
   const merchantName = sentenceCase(partyB?.label ?? "Beneficiary");
   // the beneficiary isn't always abroad (the Foreigner-to-BR flow settles in Brazil)
   const merchantWhere = partyB?.lane === "brazil" ? "in Brazil" : "abroad";
@@ -178,30 +184,32 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
       {/* client station — once a logo is uploaded it fills nearly the whole
           block (the client's identity); otherwise show an initial + name + role */}
       <ElevatedNode x={196} w={300} green>
-        {config.clientLogoUrl ? (
+        {heroClientLogo ? (
           config.clientLogoPlate === "light" ? (
             <>
               {/* card + logo centered on the node (cx 346, cy 457), with
                   comfortable padding so the mark reads as a poised lockup */}
               <rect x={206} y={407} width={280} height={100} rx={16} fill="#ffffff" />
-              <image href={config.clientLogoUrl} x={236} y={429} width={220} height={56} preserveAspectRatio="xMidYMid meet" />
+              <image href={heroClientLogo} x={236} y={429} width={220} height={56} preserveAspectRatio="xMidYMid meet" />
             </>
           ) : (
             // light/transparent logo sits straight on the deck, padded to breathe
-            <image href={config.clientLogoUrl} x={236} y={429} width={220} height={56} preserveAspectRatio="xMidYMid meet" />
+            <image href={heroClientLogo} x={236} y={429} width={220} height={56} preserveAspectRatio="xMidYMid meet" />
           )
         ) : (
           <>
             <circle cx={346} cy={436} r={19} fill="#0f1814" stroke={C.green} strokeOpacity={0.35} />
             <text x={346} y={442} textAnchor="middle" fontSize={15} fontWeight={600} fill="#9cc4b3">
-              {config.clientName.charAt(0).toUpperCase()}
+              {heroClientName.charAt(0).toUpperCase()}
             </text>
             <text x={346} y={481} textAnchor="middle" fontSize={20} fontWeight={600} fill="#f1f4f2">
-              {config.clientName}
+              {heroClientName}
             </text>
-            <text x={346} y={502} textAnchor="middle" fontSize={13} fontWeight={400} fill="#6f857b">
-              {clientSub}
-            </text>
+            {(!platform || heroClientName !== clientSub) && (
+              <text x={346} y={502} textAnchor="middle" fontSize={13} fontWeight={400} fill="#6f857b">
+                {clientSub}
+              </text>
+            )}
           </>
         )}
       </ElevatedNode>

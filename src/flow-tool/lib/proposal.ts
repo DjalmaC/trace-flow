@@ -102,6 +102,10 @@ export interface ProposalBuildOpts {
   laneLabels?: Record<string, { brazil?: string; abroad?: string }>;
   /** Per-proposal hero subtitle overrides (see FlowConfig.heroSupport). */
   heroSupport?: Record<string, string>;
+  /** Technology-provider framing (see FlowConfig.platform). */
+  platform?: FlowConfig["platform"];
+  /** Frame color extracted from the logo (see FlowConfig.brandColor). */
+  brandColor?: string;
   /** Credentials for fetching the gated sales-slides deck. */
   assetAuth?: AssetAuth;
 }
@@ -475,6 +479,8 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
     nodeOrder: opts.nodeOrder,
     laneLabels: opts.laneLabels,
     heroSupport: opts.heroSupport,
+    platform: opts.platform,
+    brandColor: opts.brandColor,
   };
   // ── pricing group surgery (after stamping, so overlay indices were valid) ──
   // Deleting a product's template page or inserting a page for an added one
