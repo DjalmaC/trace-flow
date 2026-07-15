@@ -53,6 +53,41 @@ const P = {
 };
 
 const CURRENCIES: Currency[] = ["BRL", "USD", "EUR", "USD/EUR", "USDC/USDT", "USD/USDT"];
+
+/** Free-text currency chip: any code (MXN, COP, GBP...) becomes a first-class
+ *  currency — the deck renders unknown codes as labelled pills everywhere, so
+ *  a custom code flows through tokens, the hub, toggles and the PDF. */
+function CustomCurrencyChip({ value, onSet }: { value: string; onSet: (v: string) => void }) {
+  const isCustom = !!value && !CURRENCIES.includes(value as Currency);
+  const [draft, setDraft] = useState(isCustom ? value : "");
+  useEffect(() => setDraft(isCustom ? value : ""), [value, isCustom]);
+  const commit = () => {
+    const v = draft.trim().slice(0, 12);
+    if (v && v !== value) onSet(v);
+  };
+  return (
+    <input
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          commit();
+          (e.target as HTMLInputElement).blur();
+        }
+      }}
+      placeholder="Custom…"
+      aria-label="Custom currency code"
+      className="w-[74px] rounded-full px-2 py-0.5 text-center font-mono text-[10px] outline-none transition"
+      style={
+        isCustom
+          ? { border: `1.4px solid ${P.mintDeep}`, color: P.mintInk, background: "#fff" }
+          : { border: `1px dashed ${P.line}`, color: P.sub, background: "transparent" }
+      }
+    />
+  );
+}
 const COIN_DOT: Partial<Record<Currency, string>> = { "USDC/USDT": "#2775CA", "USD/USDT": "#26A17B" };
 const KIND_LABEL: Record<NodeKind, string> = {
   operational: "Payer / Payee",
@@ -735,6 +770,7 @@ export function TailoredFlowEditor({
                       {c}
                     </button>
                   ))}
+                  <CustomCurrencyChip value={selLeg.carries} onSet={(v) => patchLeg(selLegIndex, { carries: v as Currency })} />
                 </div>
                 <div className="mb-2.5 rounded-lg p-2.5" style={{ background: selLeg.convertsTo ? P.mintTint : "#f7f6f1", border: `1px solid ${selLeg.convertsTo ? P.mintLine : P.line}` }}>
                   <div className="flex items-center justify-between">
@@ -780,6 +816,7 @@ export function TailoredFlowEditor({
                           {c}
                         </button>
                       ))}
+                      <CustomCurrencyChip value={selLeg.convertsTo} onSet={(v) => patchLeg(selLegIndex, { convertsTo: v as Currency })} />
                       <span className="w-full pt-0.5 text-[9.5px]" style={{ color: P.mintInk, opacity: 0.8 }}>
                         via Trace FX engine · spot + spread
                       </span>
@@ -823,6 +860,7 @@ export function TailoredFlowEditor({
                                   {c}
                                 </button>
                               ))}
+                              <CustomCurrencyChip value={opt.out} onSet={(v) => patchOpt({ out: v as Currency })} />
                             </div>
                             <input
                               value={opt.label ?? ""}
