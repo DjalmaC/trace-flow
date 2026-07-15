@@ -162,7 +162,7 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
     : { transition: "fill .55s cubic-bezier(.4,0,.2,1), stroke .55s cubic-bezier(.4,0,.2,1)" };
 
   return (
-    <svg viewBox={VIEWBOX} preserveAspectRatio="xMidYMid meet" style={{ display: "block", width: "100%", maxHeight: "44vh", fontFamily: "var(--font-inter), system-ui, sans-serif" }} role="img" aria-label={`What ${config.clientName} wants`}>
+    <svg viewBox={VIEWBOX} preserveAspectRatio="xMidYMid meet" style={{ display: "block", width: "100%", maxHeight: "44vh", fontFamily: "var(--font-inter), system-ui, sans-serif" }} role="img" aria-label={`Built for ${config.clientName}`}>
       {/* Self-contained defs (e.g. #tf-shadow) so the hero renders correctly even
           when the machinery SVG that also defines them isn't mounted (surface-only). */}
       <Defs />

@@ -11,6 +11,7 @@ import type {
   Stablecoin,
 } from "@/flow-tool/data/schema";
 import { getFlow } from "@/flow-tool/data";
+import { clientFlowName } from "@/flow-tool/data/schema";
 import { deleteTailoredFlow, listTailoredFlows } from "@/flow-tool/data/custom-flows";
 import { NewTailoredFlowModal, TailoredFlowEditor } from "@/components/TailoredFlowEditor";
 import { LogoDrop } from "@/components/LogoDrop";
@@ -228,11 +229,12 @@ export function ControlPanel({
     const customFlows = [...new Set(list.map((f) => f.flowId))]
       .map((id) => getFlow(id))
       .filter((f): f is Flow => !!f?.custom)
-      .map((f) => ({ ...f, editor: undefined }));
+      // the " · tailored" marker is rep-side only — the client never sees it
+      .map((f) => ({ ...f, title: clientFlowName(f.title), editor: undefined }));
     return {
       ...config,
       flowId: shareFlowId,
-      variants: list.length > 1 ? list : undefined,
+      variants: list.length > 1 ? list.map((f) => ({ ...f, name: clientFlowName(f.name) })) : undefined,
       customFlows: customFlows.length ? customFlows : undefined,
       proposalType,
       date: proposalDate,

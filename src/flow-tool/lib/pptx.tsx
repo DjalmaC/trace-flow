@@ -3,7 +3,7 @@ import { Defs } from "../components/FlowSvg";
 import { MachineryStage } from "../components/MachineryStage";
 import { ASSETS } from "../components/tokens";
 import { getFlow, defaultConfig } from "../data";
-import { tierText, flatRowText, settlementChoices } from "../data/schema";
+import { tierText, flatRowText, settlementChoices, clientFlowName } from "../data/schema";
 import { displayCurrency } from "../components/FlowSvg/Tokens";
 import type { Flow, FlowConfig, PriceCard, ProposalPricing } from "../data/schema";
 
@@ -194,7 +194,7 @@ function flowSlide(config: FlowConfig, flow: Flow, name: string, label: string, 
         BENEATH THE SURFACE
       </text>
       <text x={48} y={86} fontSize={24} fontWeight={700} fill={TITLE}>
-        {`${label} - ${name}`}
+        {`${label} - ${clientFlowName(name)}`}
       </text>
       {support && (
         <text x={48} y={108} fontSize={12.5} fill={SUB}>

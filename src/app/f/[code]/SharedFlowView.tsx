@@ -5,7 +5,7 @@ import { FlowExperience, useIsMobile } from "@/flow-tool/components/FlowExperien
 import { ASSETS, C, TRACE_LOGO_AR } from "@/flow-tool/components/tokens";
 import { loadSharedFlowGated } from "@/flow-tool/lib/share";
 import { getRep } from "@/flow-tool/data/reps";
-import { deckPricing, flatRowText, normalizePricing, tierText } from "@/flow-tool/data/schema";
+import { clientFlowName, deckPricing, flatRowText, normalizePricing, tierText } from "@/flow-tool/data/schema";
 import type { Direction, Flow, FlowConfig, PriceCard, ProposalPricing, ProposalType } from "@/flow-tool/data/schema";
 import { registerCustomFlows } from "@/flow-tool/data/custom-flows";
 import { getFlow } from "@/flow-tool/data";
@@ -332,7 +332,7 @@ export function SharedFlowView({ code }: { code: string }) {
                         <SegToggle value={direction} onChange={setDirection} options={[{ value: "collection", label: "Pay-in" }, { value: "disbursement", label: "Pay-out" }]} />
                       )}
                       {view === "flow" && hasVariants && (
-                        <SegToggle full value={flowId} onChange={switchFlow} options={variants!.map((v) => ({ value: v.flowId, label: v.name }))} />
+                        <SegToggle full value={flowId} onChange={switchFlow} options={variants!.map((v) => ({ value: v.flowId, label: clientFlowName(v.name) }))} />
                       )}
                     </div>
                   </div>
@@ -826,7 +826,7 @@ function FlowSwitch({ variants, activeId, onChange }: { variants: Variant[]; act
             activeId === v.flowId ? "bg-mint font-semibold text-mint-on" : "font-medium text-[#8b948f] hover:text-[#bfe8d4]"
           }`}
         >
-          {v.name}
+          {clientFlowName(v.name)}
         </button>
       ))}
     </div>

@@ -452,6 +452,11 @@ export function isPlatformFlow(config: FlowConfig, flowId: string): boolean {
   return !!config.platform?.enabled && !config.platform.except?.includes(flowId);
 }
 
+/** Client-facing flow name: the rep-side " · tailored" marker never ships. */
+export function clientFlowName(name: string): string {
+  return name.replace(/\s*·\s*tailored\s*$/i, "").trim();
+}
+
 // ── Settlement options ────────────────────────────────────────────────────────
 // A flow with settlement options is rendered through applySettlement: a pure
 // flow→flow transform, so the layout engine and every renderer stay untouched.

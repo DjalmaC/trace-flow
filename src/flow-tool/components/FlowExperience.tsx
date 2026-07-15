@@ -23,7 +23,7 @@ export function useIsMobile() {
   return mobile;
 }
 import type { FlowConfig, SettlementOption } from "../data/schema";
-import { applySettlement, isPlatformFlow, settlementChoices } from "../data/schema";
+import { applySettlement, clientFlowName, isPlatformFlow, settlementChoices } from "../data/schema";
 import { getFlow } from "../data";
 import { computeLayout, CONT_Y, CONT_H } from "./layout";
 import { Defs, displayCurrency } from "./FlowSvg";
@@ -71,8 +71,7 @@ export function FlowExperience({
   const passCount = useRef(0);
   useEffect(() => {
     setSettlementIdx(0);
-    manualSettle.current = false;
-    passCount.current = 0;
+    passCount.current = 0; // manual control, once taken, stays for the session
     // QA hook: ?settle=<i> pins an option deterministically
     const v = new URLSearchParams(window.location.search).get("settle");
     if (v != null) {
@@ -216,7 +215,7 @@ export function FlowExperience({
         The desired transaction
       </div>
       <h1 className="font-display text-3xl font-semibold tracking-[-0.01em] text-[#f2f5f3] md:text-5xl">
-        What <span className="text-mint">{config.clientName}</span> wants
+        Built for <span className="text-mint">{config.clientName}</span>
       </h1>
       <p className="mt-3 text-sm font-normal text-[#8b948f] md:text-base" data-hero-support>
         {support}
@@ -232,7 +231,7 @@ export function FlowExperience({
       <h2 className="font-display text-2xl font-semibold tracking-[-0.01em] text-title md:text-4xl">
         How Trace makes it happen
       </h2>
-      <p className="mt-2.5 text-sm font-medium text-mint md:text-base">{flow.title}</p>
+      <p className="mt-2.5 text-sm font-medium text-mint md:text-base">{clientFlowName(flow.title)}</p>
     </div>
   );
 
@@ -351,9 +350,9 @@ export function FlowExperience({
         {/* SURFACE — front */}
         <motion.div
           style={{ opacity: surfaceOpacity, y: surfaceY, scale: surfaceScale }}
-          className="absolute inset-0 z-20 flex flex-col items-center justify-center px-6"
+          className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center px-6"
         >
-          {SurfaceHeading}
+          <div className="pointer-events-auto">{SurfaceHeading}</div>
           <div className="w-full max-w-[1200px]">{SurfaceSvg}</div>
         </motion.div>
 
