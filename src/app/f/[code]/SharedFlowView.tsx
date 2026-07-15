@@ -8,6 +8,7 @@ import { getRep } from "@/flow-tool/data/reps";
 import { deckPricing, flatRowText, normalizePricing, tierText } from "@/flow-tool/data/schema";
 import type { Direction, Flow, FlowConfig, PriceCard, ProposalPricing, ProposalType } from "@/flow-tool/data/schema";
 import { registerCustomFlows } from "@/flow-tool/data/custom-flows";
+import { getFlow } from "@/flow-tool/data";
 
 // A shared link may carry more than one flow "variant" (e.g. a With-IP
 // vs Direct structures). The viewer switches between them with a
@@ -198,7 +199,11 @@ export function SharedFlowView({ code }: { code: string }) {
     // library flows.
     registerCustomFlows(loaded.customFlows);
     setDirection(loaded.direction);
-    setActiveFlowId(loaded.variants?.[0]?.flowId ?? loaded.flowId);
+    // Older links can carry a dangling flowId (an abandoned draft that never
+    // shipped inside customFlows). Show the first flow that actually resolves
+    // rather than a blank "Unknown flow" page.
+    const candidates = [loaded.flowId, ...(loaded.variants ?? []).map((v) => v.flowId), ...(loaded.customFlows ?? []).map((f) => f.id)];
+    setActiveFlowId(candidates.find((id) => !!getFlow(id)) ?? loaded.variants?.[0]?.flowId ?? loaded.flowId);
     setState({ status: "ready", config: loaded });
   }
 

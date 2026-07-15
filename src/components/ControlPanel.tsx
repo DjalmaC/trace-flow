@@ -208,7 +208,15 @@ export function ControlPanel({
   }
 
   function buildShareConfig() {
-    const list = proposalFlowList();
+    // Only flows that actually resolve ride into the link — a deck row whose
+    // tailored draft was deleted, or an abandoned draft left on the canvas,
+    // must never become the link's flow ("Unknown flow" / blank client view).
+    const all = proposalFlowList();
+    const list = all.filter((f) => !!getFlow(f.flowId));
+    if (!list.length) list.push(...all); // degenerate: keep what we have
+    const shareFlowId = list.some((f) => f.flowId === config.flowId)
+      ? config.flowId
+      : list[0]?.flowId ?? config.flowId;
     // Attach the closing contact card from the selected Trace rep so the shared
     // view actually shows "your contact" (the client link has no other source).
     const rep = getRep(traceRepId);
@@ -223,6 +231,7 @@ export function ControlPanel({
       .map((f) => ({ ...f, editor: undefined }));
     return {
       ...config,
+      flowId: shareFlowId,
       variants: list.length > 1 ? list : undefined,
       customFlows: customFlows.length ? customFlows : undefined,
       proposalType,
@@ -540,6 +549,13 @@ export function ControlPanel({
               onDeleteTailored={(f) => {
                 deleteTailoredFlow(f.id);
                 setTailored(listTailoredFlows());
+                // never leave a dangling reference: drop it from the deck and
+                // move the canvas off it
+                onProposalFlowsChange?.(flows.filter((x) => x.flowId !== f.id));
+                if (config.flowId === f.id) {
+                  const next = flows.find((x) => x.flowId !== f.id && getFlow(x.flowId))?.flowId ?? "flow-1";
+                  patch({ flowId: next });
+                }
               }}
             />
           )}

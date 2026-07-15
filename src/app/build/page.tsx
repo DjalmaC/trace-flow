@@ -76,14 +76,21 @@ export default function BuildPage() {
           registerCustomFlows(c.customFlows);
           hydratedRef.current = true;
           setEditingCode(stash.code);
+          // Older links can carry a dangling flowId (an abandoned draft that
+          // never shipped) — open the builder on the first flow that resolves.
+          const flowIdR =
+            (getFlow(c.flowId) ? c.flowId : undefined) ??
+            c.variants?.find((v) => !!getFlow(v.flowId))?.flowId ??
+            c.flowId;
           setConfig({
-            ...defaultConfig(c.flowId, c.clientName),
+            ...defaultConfig(flowIdR, c.clientName),
             ...c,
+            flowId: flowIdR,
             variants: undefined,
             customFlows: undefined,
             pricing: undefined,
           } as FlowConfig);
-          setProposalFlows(c.variants ?? [{ flowId: c.flowId, name: getFlow(c.flowId)?.title ?? "Flow" }]);
+          setProposalFlows(c.variants ?? [{ flowId: flowIdR, name: getFlow(flowIdR)?.title ?? "Flow" }]);
           setPricing(normalizePricing(c.pricing, c.proposalType ?? "standard"));
           setSandbox(!!c.sandbox);
           setSetup({
