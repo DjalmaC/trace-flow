@@ -335,12 +335,12 @@ export function MachineryStage({
           the flow in this mode. ── */}
       {frame && (
         <g>
-          <rect x={frame.x} y={frame.y} width={frame.w} height={frame.h} rx={22} fill={frameColor} fillOpacity={0.028} stroke={frameColor} strokeOpacity={0.4} strokeWidth={1.2} />
+          <rect x={frame.x} y={frame.y} width={frame.w} height={frame.h} rx={18} fill={frameColor} fillOpacity={0.028} stroke={frameColor} strokeOpacity={0.4} strokeWidth={1.2} />
           {(() => {
             const hasLogo = !!config.clientLogoUrl;
             const chipW = hasLogo ? 148 : Math.max(96, config.clientName.length * 8.5 + 36);
             const chipH = 30;
-            const chipX = frame.x + 28;
+            const chipX = frame.x + 22;
             const chipY = frame.y - chipH / 2;
             return (
               <g>
@@ -363,7 +363,7 @@ export function MachineryStage({
               </g>
             );
           })()}
-          <text x={frame.x + frame.w / 2} y={frame.y + frame.h - 17} textAnchor="middle" fontSize={12} fill={C.muted} data-platform-caption>
+          <text x={frame.x + frame.w / 2} y={frame.y + frame.h + 26} textAnchor="middle" fontSize={12} fill={C.muted} data-platform-caption>
             {frameCaption}
           </text>
         </g>

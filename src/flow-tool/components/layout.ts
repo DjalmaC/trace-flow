@@ -231,6 +231,9 @@ function applyNodeOrder(flow: Flow, config: FlowConfig): Flow {
 
 export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?: boolean } = {}): FlowLayout {
   flow = applyNodeOrder(flow, config);
+  // Technology-provider framing: the client wraps the flow, so no box inside
+  // it carries their name or logo (and the headline pills stay generic).
+  const platform = isPlatformFlow(config, flow.id);
   const reverse = config.direction === "disbursement";
   const engine = detectEngine(flow);
   const collapsed = !!opts.collapsed && !!engine;
@@ -431,6 +434,23 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
   });
   const byId = new Map(nodes.map((n) => [n.id, n]));
 
+  // The technology-provider frame hugs the payment flow ITSELF — the boxes
+  // and rail — inside the machinery container, clear of the lane labels.
+  const FRAME_PAD = 30;
+  const platformFrame = platform && nodes.length
+    ? (() => {
+        const minX = Math.min(...nodes.map((n) => n.x)) - FRAME_PAD;
+        const maxX = Math.max(...nodes.map((n) => n.x + n.w)) + FRAME_PAD;
+        const minY = Math.min(...nodes.map((n) => n.y)) - FRAME_PAD;
+        const maxY = Math.max(...nodes.map((n) => n.y + n.h)) + FRAME_PAD;
+        return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+      })()
+    : undefined;
+  // Stage bounds: the container, stretched only if the frame's chip/caption
+  // need room (branch rows below can push the caption past the container).
+  const stageYv = platformFrame ? Math.min(contY, platformFrame.y - 26) : contY;
+  const stageHv = (platformFrame ? Math.max(contY + contH, platformFrame.y + platformFrame.h + 46) : contY + contH) - stageYv;
+
   // ── divider between the Brazil lane and the Abroad lane ──
   // Sit it in the widest horizontal gap between two adjacent nodes of different
   // lanes, so it lands on the real border regardless of which lane is drawn on
@@ -563,9 +583,6 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
   // the client-kind headline endpoint (prefer A). Other client-kind nodes (a
   // second customer) render their own label until two-logo input lands in v2.
   const aIsPrimary = aMach.kind === "client" || bMach.kind !== "client";
-  // Technology-provider framing: the client wraps the flow, so no box inside
-  // it carries their name or logo (and the headline pills stay generic).
-  const platform = isPlatformFlow(config, flow.id);
   // When a reorder moved the client box off its headline slot, the logo travels
   // with it — otherwise the primary stays a headline endpoint, as always.
   const reordered = flow.nodes.some((n) => n.srcId && n.srcId !== n.id);
@@ -615,9 +632,9 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
     abroadLabel: config.laneLabels?.[flow.id]?.abroad?.trim() || "Abroad",
     contY,
     contH,
-    platformFrame: platform ? { x: 6, y: contY - 42, w: width - 12, h: contH + 42 + 44 } : undefined,
-    stageY: platform ? contY - 42 - 16 : contY,
-    stageH: platform ? contH + 42 + 44 + 16 : contH,
+    platformFrame,
+    stageY: stageYv,
+    stageH: stageHv,
     reverse,
     primaryClientId: primaryClientMach?.id,
     engine: engine ?? undefined,
