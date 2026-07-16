@@ -118,6 +118,7 @@ export default function BuildPage() {
         clientRep: s.companyRep ?? c.clientRep,
         clientLogoUrl: s.companyLogoUrl ?? c.clientLogoUrl,
         clientLogoPlate: s.companyLogoPlate ?? c.clientLogoPlate,
+        brandColor: s.brandColor ?? c.brandColor,
       }));
     }
     const params = new URLSearchParams(window.location.search);

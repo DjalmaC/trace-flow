@@ -328,7 +328,7 @@ export function SharedFlowView({ code }: { code: string }) {
                     </div>
                     <div className="mt-2.5 flex flex-wrap items-center gap-2">
                       <SegToggle value={view} onChange={setView} options={[{ value: "flow", label: "Flow" }, { value: "pricing", label: "Pricing" }]} />
-                      {view === "flow" && (
+                      {view === "flow" && !config.hideDirectionToggle && (
                         <SegToggle value={direction} onChange={setDirection} options={[{ value: "collection", label: "Pay-in" }, { value: "disbursement", label: "Pay-out" }]} />
                       )}
                       {view === "flow" && hasVariants && (
@@ -343,7 +343,7 @@ export function SharedFlowView({ code }: { code: string }) {
                 pricingEl
               ) : (
                 <>
-                  <FlowExperience config={fxConfig} presentation onDirectionChange={setDirection} />
+                  <FlowExperience config={fxConfig} presentation onDirectionChange={config.hideDirectionToggle ? undefined : setDirection} />
                   <div className="flex flex-col gap-2 px-4 pb-10 pt-1">
                     <button
                       onClick={onProposal}
@@ -392,11 +392,13 @@ export function SharedFlowView({ code }: { code: string }) {
                             exit={{ opacity: 0, x: 6 }}
                             transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
                           >
-                            <SegToggle
-                              value={direction}
-                              onChange={setDirection}
-                              options={[{ value: "collection", label: "Pay-in" }, { value: "disbursement", label: "Pay-out" }]}
-                            />
+                            {!config.hideDirectionToggle && (
+                              <SegToggle
+                                value={direction}
+                                onChange={setDirection}
+                                options={[{ value: "collection", label: "Pay-in" }, { value: "disbursement", label: "Pay-out" }]}
+                              />
+                            )}
                           </motion.div>
                         )}
                       </AnimatePresence>

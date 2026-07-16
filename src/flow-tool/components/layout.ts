@@ -446,10 +446,21 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
         return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
       })()
     : undefined;
+  // The lane labels (contY + 56) must sit ABOVE the platform frame — branch
+  // rows can push the frame's top past them, which would trap "Brazil" and
+  // "Abroad" inside the client's brand boundary. Grow the container upward
+  // until the labels clear the frame.
+  let contYv = contY;
+  let contHv = contH;
+  if (platformFrame && contYv + 56 > platformFrame.y - 16) {
+    const newTop = platformFrame.y - 72;
+    contHv += contYv - newTop;
+    contYv = newTop;
+  }
   // Stage bounds: the container, stretched only if the frame's chip/caption
   // need room (branch rows below can push the caption past the container).
-  const stageYv = platformFrame ? Math.min(contY, platformFrame.y - 26) : contY;
-  const stageHv = (platformFrame ? Math.max(contY + contH, platformFrame.y + platformFrame.h + 46) : contY + contH) - stageYv;
+  const stageYv = platformFrame ? Math.min(contYv, platformFrame.y - 26) : contYv;
+  const stageHv = (platformFrame ? Math.max(contYv + contHv, platformFrame.y + platformFrame.h + 46) : contYv + contHv) - stageYv;
 
   // ── divider between the Brazil lane and the Abroad lane ──
   // Sit it in the widest horizontal gap between two adjacent nodes of different
@@ -630,8 +641,8 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
     abroadLabelX,
     brazilLabel: config.laneLabels?.[flow.id]?.brazil?.trim() || "Brazil",
     abroadLabel: config.laneLabels?.[flow.id]?.abroad?.trim() || "Abroad",
-    contY,
-    contH,
+    contY: contYv,
+    contH: contHv,
     platformFrame,
     stageY: stageYv,
     stageH: stageHv,

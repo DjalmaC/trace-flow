@@ -2,7 +2,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { ProposalSetup, ProposalType, TraceRep } from "@/flow-tool/data/schema";
-import { normalizeLogo } from "@/flow-tool/lib/logo";
+import { dominantColor, normalizeLogo } from "@/flow-tool/lib/logo";
 import { LogoDrop } from "@/components/LogoDrop";
 
 // Logo treatment for the dark canvas: Auto (decide), White/Mint (force recolor
@@ -41,6 +41,7 @@ export default function NewProposalPage() {
   const [company, setCompany] = useState("");
   const [companyRep, setCompanyRep] = useState("");
   const [origLogo, setOrigLogo] = useState<string>();
+  const [brandColor, setBrandColor] = useState<string | undefined>();
   const [logoUrl, setLogoUrl] = useState<string | undefined>();
   const [logoPlate, setLogoPlate] = useState<"light" | "none">("none");
   const [treatment, setTreatment] = useState<Treatment>("auto");
@@ -66,6 +67,8 @@ export default function NewProposalPage() {
 
   async function onLogoData(raw: string) {
     setOrigLogo(raw);
+    const brand = await dominantColor(raw).catch(() => null);
+    setBrandColor(brand ?? undefined);
     await applyTreatment("auto", raw); // cut bg + auto-decide on insert
   }
 
@@ -78,6 +81,8 @@ export default function NewProposalPage() {
       companyRep: companyRep.trim() || undefined,
       companyLogoUrl: logoUrl,
       companyLogoPlate: logoPlate,
+      companyLogoOriginal: origLogo,
+      brandColor,
     };
     saveSetup(setup);
     router.push("/build");

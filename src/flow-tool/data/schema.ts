@@ -391,6 +391,10 @@ export interface ProposalSetup {
   companyRep?: string;
   companyLogoUrl?: string;
   companyLogoPlate?: "light" | "none";
+  /** The untouched upload, so the builder can re-run logo treatments. */
+  companyLogoOriginal?: string;
+  /** Dominant logo color (platform frame default), extracted at upload. */
+  brandColor?: string;
 }
 
 /** Produced by intake OR the manual picker; drives <FlowExperience>. */
@@ -435,6 +439,9 @@ export interface FlowConfig {
   platform?: PlatformFraming;
   /** Dominant color extracted from the uploaded logo (frame default). */
   brandColor?: string;
+  /** Hide the Pay-in / Pay-out switch on the client link — the flow presents
+   *  only the stored direction. */
+  hideDirectionToggle?: boolean;
 }
 
 export interface PlatformFraming {

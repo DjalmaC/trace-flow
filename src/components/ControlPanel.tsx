@@ -323,7 +323,9 @@ export function ControlPanel({
   // Re-run the normalizer on the ORIGINAL upload with the chosen treatment, so
   // switching White/Mint/Card is reversible and never compounds.
   const pendingBrandColor = useRef<string | null>(null);
-  async function applyTreatment(t: LogoTreatment, base = origLogo) {
+  // The original upload travels from /new (setup) so treatments stay editable
+  // in the builder; worst case we re-treat the processed logo itself.
+  async function applyTreatment(t: LogoTreatment, base = origLogo ?? setup?.companyLogoOriginal ?? config.clientLogoUrl) {
     if (!base) return;
     setTreatment(t);
     const r = await normalizeLogo(base, { mark: t === "card" ? "keep" : t });
@@ -655,6 +657,22 @@ export function ControlPanel({
                     ]}
                     onChange={(d) => patch({ direction: d })}
                   />
+                  <div className="mt-2 flex items-center justify-between rounded-[9px] border border-hairline-control bg-surface-input px-3 py-2">
+                    <span className="text-[11px] text-muted">Client can flip Pay-in / Pay-out</span>
+                    <button
+                      role="switch"
+                      aria-checked={!config.hideDirectionToggle}
+                      aria-label="Client can flip Pay-in / Pay-out"
+                      onClick={() => patch({ hideDirectionToggle: config.hideDirectionToggle ? undefined : true })}
+                      className="relative h-[18px] w-[32px] shrink-0 rounded-full transition duration-150 ease-ds"
+                      style={{ background: config.hideDirectionToggle ? "#2a332e" : "#00f2b1" }}
+                    >
+                      <span
+                        className="absolute top-[2px] h-[14px] w-[14px] rounded-full bg-white transition-all duration-150 ease-ds"
+                        style={{ left: config.hideDirectionToggle ? 2 : 16 }}
+                      />
+                    </button>
+                  </div>
                 </Field>
 
                 {usesStablecoin(config.flowId) && (
