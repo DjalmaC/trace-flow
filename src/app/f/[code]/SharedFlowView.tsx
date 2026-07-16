@@ -198,7 +198,10 @@ export function SharedFlowView({ code }: { code: string }) {
     // getFlow resolve them everywhere (deck render + PDF export) exactly like
     // library flows.
     registerCustomFlows(loaded.customFlows);
-    setDirection(loaded.direction);
+    // single-direction offers lock the link to that direction
+    setDirection(
+      loaded.clientDirections && loaded.clientDirections !== "both" ? loaded.clientDirections : loaded.direction,
+    );
     // Older links can carry a dangling flowId (an abandoned draft that never
     // shipped inside customFlows). Show the first flow that actually resolves
     // rather than a blank "Unknown flow" page.
@@ -328,7 +331,7 @@ export function SharedFlowView({ code }: { code: string }) {
                     </div>
                     <div className="mt-2.5 flex flex-wrap items-center gap-2">
                       <SegToggle value={view} onChange={setView} options={[{ value: "flow", label: "Flow" }, { value: "pricing", label: "Pricing" }]} />
-                      {view === "flow" && !config.hideDirectionToggle && (
+                      {view === "flow" && !config.hideDirectionToggle && (config.clientDirections ?? "both") === "both" && (
                         <SegToggle value={direction} onChange={setDirection} options={[{ value: "collection", label: "Pay-in" }, { value: "disbursement", label: "Pay-out" }]} />
                       )}
                       {view === "flow" && hasVariants && (
@@ -343,7 +346,7 @@ export function SharedFlowView({ code }: { code: string }) {
                 pricingEl
               ) : (
                 <>
-                  <FlowExperience config={fxConfig} presentation onDirectionChange={config.hideDirectionToggle ? undefined : setDirection} />
+                  <FlowExperience config={fxConfig} presentation onDirectionChange={config.hideDirectionToggle || (config.clientDirections ?? "both") !== "both" ? undefined : setDirection} />
                   <div className="flex flex-col gap-2 px-4 pb-10 pt-1">
                     <button
                       onClick={onProposal}
@@ -392,7 +395,7 @@ export function SharedFlowView({ code }: { code: string }) {
                             exit={{ opacity: 0, x: 6 }}
                             transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
                           >
-                            {!config.hideDirectionToggle && (
+                            {!config.hideDirectionToggle && (config.clientDirections ?? "both") === "both" && (
                               <SegToggle
                                 value={direction}
                                 onChange={setDirection}

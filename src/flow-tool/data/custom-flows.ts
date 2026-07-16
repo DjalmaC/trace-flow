@@ -177,9 +177,13 @@ export function normalizeTailored(flow: Flow): Flow {
     if (order.length === flow.nodes.length) nodes = order;
   }
   if (!nodes) nodes = [...flow.nodes].sort(byX);
+  const nodePos = new Map(nodes.map((n, i) => [n.id, i]));
   const legs = flow.legs
     .filter((l) => byId.has(l.from) && byId.has(l.to) && l.from !== l.to)
-    .map((l) => ({ ...l, crosses: byId.get(l.from)!.lane !== byId.get(l.to)!.lane }));
+    .map((l) => ({ ...l, crosses: byId.get(l.from)!.lane !== byId.get(l.to)!.lane }))
+    // chain order, not draw order — consumers (the relay, settlement
+    // substitution, headline derivation) read legs sequentially
+    .sort((a, b) => (nodePos.get(a.from)! - nodePos.get(b.from)!) || (nodePos.get(a.to)! - nodePos.get(b.to)!));
   const next: Flow = { ...flow, nodes, legs };
   const headline = deriveHeadline(next);
   return {

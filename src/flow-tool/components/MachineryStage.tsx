@@ -65,7 +65,10 @@ function buildTimeline(layout: FlowLayout, config: FlowConfig, byId: Map<string,
   const reverse = config.direction === "disbursement";
   // The relay travels the trunk only; tributary legs (a second payer merging
   // in) show a resting token instead — the same vocabulary as reduced motion.
-  const trunkLegs = layout.legs.filter((l) => !l.offTrunk);
+  // Trunk legs are sequenced by GEOMETRY (left→right), not authoring order —
+  // a tailored flow keeps its legs in the order the rep drew them, and a
+  // chain drawn out of order would otherwise send the token backwards.
+  const trunkLegs = layout.legs.filter((l) => !l.offTrunk).sort((a, b) => Math.min(a.x1, a.x2) - Math.min(b.x1, b.x2));
   const seq = reverse ? trunkLegs.slice().reverse() : trunkLegs;
   const D = (c: Currency) => displayCurrency(c, config);
   const phases: Phase[] = [];

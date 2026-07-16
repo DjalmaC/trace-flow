@@ -442,6 +442,10 @@ export interface FlowConfig {
   /** Hide the Pay-in / Pay-out switch on the client link — the flow presents
    *  only the stored direction. */
   hideDirectionToggle?: boolean;
+  /** Which directions the proposal offers the client. "collection" /
+   *  "disbursement" lock the link to that single direction and remove the
+   *  switch entirely (the other function isn't part of the offer). */
+  clientDirections?: "both" | "collection" | "disbursement";
 }
 
 export interface PlatformFraming {
@@ -486,18 +490,29 @@ export function applySettlement(flow: Flow, i: number): Flow {
   const opt = choices[i];
   if (!opt || i === 0) return flow;
   const legIdx = flow.legs.findIndex((l) => l.convertsTo && l.settlements?.length);
-  const primary = flow.legs[legIdx].convertsTo!;
-  let past = false;
-  let carry = false;
+  const convLeg = flow.legs[legIdx];
+  const primary = convLeg.convertsTo!;
+  // Everything the converted value flows through — legs reachable from the
+  // converting leg's destination while the currency stays continuous. Graph
+  // reachability, not array order: a tailored flow's legs may be stored in
+  // the order they were drawn.
+  const downstream = new Set<number>();
+  const frontier = [convLeg.to];
+  const visited = new Set<string>();
+  while (frontier.length) {
+    const at = frontier.pop()!;
+    if (visited.has(at)) continue;
+    visited.add(at);
+    flow.legs.forEach((l, li) => {
+      if (l.from === at && l.carries === primary && !downstream.has(li)) {
+        downstream.add(li);
+        frontier.push(l.to);
+      }
+    });
+  }
   const legs = flow.legs.map((l, li) => {
-    if (li === legIdx) {
-      past = true;
-      carry = true;
-      return { ...l, convertsTo: opt.out };
-    }
-    if (!past || !carry) return l;
-    if (l.carries === primary) return { ...l, carries: opt.out };
-    carry = false; // continuity ended — stop substituting
+    if (li === legIdx) return { ...l, convertsTo: opt.out };
+    if (downstream.has(li)) return { ...l, carries: opt.out };
     return l;
   });
   const nodes = opt.nodeLabels
