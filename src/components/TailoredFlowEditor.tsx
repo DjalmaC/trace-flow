@@ -887,6 +887,73 @@ export function TailoredFlowEditor({
                           </div>
                         );
                       })}
+                      {(selLeg.funding ?? []).map((opt, oi) => {
+                        const fi = flow.nodes.findIndex((n) => n.id === selLeg.from);
+                        const upstream = fi >= 0 ? flow.nodes.slice(0, fi + 1) : [];
+                        const patchFund = (pp: Partial<SettlementOption>) => {
+                          const next = (selLeg.funding ?? []).map((o, i) => (i === oi ? { ...o, ...pp } : o));
+                          patchLeg(selLegIndex, { funding: next });
+                        };
+                        return (
+                          <div key={`fund-${oi}`} className="mt-1.5 w-full rounded-lg p-2" style={{ border: `1px dashed ${P.mintLine}`, background: "#fff" }}>
+                            <div className="flex items-center justify-between">
+                              <span className="font-mono text-[10px]" style={{ color: P.mintInk }}>
+                                or starts as →
+                              </span>
+                              <button
+                                aria-label="Remove funding option"
+                                onClick={() => {
+                                  const next = (selLeg.funding ?? []).filter((_, i) => i !== oi);
+                                  patchLeg(selLegIndex, { funding: next.length ? next : undefined });
+                                }}
+                                className="px-1 text-[12px] leading-none transition hover:opacity-70"
+                                style={{ color: P.sub }}
+                              >
+                                ×
+                              </button>
+                            </div>
+                            <div className="mt-1 flex flex-wrap items-center gap-1">
+                              {CURRENCIES.filter((c) => c !== selLeg.carries).map((c) => (
+                                <button
+                                  key={c}
+                                  onClick={() => patchFund({ out: c })}
+                                  className="rounded-full px-1.5 py-0.5 font-mono text-[10px] transition"
+                                  style={
+                                    opt.out === c
+                                      ? { border: `1.4px solid ${P.mintDeep}`, color: P.mintInk, background: "#fff" }
+                                      : { border: `1px solid ${P.mintLine}`, color: P.sub }
+                                  }
+                                >
+                                  {c}
+                                </button>
+                              ))}
+                              <CustomCurrencyChip value={opt.out} onSet={(v) => patchFund({ out: v as Currency })} />
+                            </div>
+                            <input
+                              value={opt.label ?? ""}
+                              onChange={(e) => patchFund({ label: e.target.value || undefined })}
+                              placeholder={`Toggle label (default: ${opt.out})`}
+                              className="mt-1.5 w-full rounded-md px-2 py-1 text-[11px] outline-none"
+                              style={{ border: `1px solid ${P.line}`, color: P.ink }}
+                            />
+                            {upstream.map((n) => (
+                              <input
+                                key={n.id}
+                                value={opt.nodeLabels?.[n.id] ?? ""}
+                                onChange={(e) => {
+                                  const mm = { ...(opt.nodeLabels ?? {}) };
+                                  if (e.target.value) mm[n.id] = e.target.value;
+                                  else delete mm[n.id];
+                                  patchFund({ nodeLabels: Object.keys(mm).length ? mm : undefined });
+                                }}
+                                placeholder={`“${n.label}” in this option (optional)`}
+                                className="mt-1 w-full rounded-md px-2 py-1 text-[11px] outline-none"
+                                style={{ border: `1px solid ${P.line}`, color: P.ink }}
+                              />
+                            ))}
+                          </div>
+                        );
+                      })}
                       {!flow.legs.some((l, i) => i !== selLegIndex && l.settlements?.length) && (
                         <button
                           onClick={() => {
@@ -897,6 +964,18 @@ export function TailoredFlowEditor({
                           style={{ border: `1px dashed ${P.mintLine}`, color: P.mintInk, background: "#fff" }}
                         >
                           + Add settlement option
+                        </button>
+                      )}
+                      {!flow.legs.some((l, i) => i !== selLegIndex && l.funding?.length) && (
+                        <button
+                          onClick={() => {
+                            const firstAlt = CURRENCIES.find((c) => c !== selLeg.carries && c !== selLeg.convertsTo)!;
+                            patchLeg(selLegIndex, { funding: [...(selLeg.funding ?? []), { out: firstAlt }] });
+                          }}
+                          className="mt-1.5 w-fit rounded-full px-2 py-0.5 text-[10px] font-medium transition"
+                          style={{ border: `1px dashed ${P.mintLine}`, color: P.mintInk, background: "#fff" }}
+                        >
+                          + Add funding option
                         </button>
                       )}
                     </div>

@@ -81,6 +81,10 @@ export interface Leg {
   convertsTo?: Currency;
   /** Additional settlement options this conversion offers (see above). */
   settlements?: SettlementOption[];
+  /** Additional FUNDING options: currencies the value can arrive as, before
+   *  the conversion (the primary is the leg's own carries). Same shape and
+   *  behavior as settlements, on the input side. */
+  funding?: SettlementOption[];
   /** Does this leg cross the Brazil | Abroad divide? (the conversion usually sits here) */
   crosses?: boolean;
 }
@@ -483,48 +487,84 @@ export function settlementChoices(flow: Pick<Flow, "legs">): SettlementOption[] 
   return [{ out: leg.convertsTo! }, ...leg.settlements!];
 }
 
-/** The flow as settlement option `i` tells it: the converting leg delivers
- *  that option's currency, downstream legs carry it onward (currency
- *  continuity), the headline mirrors it, and the option's box relabels apply.
- *  i = 0 (or no options) returns the flow unchanged. */
-export function applySettlement(flow: Flow, i: number): Flow {
-  const choices = settlementChoices(flow);
-  const opt = choices[i];
-  if (!opt || i === 0) return flow;
-  const legIdx = flow.legs.findIndex((l) => l.convertsTo && l.settlements?.length);
-  const convLeg = flow.legs[legIdx];
-  const primary = convLeg.convertsTo!;
-  // The typed name IS the currency the client sees: a label that differs from
-  // the underlying code becomes the displayed currency.
-  const shown = (opt.label?.trim() && opt.label.trim() !== opt.out ? opt.label.trim() : opt.out) as Currency;
-  // Everything the converted value flows through — legs reachable from the
-  // converting leg's destination while the currency stays continuous. Graph
-  // reachability, not array order: a tailored flow's legs may be stored in
-  // the order they were drawn.
-  const downstream = new Set<number>();
-  const frontier = [convLeg.to];
-  const visited = new Set<string>();
-  while (frontier.length) {
-    const at = frontier.pop()!;
-    if (visited.has(at)) continue;
-    visited.add(at);
-    flow.legs.forEach((l, li) => {
-      if (l.from === at && l.carries === primary && !downstream.has(li)) {
-        downstream.add(li);
-        frontier.push(l.to);
-      }
-    });
+/** The funding choices (input side): the converting leg's own carries first,
+ *  then its extra arrival currencies. Empty when the flow has none. */
+export function fundingChoices(flow: Pick<Flow, "legs">): SettlementOption[] {
+  const leg = flow.legs.find((l) => l.convertsTo && l.funding?.length);
+  if (!leg) return [];
+  return [{ out: leg.carries }, ...leg.funding!];
+}
+
+/** The display name an option puts on the money: the typed label wins. */
+function optionShown(opt: SettlementOption): Currency {
+  return (opt.label?.trim() && opt.label.trim() !== opt.out ? opt.label.trim() : opt.out) as Currency;
+}
+
+/** The flow as settlement option `i` (output side) and funding option `f`
+ *  (input side) tell it: the converting leg arrives as the funding option's
+ *  currency and delivers the settlement option's, with currency continuity
+ *  substituted upstream and downstream (graph reachability, not array order —
+ *  a tailored flow's legs may be stored in the order they were drawn). Box
+ *  relabels from both options apply. (0, 0) returns the flow unchanged. */
+export function applySettlement(flow: Flow, i: number, f = 0): Flow {
+  const outOpt = i > 0 ? settlementChoices(flow)[i] : undefined;
+  const inOpt = f > 0 ? fundingChoices(flow)[f] : undefined;
+  if (!outOpt && !inOpt) return flow;
+
+  const subs = new Map<number, Currency>(); // leg index -> new carries
+  let legs = flow.legs;
+  let headline = flow.headline;
+
+  if (outOpt) {
+    const legIdx = flow.legs.findIndex((l) => l.convertsTo && l.settlements?.length);
+    const convLeg = flow.legs[legIdx];
+    const primary = convLeg.convertsTo!;
+    const shown = optionShown(outOpt);
+    const frontier = [convLeg.to];
+    const visited = new Set<string>();
+    while (frontier.length) {
+      const at = frontier.pop()!;
+      if (visited.has(at)) continue;
+      visited.add(at);
+      flow.legs.forEach((l, li) => {
+        if (l.from === at && l.carries === primary && !subs.has(li)) {
+          subs.set(li, shown);
+          frontier.push(l.to);
+        }
+      });
+    }
+    legs = legs.map((l, li) => (li === legIdx ? { ...l, convertsTo: shown } : subs.has(li) ? { ...l, carries: subs.get(li)! } : l));
+    if (headline.convertsTo === primary) headline = { ...headline, convertsTo: shown };
   }
-  const legs = flow.legs.map((l, li) => {
-    if (li === legIdx) return { ...l, convertsTo: shown };
-    if (downstream.has(li)) return { ...l, carries: shown };
-    return l;
-  });
-  const nodes = opt.nodeLabels
-    ? flow.nodes.map((n) => (opt.nodeLabels![n.id]?.trim() ? { ...n, label: opt.nodeLabels![n.id].trim() } : n))
+
+  if (inOpt) {
+    const legIdx = flow.legs.findIndex((l) => l.convertsTo && l.funding?.length);
+    const convLeg = flow.legs[legIdx];
+    const primaryIn = convLeg.carries;
+    const shownIn = optionShown(inOpt);
+    // upstream continuity: every leg the arriving value rode INTO the hub
+    const upSubs = new Set<number>();
+    const frontier = [convLeg.from];
+    const visited = new Set<string>();
+    while (frontier.length) {
+      const at = frontier.pop()!;
+      if (visited.has(at)) continue;
+      visited.add(at);
+      flow.legs.forEach((l, li) => {
+        if (l.to === at && l.carries === primaryIn && !upSubs.has(li)) {
+          upSubs.add(li);
+          frontier.push(l.from);
+        }
+      });
+    }
+    legs = legs.map((l, li) => (li === legIdx ? { ...l, carries: shownIn } : upSubs.has(li) ? { ...l, carries: shownIn } : l));
+    if (headline.carries === primaryIn) headline = { ...headline, carries: shownIn };
+  }
+
+  const relabels = { ...(inOpt?.nodeLabels ?? {}), ...(outOpt?.nodeLabels ?? {}) };
+  const nodes = Object.keys(relabels).length
+    ? flow.nodes.map((n) => (relabels[n.id]?.trim() ? { ...n, label: relabels[n.id].trim() } : n))
     : flow.nodes;
-  const headline =
-    flow.headline.convertsTo === primary ? { ...flow.headline, convertsTo: shown } : flow.headline;
   return { ...flow, legs, nodes, headline };
 }
 

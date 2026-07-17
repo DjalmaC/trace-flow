@@ -23,7 +23,7 @@ export function useIsMobile() {
   return mobile;
 }
 import type { FlowConfig, SettlementOption } from "../data/schema";
-import { applySettlement, clientFlowName, isPlatformFlow, settlementChoices } from "../data/schema";
+import { applySettlement, clientFlowName, fundingChoices, isPlatformFlow, settlementChoices } from "../data/schema";
 import { getFlow } from "../data";
 import { computeLayout, CONT_Y, CONT_H } from "./layout";
 import { Defs, displayCurrency } from "./FlowSvg";
@@ -66,36 +66,62 @@ export function FlowExperience({
   // passes — the moving control narrates the currency change; any manual
   // click takes over for the session.
   const choices = useMemo(() => (baseFlow ? settlementChoices(baseFlow) : []), [baseFlow]);
+  const fundChoices = useMemo(() => (baseFlow ? fundingChoices(baseFlow) : []), [baseFlow]);
   const [settlementIdx, setSettlementIdx] = useState(0);
+  const [fundingIdx, setFundingIdx] = useState(0);
   const manualSettle = useRef(false);
   const passCount = useRef(0);
   useEffect(() => {
     setSettlementIdx(0);
+    setFundingIdx(0);
     passCount.current = 0; // manual control, once taken, stays for the session
-    // QA hook: ?settle=<i> pins an option deterministically
-    const v = new URLSearchParams(window.location.search).get("settle");
+    // QA hooks: ?settle=<i> / ?fund=<i> pin options deterministically
+    const q = new URLSearchParams(window.location.search);
+    const v = q.get("settle");
     if (v != null) {
       setSettlementIdx(Math.max(0, Number(v) || 0));
+      manualSettle.current = true;
+    }
+    const w = q.get("fund");
+    if (w != null) {
+      setFundingIdx(Math.max(0, Number(w) || 0));
       manualSettle.current = true;
     }
   }, [config.flowId]);
   const flow = useMemo(
     () =>
-      baseFlow && choices.length > 1
-        ? applySettlement(baseFlow, Math.min(settlementIdx, choices.length - 1))
+      baseFlow && (choices.length > 1 || fundChoices.length > 1)
+        ? applySettlement(
+            baseFlow,
+            Math.min(settlementIdx, Math.max(0, choices.length - 1)),
+            Math.min(fundingIdx, Math.max(0, fundChoices.length - 1)),
+          )
         : baseFlow,
-    [baseFlow, choices, settlementIdx],
+    [baseFlow, choices, fundChoices, settlementIdx, fundingIdx],
   );
   const pickSettlement = (i: number) => {
     manualSettle.current = true;
     setSettlementIdx(i);
   };
+  const pickFunding = (i: number) => {
+    manualSettle.current = true;
+    setFundingIdx(i);
+  };
   const onPassComplete = () => {
-    if (manualSettle.current || choices.length < 2) return;
+    if (manualSettle.current || (choices.length < 2 && fundChoices.length < 2)) return;
     passCount.current += 1;
     if (passCount.current >= 2) {
       passCount.current = 0;
-      setSettlementIdx((i) => (i + 1) % choices.length);
+      // odometer: cycle the settlement side; each wrap advances the funding side
+      if (choices.length > 1) {
+        setSettlementIdx((i) => {
+          const n = (i + 1) % choices.length;
+          if (n === 0 && fundChoices.length > 1) setFundingIdx((j) => (j + 1) % fundChoices.length);
+          return n;
+        });
+      } else {
+        setFundingIdx((j) => (j + 1) % fundChoices.length);
+      }
     }
   };
 
@@ -183,14 +209,26 @@ export function FlowExperience({
     </svg>
   );
 
-  const settlementToggle = choices.length > 1 && (
-    <div className="relative z-30 mb-2.5 flex w-full max-w-[1500px] justify-end pr-1">
-      <SettlementToggle
-        choices={choices}
-        active={Math.min(settlementIdx, choices.length - 1)}
-        onChange={pickSettlement}
-        config={config}
-      />
+  const settlementToggle = (choices.length > 1 || fundChoices.length > 1) && (
+    <div className="relative z-30 mb-2.5 flex w-full max-w-[1500px] flex-wrap justify-end gap-2 pr-1">
+      {fundChoices.length > 1 && (
+        <SettlementToggle
+          caption="Starts in"
+          choices={fundChoices}
+          active={Math.min(fundingIdx, fundChoices.length - 1)}
+          onChange={pickFunding}
+          config={config}
+        />
+      )}
+      {choices.length > 1 && (
+        <SettlementToggle
+          caption="Settle in"
+          choices={choices}
+          active={Math.min(settlementIdx, choices.length - 1)}
+          onChange={pickSettlement}
+          config={config}
+        />
+      )}
     </div>
   );
 
@@ -263,14 +301,14 @@ export function FlowExperience({
           <DirectionToggle direction={config.direction} onChange={onDirectionChange} fixed />
         )}
         {SurfaceHeading}
-        {choices.length > 1 && (
-          <div className="mb-3 flex w-full justify-center">
-            <SettlementToggle
-              choices={choices}
-              active={Math.min(settlementIdx, choices.length - 1)}
-              onChange={pickSettlement}
-              config={config}
-            />
+        {(choices.length > 1 || fundChoices.length > 1) && (
+          <div className="mb-3 flex w-full flex-wrap justify-center gap-2">
+            {fundChoices.length > 1 && (
+              <SettlementToggle caption="Starts in" choices={fundChoices} active={Math.min(fundingIdx, fundChoices.length - 1)} onChange={pickFunding} config={config} />
+            )}
+            {choices.length > 1 && (
+              <SettlementToggle caption="Settle in" choices={choices} active={Math.min(settlementIdx, choices.length - 1)} onChange={pickSettlement} config={config} />
+            )}
           </div>
         )}
         {isPlatformFlow(config, config.flowId) ? (
@@ -387,11 +425,13 @@ function SettlementToggle({
   active,
   onChange,
   config,
+  caption = "Settle in",
 }: {
   choices: SettlementOption[];
   active: number;
   onChange: (i: number) => void;
   config: FlowConfig;
+  caption?: string;
 }) {
   const labelOf = (c: SettlementOption) => {
     if (c.label?.trim()) return c.label.trim();
@@ -400,7 +440,7 @@ function SettlementToggle({
   };
   return (
     <div className="pointer-events-auto flex items-center gap-0.5 rounded-[11px] border border-white/10 bg-[#0e1410]/70 p-[3px] backdrop-blur">
-      <span className="px-2 text-[10px] font-medium uppercase tracking-[0.16em] text-muted">Settle in</span>
+      <span className="px-2 text-[10px] font-medium uppercase tracking-[0.16em] text-muted">{caption}</span>
       {choices.map((c, i) => (
         <button
           key={i}

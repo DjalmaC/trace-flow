@@ -3,7 +3,7 @@ import { Defs } from "../components/FlowSvg";
 import { MachineryStage } from "../components/MachineryStage";
 import { ASSETS } from "../components/tokens";
 import { getFlow, defaultConfig } from "../data";
-import { tierText, flatRowText, settlementChoices, clientFlowName } from "../data/schema";
+import { tierText, flatRowText, settlementChoices, fundingChoices, clientFlowName } from "../data/schema";
 import { displayCurrency } from "../components/FlowSvg/Tokens";
 import type { Flow, FlowConfig, PriceCard, ProposalPricing } from "../data/schema";
 
@@ -169,10 +169,14 @@ function flowSlide(config: FlowConfig, flow: Flow, name: string, label: string, 
     return d === "USDC/USDT" ? (config.stablecoin === "both" ? "USDC/USDT" : config.stablecoin) : d;
   };
   const settleAlts = settlementChoices(flow).slice(1);
-  const convLeg = flow.legs.find((l) => l.convertsTo && l.settlements?.length);
+  const fundAlts = fundingChoices(flow).slice(1);
+  const convLeg = flow.legs.find((l) => l.convertsTo && (l.settlements?.length || l.funding?.length));
+  const optName = (o: { label?: string; out: Flow["legs"][number]["carries"] }) => (o.label?.trim() ? o.label.trim() : disp(o.out));
   const settleNote =
-    settleAlts.length && convLeg
-      ? `Also supported: ${disp(convLeg.carries)} → ${settleAlts.map((o) => (o.label?.trim() ? o.label.trim() : disp(o.out))).join(" or ")}`
+    (settleAlts.length || fundAlts.length) && convLeg
+      ? `Also supported: ${[disp(convLeg.carries), ...fundAlts.map(optName)].join(" or ")} → ${
+          settleAlts.length ? settleAlts.map(optName).join(" or ") : disp(convLeg.convertsTo!)
+        }`
       : null;
   const mw = layout.width;
   const mh = (layout.stageH ?? CONT_H) + 30;
