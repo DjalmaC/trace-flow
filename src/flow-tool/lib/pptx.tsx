@@ -172,7 +172,7 @@ function flowSlide(config: FlowConfig, flow: Flow, name: string, label: string, 
   const convLeg = flow.legs.find((l) => l.convertsTo && l.settlements?.length);
   const settleNote =
     settleAlts.length && convLeg
-      ? `Also supported: ${disp(convLeg.carries)} → ${settleAlts.map((o) => disp(o.out)).join(" or ")}`
+      ? `Also supported: ${disp(convLeg.carries)} → ${settleAlts.map((o) => (o.label?.trim() ? o.label.trim() : disp(o.out))).join(" or ")}`
       : null;
   const mw = layout.width;
   const mh = (layout.stageH ?? CONT_H) + 30;

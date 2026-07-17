@@ -62,7 +62,9 @@ export interface FlowNode {
  *  toggle when a flow offers options; the PDF shows the primary plus a short
  *  "also settles in ..." note. */
 export interface SettlementOption {
-  /** Toggle pill label; empty = the display currency. */
+  /** Toggle pill label — and, when it differs from `out`, the DISPLAY NAME of
+   *  the delivered currency: the moving pill, downstream legs and the PDF
+   *  note all read it (type "MXN" and MXN is what moves). */
   label?: string;
   out: Currency;
   /** Per-option relabeling of boxes (nodeId -> label), e.g. the beneficiary
@@ -492,6 +494,9 @@ export function applySettlement(flow: Flow, i: number): Flow {
   const legIdx = flow.legs.findIndex((l) => l.convertsTo && l.settlements?.length);
   const convLeg = flow.legs[legIdx];
   const primary = convLeg.convertsTo!;
+  // The typed name IS the currency the client sees: a label that differs from
+  // the underlying code becomes the displayed currency.
+  const shown = (opt.label?.trim() && opt.label.trim() !== opt.out ? opt.label.trim() : opt.out) as Currency;
   // Everything the converted value flows through — legs reachable from the
   // converting leg's destination while the currency stays continuous. Graph
   // reachability, not array order: a tailored flow's legs may be stored in
@@ -511,15 +516,15 @@ export function applySettlement(flow: Flow, i: number): Flow {
     });
   }
   const legs = flow.legs.map((l, li) => {
-    if (li === legIdx) return { ...l, convertsTo: opt.out };
-    if (downstream.has(li)) return { ...l, carries: opt.out };
+    if (li === legIdx) return { ...l, convertsTo: shown };
+    if (downstream.has(li)) return { ...l, carries: shown };
     return l;
   });
   const nodes = opt.nodeLabels
     ? flow.nodes.map((n) => (opt.nodeLabels![n.id]?.trim() ? { ...n, label: opt.nodeLabels![n.id].trim() } : n))
     : flow.nodes;
   const headline =
-    flow.headline.convertsTo === primary ? { ...flow.headline, convertsTo: opt.out } : flow.headline;
+    flow.headline.convertsTo === primary ? { ...flow.headline, convertsTo: shown } : flow.headline;
   return { ...flow, legs, nodes, headline };
 }
 
