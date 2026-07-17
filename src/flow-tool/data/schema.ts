@@ -81,9 +81,9 @@ export interface Leg {
   convertsTo?: Currency;
   /** Additional settlement options this conversion offers (see above). */
   settlements?: SettlementOption[];
-  /** Additional FUNDING options: currencies the value can arrive as, before
-   *  the conversion (the primary is the leg's own carries). Same shape and
-   *  behavior as settlements, on the input side. */
+  /** Alternate currencies this leg can CARRY (the primary is `carries`).
+   *  Edited in the Carries section; the deck's "Starts in" toggle switches
+   *  the whole same-currency segment this leg belongs to. */
   funding?: SettlementOption[];
   /** Does this leg cross the Brazil | Abroad divide? (the conversion usually sits here) */
   crosses?: boolean;
@@ -487,10 +487,10 @@ export function settlementChoices(flow: Pick<Flow, "legs">): SettlementOption[] 
   return [{ out: leg.convertsTo! }, ...leg.settlements!];
 }
 
-/** The funding choices (input side): the converting leg's own carries first,
- *  then its extra arrival currencies. Empty when the flow has none. */
+/** The carry choices (input side): the primary carried currency of the leg
+ *  that declares alternates, then the alternates. Empty when none. */
 export function fundingChoices(flow: Pick<Flow, "legs">): SettlementOption[] {
-  const leg = flow.legs.find((l) => l.convertsTo && l.funding?.length);
+  const leg = flow.legs.find((l) => l.funding?.length);
   if (!leg) return [];
   return [{ out: leg.carries }, ...leg.funding!];
 }
@@ -538,27 +538,42 @@ export function applySettlement(flow: Flow, i: number, f = 0): Flow {
   }
 
   if (inOpt) {
-    const legIdx = flow.legs.findIndex((l) => l.convertsTo && l.funding?.length);
-    const convLeg = flow.legs[legIdx];
-    const primaryIn = convLeg.carries;
+    const legIdx = flow.legs.findIndex((l) => l.funding?.length);
+    const declLeg = flow.legs[legIdx];
+    const primaryIn = declLeg.carries;
     const shownIn = optionShown(inOpt);
-    // upstream continuity: every leg the arriving value rode INTO the hub
-    const upSubs = new Set<number>();
-    const frontier = [convLeg.from];
+    // Substitute the whole same-currency SEGMENT this leg belongs to: walk
+    // outward over legs carrying the primary, stopping at conversions (a hub
+    // is a currency boundary). A leg that converts INTO the segment has its
+    // output substituted; a leg that converts OUT has its input substituted.
+    const inSeg = new Set<number>([legIdx]);
+    const outSubs = new Set<number>(); // legs whose convertsTo feeds the segment
+    const frontier = [declLeg.from, ...(declLeg.convertsTo ? [] : [declLeg.to])];
     const visited = new Set<string>();
     while (frontier.length) {
       const at = frontier.pop()!;
       if (visited.has(at)) continue;
       visited.add(at);
       flow.legs.forEach((l, li) => {
-        if (l.to === at && l.carries === primaryIn && !upSubs.has(li)) {
-          upSubs.add(li);
-          frontier.push(l.from);
+        if (l.from === at && l.carries === primaryIn && !inSeg.has(li)) {
+          inSeg.add(li);
+          if (!l.convertsTo) frontier.push(l.to); // a hub is a currency boundary
+        }
+        if (l.to === at) {
+          if (!l.convertsTo && l.carries === primaryIn && !inSeg.has(li)) {
+            inSeg.add(li);
+            frontier.push(l.from);
+          } else if (l.convertsTo === primaryIn && !outSubs.has(li)) {
+            outSubs.add(li); // hub delivering INTO the segment: swap its output
+          }
         }
       });
     }
-    legs = legs.map((l, li) => (li === legIdx ? { ...l, carries: shownIn } : upSubs.has(li) ? { ...l, carries: shownIn } : l));
+    legs = legs.map((l, li) =>
+      inSeg.has(li) ? { ...l, carries: shownIn } : outSubs.has(li) ? { ...l, convertsTo: shownIn } : l,
+    );
     if (headline.carries === primaryIn) headline = { ...headline, carries: shownIn };
+    if (headline.convertsTo === primaryIn) headline = { ...headline, convertsTo: shownIn };
   }
 
   const relabels = { ...(inOpt?.nodeLabels ?? {}), ...(outOpt?.nodeLabels ?? {}) };
