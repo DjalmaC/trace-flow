@@ -314,7 +314,7 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
     rep: opts.companyRep || opts.company,
     date: opts.date,
     repName: rep?.name ?? "",
-    repTitle: rep?.title ?? "",
+    repTitle: rep?.proposalTitle ?? rep?.title ?? "",
     repEmail: rep?.email ?? "",
     repPhone: rep?.phone ?? "",
     repLinkedIn: rep?.linkedin ?? "",

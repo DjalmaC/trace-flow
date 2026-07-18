@@ -159,6 +159,9 @@ export interface TraceRep {
   email?: string;
   phone?: string;
   linkedin?: string;
+  /** Title shown on GENERATED PROPOSALS (client link closing + PDF contact
+   *  overlay) when it should differ from `title` (which the login page shows). */
+  proposalTitle?: string;
   /** 0-based page index of this rep's slide in private-assets/sales-slides.pdf. */
   slidePage?: number;
 }

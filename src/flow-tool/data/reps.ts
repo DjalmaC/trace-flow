@@ -26,6 +26,7 @@ export const TRACE_REPS: TraceRep[] = [
     id: "diogo-cassinelli",
     name: "Diogo Cassinelli",
     title: "Business Development Manager",
+    proposalTitle: "Sales & Partnerships Manager",
     email: "dcassinelli@trace.finance",
     slidePage: 0,
   },

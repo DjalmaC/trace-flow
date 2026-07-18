@@ -222,7 +222,7 @@ export function ControlPanel({
     // view actually shows "your contact" (the client link has no other source).
     const rep = getRep(traceRepId);
     const salesperson = rep
-      ? { name: rep.name, title: rep.title, email: rep.email }
+      ? { name: rep.name, title: rep.proposalTitle ?? rep.title, email: rep.email }
       : undefined;
     // Tailored flows ride inside the link's config (editor state stripped),
     // so the client view and its PDF resolve them like library flows.
