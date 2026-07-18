@@ -210,15 +210,14 @@ export function FlowExperience({
     </svg>
   );
 
-  // Captions are FIXED to the flow as designed: "Starts in" is always the
-  // carries side, "Settle in" always the FX output — in both directions.
-  // Only their on-screen ORDER follows the travel: Pay-out leads with the
-  // settlement side, since that is where the money enters the frame.
+  // The pill groups keep their POSITIONS (carries side first, settlement side
+  // second); only the CAPTIONS follow the travel. A flow that starts in BRL
+  // and settles in USD on Pay-in starts in USD and settles in BRL on Pay-out.
   const dirReversed = config.direction === "disbursement";
   const fundToggleEl = fundChoices.length > 1 && (
     <SettlementToggle
       key="fund"
-      caption="Starts in"
+      caption={dirReversed ? "Settle in" : "Starts in"}
       choices={fundChoices}
       active={Math.min(fundingIdx, fundChoices.length - 1)}
       onChange={pickFunding}
@@ -228,7 +227,7 @@ export function FlowExperience({
   const settleToggleEl = choices.length > 1 && (
     <SettlementToggle
       key="settle"
-      caption="Settle in"
+      caption={dirReversed ? "Starts in" : "Settle in"}
       choices={choices}
       active={Math.min(settlementIdx, choices.length - 1)}
       onChange={pickSettlement}
@@ -237,8 +236,8 @@ export function FlowExperience({
   );
   const settlementToggle = (choices.length > 1 || fundChoices.length > 1) && (
     <div className="relative z-30 mb-2.5 flex w-full max-w-[1500px] flex-wrap justify-end gap-2 pr-1">
-      {dirReversed ? settleToggleEl : fundToggleEl}
-      {dirReversed ? fundToggleEl : settleToggleEl}
+      {fundToggleEl}
+      {settleToggleEl}
     </div>
   );
 
@@ -313,8 +312,8 @@ export function FlowExperience({
         {SurfaceHeading}
         {(choices.length > 1 || fundChoices.length > 1) && (
           <div className="mb-3 flex w-full flex-wrap justify-center gap-2">
-            {dirReversed ? settleToggleEl : fundToggleEl}
-            {dirReversed ? fundToggleEl : settleToggleEl}
+            {fundToggleEl}
+            {settleToggleEl}
           </div>
         )}
         {isPlatformFlow(config, config.flowId) ? (
