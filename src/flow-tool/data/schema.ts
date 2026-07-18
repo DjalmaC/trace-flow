@@ -495,9 +495,14 @@ export function fundingChoices(flow: Pick<Flow, "legs">): SettlementOption[] {
   return [{ out: leg.carries }, ...leg.funding!];
 }
 
-/** The display name an option puts on the money: the typed label wins. */
-function optionShown(opt: SettlementOption): Currency {
-  return (opt.label?.trim() && opt.label.trim() !== opt.out ? opt.label.trim() : opt.out) as Currency;
+/** The display name an option puts on the money: the typed label wins, and
+ *  the combined stablecoin tokens narrow to the proposal's coin choice —
+ *  a USDT proposal's "USD/USDT" option reads and moves as plain USDT. */
+function optionShown(opt: SettlementOption, coin: Stablecoin = "both"): Currency {
+  const shown = (opt.label?.trim() && opt.label.trim() !== opt.out ? opt.label.trim() : opt.out) as Currency;
+  if (coin !== "both" && shown === "USDC/USDT") return coin as Currency;
+  if (coin === "USDT" && shown === "USD/USDT") return "USDT" as Currency;
+  return shown;
 }
 
 /** The flow as settlement option `i` (output side) and funding option `f`
@@ -506,7 +511,7 @@ function optionShown(opt: SettlementOption): Currency {
  *  substituted upstream and downstream (graph reachability, not array order —
  *  a tailored flow's legs may be stored in the order they were drawn). Box
  *  relabels from both options apply. (0, 0) returns the flow unchanged. */
-export function applySettlement(flow: Flow, i: number, f = 0): Flow {
+export function applySettlement(flow: Flow, i: number, f = 0, coin: Stablecoin = "both"): Flow {
   const outOpt = i > 0 ? settlementChoices(flow)[i] : undefined;
   const inOpt = f > 0 ? fundingChoices(flow)[f] : undefined;
   if (!outOpt && !inOpt) return flow;
@@ -519,7 +524,7 @@ export function applySettlement(flow: Flow, i: number, f = 0): Flow {
     const legIdx = flow.legs.findIndex((l) => l.convertsTo && l.settlements?.length);
     const convLeg = flow.legs[legIdx];
     const primary = convLeg.convertsTo!;
-    const shown = optionShown(outOpt);
+    const shown = optionShown(outOpt, coin);
     const frontier = [convLeg.to];
     const visited = new Set<string>();
     while (frontier.length) {
@@ -541,7 +546,7 @@ export function applySettlement(flow: Flow, i: number, f = 0): Flow {
     const legIdx = flow.legs.findIndex((l) => l.funding?.length);
     const declLeg = flow.legs[legIdx];
     const primaryIn = declLeg.carries;
-    const shownIn = optionShown(inOpt);
+    const shownIn = optionShown(inOpt, coin);
     // Substitute the whole same-currency SEGMENT this leg belongs to: walk
     // outward over legs carrying the primary, stopping at conversions (a hub
     // is a currency boundary). A leg that converts INTO the segment has its

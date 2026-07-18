@@ -95,9 +95,10 @@ export function FlowExperience({
             baseFlow,
             Math.min(settlementIdx, Math.max(0, choices.length - 1)),
             Math.min(fundingIdx, Math.max(0, fundChoices.length - 1)),
+            config.stablecoin,
           )
         : baseFlow,
-    [baseFlow, choices, fundChoices, settlementIdx, fundingIdx],
+    [baseFlow, choices, fundChoices, settlementIdx, fundingIdx, config.stablecoin],
   );
   const pickSettlement = (i: number) => {
     manualSettle.current = true;
@@ -441,7 +442,9 @@ function SettlementToggle({
   const labelOf = (c: SettlementOption) => {
     if (c.label?.trim()) return c.label.trim();
     const d = displayCurrency(c.out, config);
-    return d === "USDC/USDT" ? (config.stablecoin === "both" ? "USDC/USDT" : config.stablecoin) : d;
+    if (d === "USDC/USDT") return config.stablecoin === "both" ? "USDC/USDT" : config.stablecoin;
+    if (d === "USD/USDT" && config.stablecoin === "USDT") return "USDT";
+    return d;
   };
   return (
     <div className="pointer-events-auto flex items-center gap-0.5 rounded-[11px] border border-white/10 bg-[#0e1410]/70 p-[3px] backdrop-blur">

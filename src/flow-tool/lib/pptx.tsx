@@ -166,7 +166,9 @@ function flowSlide(config: FlowConfig, flow: Flow, name: string, label: string, 
   // link carries the toggle. A short note names the other option(s).
   const disp = (c: Flow["legs"][number]["carries"]) => {
     const d = displayCurrency(c, config);
-    return d === "USDC/USDT" ? (config.stablecoin === "both" ? "USDC/USDT" : config.stablecoin) : d;
+    if (d === "USDC/USDT") return config.stablecoin === "both" ? "USDC/USDT" : config.stablecoin;
+    if (d === "USD/USDT" && config.stablecoin === "USDT") return "USDT";
+    return d;
   };
   const settleAlts = settlementChoices(flow).slice(1);
   const fundAlts = fundingChoices(flow).slice(1);
