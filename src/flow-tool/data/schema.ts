@@ -499,9 +499,12 @@ export function fundingChoices(flow: Pick<Flow, "legs">): SettlementOption[] {
  *  the combined stablecoin tokens narrow to the proposal's coin choice —
  *  a USDT proposal's "USD/USDT" option reads and moves as plain USDT. */
 function optionShown(opt: SettlementOption, coin: Stablecoin = "both"): Currency {
-  const shown = (opt.label?.trim() && opt.label.trim() !== opt.out ? opt.label.trim() : opt.out) as Currency;
-  if (coin !== "both" && shown === "USDC/USDT") return coin as Currency;
-  if (coin === "USDT" && shown === "USD/USDT") return "USDT" as Currency;
+  const label = opt.label?.trim();
+  // an explicit label is verbatim — even "USDC/USDT" stays the pair
+  if (label) return label as Currency;
+  let shown = opt.out;
+  if (coin !== "both" && shown === "USDC/USDT") shown = coin as Currency;
+  if (coin === "USDT" && shown === "USD/USDT") shown = "USDT" as Currency;
   return shown;
 }
 
