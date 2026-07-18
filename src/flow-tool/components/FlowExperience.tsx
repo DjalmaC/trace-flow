@@ -211,6 +211,9 @@ export function FlowExperience({
 
   // Captions are FIXED to the flow as designed: "Starts in" is always the
   // carries side, "Settle in" always the FX output — in both directions.
+  // Only their on-screen ORDER follows the travel: Pay-out leads with the
+  // settlement side, since that is where the money enters the frame.
+  const dirReversed = config.direction === "disbursement";
   const fundToggleEl = fundChoices.length > 1 && (
     <SettlementToggle
       key="fund"
@@ -233,8 +236,8 @@ export function FlowExperience({
   );
   const settlementToggle = (choices.length > 1 || fundChoices.length > 1) && (
     <div className="relative z-30 mb-2.5 flex w-full max-w-[1500px] flex-wrap justify-end gap-2 pr-1">
-      {fundToggleEl}
-      {settleToggleEl}
+      {dirReversed ? settleToggleEl : fundToggleEl}
+      {dirReversed ? fundToggleEl : settleToggleEl}
     </div>
   );
 
@@ -309,8 +312,8 @@ export function FlowExperience({
         {SurfaceHeading}
         {(choices.length > 1 || fundChoices.length > 1) && (
           <div className="mb-3 flex w-full flex-wrap justify-center gap-2">
-            {fundToggleEl}
-            {settleToggleEl}
+            {dirReversed ? settleToggleEl : fundToggleEl}
+            {dirReversed ? fundToggleEl : settleToggleEl}
           </div>
         )}
         {isPlatformFlow(config, config.flowId) ? (
