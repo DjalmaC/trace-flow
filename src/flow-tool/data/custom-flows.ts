@@ -23,7 +23,13 @@ const registry = new Map<string, Flow>();
 
 export function registerCustomFlows(flows: Flow[] | undefined | null): void {
   for (const f of flows ?? []) {
-    if (f && typeof f.id === "string" && Array.isArray(f.nodes)) registry.set(f.id, f);
+    if (!(f && typeof f.id === "string" && Array.isArray(f.nodes))) continue;
+    // Newest wins: a link carries a SNAPSHOT of its flows, and editing that
+    // link must not let the snapshot mask a fresher local draft (or vice
+    // versa) — whichever copy was edited last is what renders and re-shares.
+    const cur = registry.get(f.id);
+    if (cur?.updatedAt && f.updatedAt && cur.updatedAt > f.updatedAt) continue;
+    registry.set(f.id, f);
   }
 }
 export function getCustomFlow(id: string): Flow | undefined {
