@@ -513,17 +513,20 @@ export default function BuildPage() {
           aria-label="Rename flow box"
           className={inputCls}
         />
-        {config.clientLogoUrl && (
-          <label className="flex cursor-pointer items-center gap-2 px-0.5 text-[11px] font-medium text-subtitle">
-            <input
-              type="checkbox"
-              checked={!!rename.branded}
-              onChange={(e) => setRename({ ...rename, branded: e.target.checked })}
-              className="h-3 w-3 accent-mint"
-            />
-            Show client logo
-          </label>
-        )}
+        <label
+          className={`flex items-center gap-2 px-0.5 text-[11px] font-medium ${
+            config.clientLogoUrl ? "cursor-pointer text-subtitle" : "cursor-not-allowed text-muted"
+          }`}
+        >
+          <input
+            type="checkbox"
+            disabled={!config.clientLogoUrl}
+            checked={!!rename.branded}
+            onChange={(e) => setRename({ ...rename, branded: e.target.checked })}
+            className="h-3 w-3 accent-mint"
+          />
+          Show client logo{!config.clientLogoUrl && " · upload a logo first"}
+        </label>
         <label className="flex cursor-pointer items-center gap-2 px-0.5 text-[11px] font-medium text-subtitle">
           <input
             type="checkbox"
