@@ -39,7 +39,7 @@ export default function BuildPage() {
   const [editingCode, setEditingCode] = useState<string | null>(null);
   // Double-click rename overlay for the flow boxes / lane names / hero
   // subtitle on the canvas.
-  const [rename, setRename] = useState<{ key: string; lane?: "brazil" | "abroad"; hero?: boolean; platformCaption?: boolean; node?: boolean; entity?: string; entityOn?: boolean; branded?: boolean; original: string; value: string; left: number; top: number; width: number } | null>(null);
+  const [rename, setRename] = useState<{ key: string; lane?: "brazil" | "abroad"; hero?: boolean; platformCaption?: boolean; comment?: boolean; node?: boolean; entity?: string; entityOn?: boolean; branded?: boolean; original: string; value: string; left: number; top: number; width: number } | null>(null);
   const renameRef = useRef<HTMLInputElement>(null);
   // Edit mode ("Arrange boxes"): drag a box onto another to swap places, or
   // into a rail gap to move it. Stored as config.nodeOrder, so the client
@@ -174,6 +174,22 @@ export default function BuildPage() {
       });
       return;
     }
+    const commentEl = (e.target as Element).closest?.("[data-flow-comment]");
+    if (commentEl) {
+      const key = config.flowId;
+      const r = commentEl.getBoundingClientRect();
+      const width = Math.min(680, Math.max(r.width, 420));
+      setRename({
+        key,
+        comment: true,
+        original: "",
+        value: config.comments?.[key] ?? "",
+        left: r.left + r.width / 2 - width / 2,
+        top: r.top + r.height / 2 - 34,
+        width,
+      });
+      return;
+    }
     const heroEl = (e.target as Element).closest?.("[data-hero-support]");
     if (heroEl) {
       const flow = getFlow(config.flowId);
@@ -272,6 +288,16 @@ export default function BuildPage() {
         if (!v || v === rename.original) delete m[rename.key]; // empty = back to the flow's own copy
         else m[rename.key] = v;
         return { ...c, heroSupport: Object.keys(m).length ? m : undefined };
+      });
+      setRename(null);
+      return;
+    }
+    if (rename.comment) {
+      setConfig((c) => {
+        const m = { ...(c.comments ?? {}) };
+        if (!v) delete m[rename.key]; // empty = no note
+        else m[rename.key] = v;
+        return { ...c, comments: Object.keys(m).length ? m : undefined };
       });
       setRename(null);
       return;
@@ -513,7 +539,28 @@ export default function BuildPage() {
     "w-full rounded-md border border-mint bg-[#0c110f] px-2.5 py-1.5 text-center text-[13px] font-semibold text-title shadow-xl outline-none";
   const renameOverlay =
     rename &&
-    (rename.node ? (
+    (rename.comment ? (
+      // Per-flow note: a small multi-line field. Enter commits, Shift+Enter
+      // adds a line, Escape cancels.
+      <textarea
+        autoFocus
+        rows={2}
+        value={rename.value}
+        onChange={(e) => setRename({ ...rename, value: e.target.value })}
+        onFocus={(e) => e.target.select()}
+        onBlur={commitRename}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            commitRename();
+          } else if (e.key === "Escape") setRename(null);
+        }}
+        placeholder="A short note to situate the viewer…"
+        aria-label="Flow note"
+        className="fixed z-[80] resize-none rounded-lg border border-mint bg-[#0c110f] px-3 py-2 text-center text-[13px] leading-relaxed text-title shadow-xl outline-none placeholder:text-muted"
+        style={{ left: rename.left, top: rename.top, width: rename.width }}
+      />
+    ) : rename.node ? (
       // Node box: name + an opt-in "Specify entity" line that renders under the
       // box as "(Brazilian VASP)". Commits when focus leaves the whole card.
       <div
@@ -596,7 +643,7 @@ export default function BuildPage() {
   if (present) {
     return (
       <main className="relative" onDoubleClick={onCanvasDoubleClick} onPointerDown={onCanvasPointerDown}>
-        <FlowExperience config={config} presentation onDirectionChange={setDirection} />
+        <FlowExperience config={config} presentation onDirectionChange={setDirection} editable />
         {renameOverlay}
         {editControls}
         {dragChrome}
@@ -639,7 +686,7 @@ export default function BuildPage() {
       >
         ← Proposals
       </a>
-      <FlowExperience config={config} onDirectionChange={setDirection} />
+      <FlowExperience config={config} onDirectionChange={setDirection} editable />
     </main>
   );
 }

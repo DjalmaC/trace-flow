@@ -163,6 +163,7 @@ function deckFlowLabel(index: number, total: number): string {
 
 function flowSlide(config: FlowConfig, flow: Flow, name: string, label: string, support?: string) {
   const layout = computeLayout(flow, config);
+  const flowComment = config.comments?.[flow.id]?.trim();
   // A flow with settlement options prints its PRIMARY settlement; the live
   // link carries the toggle. A short note names the other option(s).
   const disp = (c: Flow["legs"][number]["carries"]) => {
@@ -215,6 +216,11 @@ function flowSlide(config: FlowConfig, flow: Flow, name: string, label: string, 
           <MachineryStage layout={layout} config={config} animate={false} showHeading={false} />
         )}
       </svg>
+      {flowComment && (
+        <text x={48} y={settleNote ? 498 : 514} fontSize={10.5} fill={SUB} opacity={0.9}>
+          {flowComment}
+        </text>
+      )}
       {settleNote && (
         <text x={48} y={514} fontSize={10.5} fill={SUB} opacity={0.9}>
           {settleNote}

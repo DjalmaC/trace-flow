@@ -48,6 +48,7 @@ export function FlowExperience({
   only,
   onDirectionChange,
   forceStatic = false,
+  editable = false,
 }: {
   config: FlowConfig;
   presentation?: boolean;
@@ -57,6 +58,9 @@ export function FlowExperience({
   onDirectionChange?: (d: Direction) => void;
   /** Force the stacked, non-dive layout (used for print / PDF export). */
   forceStatic?: boolean;
+  /** Build canvas only: show the "add a note" placeholder for the per-flow
+   *  comment when none is set. The client view never shows the placeholder. */
+  editable?: boolean;
 }) {
   const baseFlow = getFlow(config.flowId);
 
@@ -262,6 +266,10 @@ export function FlowExperience({
         ? "Collect in Brazil, settle to their merchant abroad, in one move."
         : "Fund from abroad, pay out into Brazil, in one move.");
 
+  // Per-flow explanatory note (optional), shown under the depth heading to
+  // situate the viewer. Double-click editable on the build canvas.
+  const flowComment = config.comments?.[config.flowId]?.trim();
+
   const SurfaceHeading = (
     <div className="mx-auto mb-5 text-center" style={{ width: "min(36rem, calc(100vw - 2rem))" }}>
       <div className="mb-2 font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[#6f8a7f] md:text-[12px] md:tracking-[0.34em]">
@@ -285,6 +293,18 @@ export function FlowExperience({
         How Trace makes it happen
       </h2>
       <p className="mt-2.5 text-sm font-medium text-mint md:text-base">{clientFlowName(flow.title)}</p>
+      {(flowComment || editable) && (
+        <p
+          data-flow-comment
+          className={
+            flowComment
+              ? "mx-auto mt-3 max-w-[46rem] text-[13.5px] leading-relaxed text-subtitle"
+              : "mx-auto mt-3 max-w-[46rem] cursor-text rounded-md border border-dashed border-white/12 px-3 py-1.5 text-[12.5px] italic text-muted/70"
+          }
+        >
+          {flowComment || "Double-click to add a note that situates the viewer"}
+        </p>
+      )}
     </div>
   );
 
@@ -316,6 +336,7 @@ export function FlowExperience({
           <DirectionToggle direction={config.direction} onChange={onDirectionChange} options={directionOptions(config, config.flowId)} fixed />
         )}
         {SurfaceHeading}
+        {flowComment && <p className="mx-auto mb-3 max-w-[34rem] text-center text-[13px] leading-relaxed text-subtitle">{flowComment}</p>}
         {(choices.length > 1 || fundChoices.length > 1) && (
           <div className="mb-3 flex w-full flex-wrap justify-center gap-2">
             {fundToggleEl}

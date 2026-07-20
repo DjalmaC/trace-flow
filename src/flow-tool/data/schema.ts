@@ -463,6 +463,10 @@ export interface FlowConfig {
    *  desired transaction" on the build canvas), keyed "<flowId>:<direction>".
    *  Shown on the hero and the PDF flow page. */
   heroSupport?: Record<string, string>;
+  /** Per-flow explanatory note, keyed by flowId — a short line that situates
+   *  the viewer, shown under the "How Trace makes it happen" heading on the
+   *  deck, the client link and the PDF. Double-click to edit on the canvas. */
+  comments?: Record<string, string>;
   /** Technology-provider framing: the client wraps the flow instead of
    *  appearing in it. The deck draws a quiet brand-colored frame around the
    *  machinery (logo chip + caption) and suppresses the client's name/logo
