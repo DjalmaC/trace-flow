@@ -29,6 +29,7 @@ import { computeLayout, CONT_Y, CONT_H } from "./layout";
 import { Defs, displayCurrency } from "./FlowSvg";
 import { HeroFlow } from "./HeroFlow";
 import { MachineryStage } from "./MachineryStage";
+import { HubStage } from "./HubStage";
 import { ASSETS, C, TRACE_LOGO_AR } from "./tokens";
 import { MobileFlow } from "./MobileFlow";
 import type { Direction } from "../data/schema";
@@ -207,7 +208,11 @@ export function FlowExperience({
       aria-label={`How Trace makes it happen — ${flow.title}`}
     >
       <Defs />
-      <MachineryStage layout={layout} config={config} animate={animate} showHeading={false} onPassComplete={onPassComplete} />
+      {flow.archetype === "hub" ? (
+        <HubStage layout={layout} config={config} />
+      ) : (
+        <MachineryStage layout={layout} config={config} animate={animate} showHeading={false} onPassComplete={onPassComplete} />
+      )}
     </svg>
   );
 
@@ -330,6 +335,8 @@ export function FlowExperience({
               {config.platform?.caption?.trim() || `Native to the ${config.clientName} platform. Trace operates the rails underneath.`}
             </p>
           </div>
+        ) : flow.archetype === "hub" ? (
+          MachinerySvg
         ) : (
           <MobileFlow flow={flow} config={config} />
         )}

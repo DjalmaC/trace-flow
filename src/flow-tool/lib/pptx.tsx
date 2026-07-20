@@ -1,6 +1,7 @@
 import { computeLayout, CONT_Y, CONT_H } from "../components/layout";
 import { Defs } from "../components/FlowSvg";
 import { MachineryStage } from "../components/MachineryStage";
+import { HubStage } from "../components/HubStage";
 import { ASSETS } from "../components/tokens";
 import { getFlow, defaultConfig } from "../data";
 import { tierText, flatRowText, settlementChoices, fundingChoices, clientFlowName } from "../data/schema";
@@ -208,7 +209,11 @@ function flowSlide(config: FlowConfig, flow: Flow, name: string, label: string, 
         </text>
       )}
       <svg x={x2} y={y2} width={w2} height={h2} viewBox={`0 ${(layout.stageY ?? CONT_Y) - 12} ${mw} ${mh}`} preserveAspectRatio="xMidYMid meet">
-        <MachineryStage layout={layout} config={config} animate={false} showHeading={false} />
+        {flow.archetype === "hub" ? (
+          <HubStage layout={layout} config={config} />
+        ) : (
+          <MachineryStage layout={layout} config={config} animate={false} showHeading={false} />
+        )}
       </svg>
       {settleNote && (
         <text x={48} y={514} fontSize={10.5} fill={SUB} opacity={0.9}>

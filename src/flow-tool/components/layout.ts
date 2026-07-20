@@ -146,6 +146,82 @@ export interface EngineInfo {
 
 export const ENGINE_ID = "__engine__";
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Liquidity-hub layout (archetype "hub"). A horizontal client-journey rail —
+// client on the left, the Trace desk (hub) in the centre, a counterparty on the
+// right — with a pool of liquidity participants BELOW the rail, each trading
+// two-way with the hub. Isolated from the corridor solver above; renders through
+// HubStage, not MachineryStage.
+// ─────────────────────────────────────────────────────────────────────────────
+export function computeHubLayout(flow: Flow, config: FlowConfig): FlowLayout {
+  const key = (n: { id: string; srcId?: string }) => `${flow.id}:${n.srcId ?? n.id}`;
+  const labelOf = (n: FlowNodeT) => config.nodeLabels?.[key(n)] ?? n.label;
+  const brandedOf = (n: FlowNodeT) => !!n.brandedClient || !!config.nodeBranded?.[key(n)];
+
+  const pool = flow.nodes.filter((n) => n.pool);
+  const journey = flow.nodes.filter((n) => !n.pool);
+  const hubNode = journey.find((n) => n.kind === "trace") ?? journey[Math.floor(journey.length / 2)] ?? flow.nodes[0];
+  const ends = journey.filter((n) => n.id !== hubNode.id);
+  const leftEnd = ends[0];
+  const rightEnd = ends[1];
+
+  // geometry
+  const railY = 224;
+  const poolY = 430;
+  const hubCx = 470;
+  const SPAN = 300;
+  const width = 940;
+  const HUB_R = 44;
+
+  const box = (cx: number, cy: number, w: number, h: number): Box => ({ x: cx - w / 2, y: cy - h / 2, w, h, cx, cy });
+  const nodes: NodeLayout[] = [];
+
+  // the hub itself — a trace node the renderer draws as the spinning mark
+  nodes.push({ ...box(hubCx, railY, HUB_R * 2, HUB_R * 2), id: hubNode.id, srcId: hubNode.srcId, label: labelOf(hubNode), kind: "trace", lane: hubNode.lane, lines: [labelOf(hubNode)], depth: 1, onTrunk: true });
+  if (leftEnd)
+    nodes.push({ ...box(hubCx - SPAN, railY, NODE_W, NODE_H), id: leftEnd.id, srcId: leftEnd.srcId, label: labelOf(leftEnd), kind: leftEnd.kind, lane: leftEnd.lane, lines: wrapLabel(labelOf(leftEnd)), depth: 0, onTrunk: true, brandedClient: brandedOf(leftEnd) });
+  if (rightEnd)
+    nodes.push({ ...box(hubCx + SPAN, railY, NODE_W, NODE_H), id: rightEnd.id, srcId: rightEnd.srcId, label: labelOf(rightEnd), kind: rightEnd.kind, lane: rightEnd.lane, lines: wrapLabel(labelOf(rightEnd)), depth: 2, onTrunk: true, brandedClient: brandedOf(rightEnd) });
+
+  // pool row, centred under the hub
+  const POOL_W = 152, POOL_H = 56, GAP = 26;
+  const totalW = pool.length * POOL_W + Math.max(0, pool.length - 1) * GAP;
+  const startX = hubCx - totalW / 2;
+  pool.forEach((p, i) => {
+    const cx = startX + i * (POOL_W + GAP) + POOL_W / 2;
+    nodes.push({ ...box(cx, poolY, POOL_W, POOL_H), id: p.id, srcId: p.srcId, label: labelOf(p), kind: p.kind, lane: p.lane, lines: wrapLabel(labelOf(p)), depth: 3, onTrunk: false, brandedClient: brandedOf(p) });
+  });
+
+  const byId = new Map(nodes.map((nd) => [nd.id, nd] as const));
+  const legs: LegLayout[] = flow.legs.map((l, i) => {
+    const f = byId.get(l.from), t = byId.get(l.to);
+    const x1 = f?.cx ?? hubCx, y1 = f?.cy ?? railY, x2 = t?.cx ?? hubCx, y2 = t?.cy ?? railY;
+    return { index: i, from: l.from, to: l.to, d: `M${x1} ${y1} L${x2} ${y2}`, x1, y1, x2, y2, carries: l.carries, convertsTo: l.convertsTo, mid: { x: (x1 + x2) / 2, y: (y1 + y2) / 2 }, offTrunk: f?.onTrunk === false || t?.onTrunk === false };
+  });
+
+  const primary = leftEnd && leftEnd.kind === "client" ? leftEnd : journey.find((n) => n.kind === "client");
+  const anchor = leftEnd ?? hubNode, far = rightEnd ?? hubNode;
+  const headline: HeadlineLayout = {
+    a: box(300, HEAD_Y + HEAD_H / 2, 220, HEAD_H),
+    b: box(width - 300, HEAD_Y + HEAD_H / 2, 220, HEAD_H),
+    aIsClient: true, bIsClient: false,
+    aLabel: labelOf(anchor), bLabel: labelOf(far),
+    aId: anchor.srcId ?? anchor.id, bId: far.srcId ?? far.id,
+    d: "", carries: flow.headline.carries, convertsTo: flow.headline.convertsTo, mid: { x: width / 2, y: HEAD_Y },
+  };
+
+  const stageY = 118;
+  const stageH = poolY + POOL_H / 2 + 66 - stageY;
+  return {
+    width, height: VIEW_H, nodes, legs, headline, projectors: [],
+    dividerX: -9999, railY, brazilLabelX: -9999, abroadLabelX: -9999, brazilLabel: "", abroadLabel: "",
+    contY: stageY, contH: stageH, stageY, stageH,
+    reverse: config.direction === "disbursement",
+    primaryClientId: primary?.id, collapsed: false,
+  };
+}
+type FlowNodeT = Flow["nodes"][number];
+
 /** Naive label wrap: split into <=2 lines near the middle on a word boundary. */
 function wrapLabel(label: string): string[] {
   if (label.length <= 20) return [label];
@@ -230,6 +306,10 @@ function applyNodeOrder(flow: Flow, config: FlowConfig): Flow {
 }
 
 export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?: boolean } = {}): FlowLayout {
+  // Liquidity-hub archetype takes a completely separate solver — the corridor
+  // path below (trunk DP, Brazil|Abroad border, engine folding) never runs on
+  // it, so hub flows can't destabilise the eleven corridor flows.
+  if (flow.archetype === "hub") return computeHubLayout(flow, config);
   flow = applyNodeOrder(flow, config);
   // Technology-provider framing: the client wraps the flow, so no box inside
   // it carries their name or logo (and the headline pills stay generic).

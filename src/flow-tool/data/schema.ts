@@ -55,6 +55,11 @@ export interface FlowNode {
    *  build canvas's edit handles key on it so they travel with the box. Never
    *  set in flow data. */
   srcId?: string;
+  /** Liquidity-hub archetype only: this node is a participant in the liquidity
+   *  pool that sits BELOW the client-journey rail and trades two-way with the
+   *  Trace hub (banks, market makers, other SPSAVs, named LPs). Ignored by the
+   *  corridor layout. */
+  pool?: boolean;
 }
 
 /** An additional settlement the FX engine can deliver on a converting leg —
@@ -108,6 +113,11 @@ export interface Flow {
   /** e.g. "1", "9.1", "10" — display id from the board. */
   displayId: string;
   title: string;
+  /** Layout archetype. "corridor" (default) is the eleven-flow left→right rail
+   *  across the Brazil | Abroad border. "hub" is the liquidity-hub archetype:
+   *  a client-journey rail with a central Trace desk and a pool of
+   *  counterparties trading two-way from below. */
+  archetype?: "corridor" | "hub";
   dials: DialCoordinate; // used by the intake resolver (Stage B match)
   traceRole: TraceRole[]; // computed: 'VASP' and/or 'Correspondente Cambial'
   directions: Direction[]; // all flows: ['collection','disbursement']

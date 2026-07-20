@@ -10,7 +10,7 @@ import type {
   ProposalType,
   Stablecoin,
 } from "@/flow-tool/data/schema";
-import { getFlow } from "@/flow-tool/data";
+import { getFlow, FLOWS } from "@/flow-tool/data";
 import { clientFlowName } from "@/flow-tool/data/schema";
 import { deleteTailoredFlow, listTailoredFlows } from "@/flow-tool/data/custom-flows";
 import { NewTailoredFlowModal, TailoredFlowEditor } from "@/components/TailoredFlowEditor";
@@ -888,7 +888,7 @@ function DealStep({
         className="mt-2 flex w-full items-center justify-between rounded-xl border border-hairline-control px-4 py-3 text-left transition duration-150 ease-ds hover:border-mint/40"
       >
         <span className="text-[12.5px] font-medium text-subtitle">Browse all flows</span>
-        <span className="font-mono text-[12px] text-muted">13</span>
+        <span className="font-mono text-[12px] text-muted">{FLOWS.length}</span>
       </button>
       <button
         onClick={onNewTailored}
