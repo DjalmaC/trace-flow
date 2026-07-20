@@ -16,8 +16,6 @@ import { FlowNodeShape } from "./FlowSvg/Nodes";
 
 const HUB_R = 44;
 const EASE = "cubic-bezier(.4,0,.2,1)";
-const MS_PER_PX = 14;
-const MIN_MS = 900;
 
 export function HubStage({ layout, config, animate = true }: { layout: FlowLayout; config: FlowConfig; animate?: boolean }) {
   const reduced = useReducedMotion();
@@ -66,43 +64,55 @@ export function HubStage({ layout, config, animate = true }: { layout: FlowLayou
       if (c.isPool) {
         const path = poolPaths.current[c.id];
         const len = path ? path.getTotalLength() : 220;
-        return { c, len, dur: Math.max(MIN_MS, len * MS_PER_PX), at: (s: number) => (path ? path.getPointAtLength((1 - s) * len) : { x: hx, y: hy }) };
+        return { c, at: (s: number) => (path ? path.getPointAtLength((1 - s) * len) : { x: hx, y: hy }) };
       }
       const left = c.cp.cx < hx;
       const e0 = { x: left ? c.cp.x + c.cp.w : c.cp.x, y: hy };
       const e1 = { x: left ? hx - HUB_R : hx + HUB_R, y: hy };
-      const dist = Math.abs(e1.x - e0.x);
-      return { c, len: dist, dur: Math.max(MIN_MS, dist * MS_PER_PX), at: (s: number) => ({ x: e0.x + (e1.x - e0.x) * s, y: hy }) };
+      return { c, at: (s: number) => ({ x: e0.x + (e1.x - e0.x) * s, y: hy }) };
     });
 
-    const place = (id: string, pt: { x: number; y: number }, prog: number) => {
+    // fade a token out as it nears the desk (absorbed) — combined with the
+    // in/out fades so the swap at the hub is masked.
+    const fade = (pt: { x: number; y: number }, base: number) => {
+      const dHub = Math.hypot(pt.x - hx, pt.y - hy);
+      return dHub < HUB_R + 12 ? Math.min(base, Math.max(0, (dHub - 12) / (HUB_R - 2))) : base;
+    };
+    const place = (id: string, pt: { x: number; y: number } | null, op: number) => {
       const el = tokenRefs.current[id];
       if (!el) return;
-      let op = 1;
-      if (prog < 0.12) op = prog / 0.12;
-      else if (prog > 0.88) op = (1 - prog) / 0.12;
-      const dHub = Math.hypot(pt.x - hx, pt.y - hy);
-      if (dHub < HUB_R + 8) op = Math.min(op, Math.max(0, (dHub - 14) / (HUB_R - 6)));
-      el.setAttribute("transform", `translate(${pt.x.toFixed(1)},${pt.y.toFixed(1)})`);
+      if (pt) el.setAttribute("transform", `translate(${pt.x.toFixed(1)},${pt.y.toFixed(1)})`);
       el.style.opacity = Math.max(0, op).toFixed(3);
     };
+    const smooth = (x: number) => x * x * (3 - 2 * x);
 
+    // One orchestrated cycle: everything gathers into the desk together, the
+    // desk spins, then everything disburses together.
+    const T = 3400, GATHER = 0.36, SPIN = 0.6;
     const start = performance.now();
     let raf = 0;
     const tick = (now: number) => {
-      const e = Math.max(0, now - start);
+      const m = (Math.max(0, now - start) % T) / T;
       for (const b of built) {
-        const p = (e / b.dur) % 1; // toward the desk
-        place(`${b.c.id}-a`, b.at(p), p);
-        const q = ((e / b.dur) + 0.5) % 1; // back out (half a lap behind)
-        place(`${b.c.id}-b`, b.at(1 - q), q);
+        if (m < GATHER) {
+          const gp = m / GATHER; // box → desk, arriving together at m=GATHER
+          const pt = b.at(smooth(gp));
+          place(`${b.c.id}-a`, pt, fade(pt, gp < 0.16 ? gp / 0.16 : 1));
+          place(`${b.c.id}-b`, null, 0);
+        } else if (m < SPIN) {
+          place(`${b.c.id}-a`, null, 0); // absorbed — the desk is converting
+          place(`${b.c.id}-b`, null, 0);
+        } else {
+          const dp = (m - SPIN) / (1 - SPIN); // desk → box, all leaving together
+          const pt = b.at(1 - smooth(dp));
+          place(`${b.c.id}-b`, pt, fade(pt, dp > 0.84 ? (1 - dp) / 0.16 : 1));
+          place(`${b.c.id}-a`, null, 0);
+        }
       }
       if (markRef.current) {
-        const CYC = 2600, SPIN = 1000;
-        const ph = e % CYC;
-        if (ph < SPIN) {
-          const s = ph / SPIN;
-          markRef.current.setAttribute("transform", `rotate(${(360 * s).toFixed(1)}) scale(${(1 - 0.3 * Math.sin(s * Math.PI)).toFixed(3)})`);
+        if (m >= GATHER && m < SPIN) {
+          const s = (m - GATHER) / (SPIN - GATHER);
+          markRef.current.setAttribute("transform", `rotate(${(360 * s).toFixed(1)}) scale(${(1 - 0.34 * Math.sin(s * Math.PI)).toFixed(3)})`);
         } else markRef.current.setAttribute("transform", "rotate(0) scale(1)");
       }
       raf = requestAnimationFrame(tick);
