@@ -432,6 +432,12 @@ export interface FlowConfig {
    *  without changing the box label or its logo. Applied at render time, so the
    *  canvas, the client link and the PDF all inherit it. Opt-in per box. */
   nodeEntities?: Record<string, string>;
+  /** Per-proposal branding override (double-click a box → "Show client logo"),
+   *  keyed "<flowId>:<nodeId>". Marks a box to carry the client's uploaded logo
+   *  even though it isn't the primary client node — so a flow can show two of
+   *  the client's own entities (e.g. a Brazilian and a Mexican VASP), each
+   *  logo-filled and told apart by its entity annotation. Opt-in per box. */
+  nodeBranded?: Record<string, boolean>;
   /** Per-proposal box reordering (edit mode: drag a box onto another to swap,
    *  or into a gap to move it). Keyed by flowId; the value is the flow's node
    *  ids in their new display order across the flow's ORIGINAL slots. The

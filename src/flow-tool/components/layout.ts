@@ -243,6 +243,10 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
   // content's original id (srcId), so a rename follows its box through reorders
   const labelOf = (n: { id: string; label: string; srcId?: string }) =>
     config.nodeLabels?.[`${flow.id}:${n.srcId ?? n.id}`] ?? n.label;
+  // per-proposal branding: a box the rep marked to carry the client logo (so a
+  // flow can show a second client entity), OR the flow's own brandedClient flag
+  const brandedOf = (n: { id: string; srcId?: string; brandedClient?: boolean }) =>
+    n.brandedClient || !!config.nodeBranded?.[`${flow.id}:${n.srcId ?? n.id}`];
 
   // ── build the effective node/leg lists (full, or with the engine folded) ──
   let srcNodes: SrcNode[];
@@ -265,7 +269,7 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
     srcNodes = [];
     flow.nodes.forEach((n) => {
       if (n.id === first) srcNodes.push(engineNode);
-      if (!idSet.has(n.id)) srcNodes.push({ id: n.id, srcId: n.srcId, label: labelOf(n), kind: n.kind, lane: n.lane, w: NODE_W, brandedClient: n.brandedClient });
+      if (!idSet.has(n.id)) srcNodes.push({ id: n.id, srcId: n.srcId, label: labelOf(n), kind: n.kind, lane: n.lane, w: NODE_W, brandedClient: brandedOf(n) });
     });
     srcLegs = [];
     flow.legs.forEach((l) => {
@@ -277,7 +281,7 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
       else srcLegs.push({ from: l.from, to: l.to, carries: D(l.carries), convertsTo: l.convertsTo });
     });
   } else {
-    srcNodes = flow.nodes.map((n) => ({ id: n.id, srcId: n.srcId, label: labelOf(n), kind: n.kind, lane: n.lane, w: NODE_W, brandedClient: n.brandedClient }));
+    srcNodes = flow.nodes.map((n) => ({ id: n.id, srcId: n.srcId, label: labelOf(n), kind: n.kind, lane: n.lane, w: NODE_W, brandedClient: brandedOf(n) }));
     srcLegs = flow.legs.map((l) => ({ from: l.from, to: l.to, carries: l.carries, convertsTo: l.convertsTo }));
   }
 

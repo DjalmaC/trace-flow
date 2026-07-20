@@ -149,6 +149,7 @@ export function FlowExperience({
     config.laneLabels ?? null,
     config.platform ?? null,
     config.brandColor ?? null,
+    config.nodeBranded ?? null,
   ]);
   const layout = useMemo(
     () => (flow ? computeLayout(flow, config) : null),

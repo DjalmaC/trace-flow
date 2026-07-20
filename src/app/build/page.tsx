@@ -39,7 +39,7 @@ export default function BuildPage() {
   const [editingCode, setEditingCode] = useState<string | null>(null);
   // Double-click rename overlay for the flow boxes / lane names / hero
   // subtitle on the canvas.
-  const [rename, setRename] = useState<{ key: string; lane?: "brazil" | "abroad"; hero?: boolean; platformCaption?: boolean; node?: boolean; entity?: string; entityOn?: boolean; original: string; value: string; left: number; top: number; width: number } | null>(null);
+  const [rename, setRename] = useState<{ key: string; lane?: "brazil" | "abroad"; hero?: boolean; platformCaption?: boolean; node?: boolean; entity?: string; entityOn?: boolean; branded?: boolean; original: string; value: string; left: number; top: number; width: number } | null>(null);
   const renameRef = useRef<HTMLInputElement>(null);
   // Edit mode ("Arrange boxes"): drag a box onto another to swap places, or
   // into a rail gap to move it. Stored as config.nodeOrder, so the client
@@ -224,6 +224,7 @@ export default function BuildPage() {
       node: true,
       entity: entity ?? "",
       entityOn: !!entity,
+      branded: !!config.nodeBranded?.[key],
       original,
       value: config.nodeLabels?.[key] ?? original,
       left: r.left,
@@ -275,10 +276,15 @@ export default function BuildPage() {
       const ents = { ...(c.nodeEntities ?? {}) };
       if (entityVal) ents[rename.key] = entityVal;
       else delete ents[rename.key];
+      // Branding: carry the client logo on this box (a second client entity).
+      const branded = { ...(c.nodeBranded ?? {}) };
+      if (rename.branded) branded[rename.key] = true;
+      else delete branded[rename.key];
       return {
         ...c,
         nodeLabels: Object.keys(labels).length ? labels : undefined,
         nodeEntities: Object.keys(ents).length ? ents : undefined,
+        nodeBranded: Object.keys(branded).length ? branded : undefined,
       };
     });
     setRename(null);
@@ -507,6 +513,17 @@ export default function BuildPage() {
           aria-label="Rename flow box"
           className={inputCls}
         />
+        {config.clientLogoUrl && (
+          <label className="flex cursor-pointer items-center gap-2 px-0.5 text-[11px] font-medium text-subtitle">
+            <input
+              type="checkbox"
+              checked={!!rename.branded}
+              onChange={(e) => setRename({ ...rename, branded: e.target.checked })}
+              className="h-3 w-3 accent-mint"
+            />
+            Show client logo
+          </label>
+        )}
         <label className="flex cursor-pointer items-center gap-2 px-0.5 text-[11px] font-medium text-subtitle">
           <input
             type="checkbox"
