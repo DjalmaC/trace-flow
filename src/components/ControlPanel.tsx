@@ -542,6 +542,7 @@ export function ControlPanel({
               flows={flows}
               onAdd={addCurrentFlow}
               onRemove={removeFlow}
+              onSelect={(flowId) => patch({ flowId })}
               onOpenStudio={setStudio}
               tailored={tailored}
               onNewTailored={() => setNewTailored(true)}
@@ -844,6 +845,7 @@ function DealStep({
   flows,
   onAdd,
   onRemove,
+  onSelect,
   onOpenStudio,
   tailored,
   onNewTailored,
@@ -856,6 +858,8 @@ function DealStep({
   flows: { flowId: string; name: string }[];
   onAdd: () => void;
   onRemove: (id: string) => void;
+  /** Flip the canvas to a deck flow so it becomes the one being edited. */
+  onSelect: (flowId: string) => void;
   onOpenStudio: (mode: StudioMode) => void;
   tailored: Flow[];
   onNewTailored: () => void;
@@ -951,6 +955,15 @@ function DealStep({
             {current?.displayId ?? "?"}
           </span>
           <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-title">{current?.title ?? selectedFlowId}</span>
+          {current?.custom && (
+            <button
+              onClick={() => current && onEditTailored(current)}
+              aria-label={`Edit ${current.title}`}
+              className="shrink-0 rounded-md border border-hairline-control px-2 py-1 text-[11px] text-[#8b948f] transition hover:text-title"
+            >
+              Edit
+            </button>
+          )}
           <button
             onClick={onAdd}
             disabled={added}
@@ -979,20 +992,40 @@ function DealStep({
             Empty deck presents just the flow on canvas. Add flows to stack several.
           </p>
         ) : (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {flows.map((f, i) => (
-              <span
-                key={f.flowId}
-                className="flex items-center gap-1.5 rounded-md border border-hairline-control bg-node-fill px-2 py-1 text-[11px] text-title"
-              >
-                <span className="font-mono text-[10px] text-mint">{i + 1}</span>
-                <span className="max-w-[140px] truncate">{f.name}</span>
-                <button onClick={() => onRemove(f.flowId)} aria-label={`Remove ${f.name}`} className="text-muted transition hover:text-title">
-                  <XIcon size={9} />
-                </button>
-              </span>
-            ))}
-          </div>
+          <>
+            <p className="mt-1.5 text-[10.5px] leading-snug text-muted">Click a flow to edit it on the canvas.</p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {flows.map((f, i) => {
+                const resolves = !!getFlow(f.flowId);
+                const active = f.flowId === selectedFlowId;
+                return (
+                  <span
+                    key={f.flowId}
+                    className={`flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] transition duration-150 ease-ds ${
+                      active
+                        ? "border-hairline-selected bg-node-fill text-mint"
+                        : "border-hairline-control bg-node-fill text-title"
+                    }`}
+                  >
+                    <span className="font-mono text-[10px] text-mint">{i + 1}</span>
+                    <button
+                      onClick={() => resolves && onSelect(f.flowId)}
+                      disabled={!resolves}
+                      title={resolves ? "Edit this flow on the canvas" : "This flow can't be resolved"}
+                      className={`max-w-[140px] truncate text-left transition ${
+                        active ? "font-semibold" : resolves ? "hover:text-mint" : "text-muted line-through"
+                      }`}
+                    >
+                      {f.name}
+                    </button>
+                    <button onClick={() => onRemove(f.flowId)} aria-label={`Remove ${f.name}`} className="text-muted transition hover:text-title">
+                      <XIcon size={9} />
+                    </button>
+                  </span>
+                );
+              })}
+            </div>
+          </>
         )}
       </div>
     </div>
