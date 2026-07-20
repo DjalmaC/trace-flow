@@ -5,7 +5,7 @@ import { FlowExperience, useIsMobile } from "@/flow-tool/components/FlowExperien
 import { ASSETS, C, TRACE_LOGO_AR } from "@/flow-tool/components/tokens";
 import { loadSharedFlowGated } from "@/flow-tool/lib/share";
 import { getRep } from "@/flow-tool/data/reps";
-import { clientFlowName, deckPricing, flatRowText, normalizePricing, tierText } from "@/flow-tool/data/schema";
+import { clientFlowName, deckPricing, directionOptions, flatRowText, normalizePricing, tierText } from "@/flow-tool/data/schema";
 import type { Direction, Flow, FlowConfig, PriceCard, ProposalPricing, ProposalType } from "@/flow-tool/data/schema";
 import { registerCustomFlows } from "@/flow-tool/data/custom-flows";
 import { getFlow } from "@/flow-tool/data";
@@ -332,7 +332,7 @@ export function SharedFlowView({ code }: { code: string }) {
                     <div className="mt-2.5 flex flex-wrap items-center gap-2">
                       <SegToggle value={view} onChange={setView} options={[{ value: "flow", label: "Flow" }, { value: "pricing", label: "Pricing" }]} />
                       {view === "flow" && !config.hideDirectionToggle && (config.clientDirections ?? "both") === "both" && (
-                        <SegToggle value={direction} onChange={setDirection} options={[{ value: "collection", label: "Pay-in" }, { value: "disbursement", label: "Pay-out" }]} />
+                        <SegToggle value={direction} onChange={setDirection} options={directionOptions(config, flowId)} />
                       )}
                       {view === "flow" && hasVariants && (
                         <SegToggle full value={flowId} onChange={switchFlow} options={variants!.map((v) => ({ value: v.flowId, label: clientFlowName(v.name) }))} />
@@ -399,7 +399,7 @@ export function SharedFlowView({ code }: { code: string }) {
                               <SegToggle
                                 value={direction}
                                 onChange={setDirection}
-                                options={[{ value: "collection", label: "Pay-in" }, { value: "disbursement", label: "Pay-out" }]}
+                                options={directionOptions(config, flowId)}
                               />
                             )}
                           </motion.div>

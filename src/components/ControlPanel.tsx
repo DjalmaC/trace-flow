@@ -11,7 +11,7 @@ import type {
   Stablecoin,
 } from "@/flow-tool/data/schema";
 import { getFlow, FLOWS } from "@/flow-tool/data";
-import { clientFlowName } from "@/flow-tool/data/schema";
+import { clientFlowName, directionOptions } from "@/flow-tool/data/schema";
 import { deleteTailoredFlow, listTailoredFlows } from "@/flow-tool/data/custom-flows";
 import { NewTailoredFlowModal, TailoredFlowEditor } from "@/components/TailoredFlowEditor";
 import { LogoDrop } from "@/components/LogoDrop";
@@ -652,10 +652,7 @@ export function ControlPanel({
                 <Field label="Direction">
                   <Segmented
                     value={config.direction}
-                    options={[
-                      { value: "collection" as Direction, label: "Pay-in" },
-                      { value: "disbursement" as Direction, label: "Pay-out" },
-                    ]}
+                    options={directionOptions(config, config.flowId)}
                     onChange={(d) => patch({ direction: d })}
                   />
                   <div className="mt-2">
@@ -664,8 +661,7 @@ export function ControlPanel({
                       value={config.clientDirections ?? "both"}
                       options={[
                         { value: "both", label: "Both" },
-                        { value: "collection", label: "Pay-in only" },
-                        { value: "disbursement", label: "Pay-out only" },
+                        ...directionOptions(config, config.flowId).map((o) => ({ value: o.value, label: `${o.label} only` })),
                       ]}
                       onChange={(v) =>
                         patch({
@@ -674,6 +670,27 @@ export function ControlPanel({
                         })
                       }
                     />
+                  </div>
+                  <div className="mt-2 flex items-center justify-between rounded-[9px] border border-hairline-control bg-surface-input px-3 py-2">
+                    <span className="text-[11px] text-muted">Swap which side is Pay-in / Pay-out</span>
+                    <button
+                      role="switch"
+                      aria-checked={!!config.swapDirections?.[config.flowId]}
+                      aria-label="Swap which side is Pay-in / Pay-out"
+                      onClick={() => {
+                        const cur = { ...(config.swapDirections ?? {}) };
+                        if (cur[config.flowId]) delete cur[config.flowId];
+                        else cur[config.flowId] = true;
+                        patch({ swapDirections: Object.keys(cur).length ? cur : undefined });
+                      }}
+                      className="relative h-[18px] w-[32px] shrink-0 rounded-full transition duration-150 ease-ds"
+                      style={{ background: config.swapDirections?.[config.flowId] ? "#00f2b1" : "#2a332e" }}
+                    >
+                      <span
+                        className="absolute top-[2px] h-[14px] w-[14px] rounded-full bg-white transition-all duration-150 ease-ds"
+                        style={{ left: config.swapDirections?.[config.flowId] ? 16 : 2 }}
+                      />
+                    </button>
                   </div>
                   {(config.clientDirections ?? "both") === "both" && (
                     <div className="mt-2 flex items-center justify-between rounded-[9px] border border-hairline-control bg-surface-input px-3 py-2">

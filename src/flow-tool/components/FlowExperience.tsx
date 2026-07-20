@@ -23,7 +23,7 @@ export function useIsMobile() {
   return mobile;
 }
 import type { FlowConfig, SettlementOption } from "../data/schema";
-import { applySettlement, clientFlowName, fundingChoices, isPlatformFlow, settlementChoices } from "../data/schema";
+import { applySettlement, clientFlowName, directionOptions, fundingChoices, isPlatformFlow, settlementChoices } from "../data/schema";
 import { getFlow } from "../data";
 import { computeLayout, CONT_Y, CONT_H } from "./layout";
 import { Defs, displayCurrency } from "./FlowSvg";
@@ -313,7 +313,7 @@ export function FlowExperience({
         {/* On /build there's no other Pay-in/Pay-out control on a phone; the
             shared /f/ view supplies its own toggle, so skip it in presentation. */}
         {onDirectionChange && !presentation && (
-          <DirectionToggle direction={config.direction} onChange={onDirectionChange} fixed />
+          <DirectionToggle direction={config.direction} onChange={onDirectionChange} options={directionOptions(config, config.flowId)} fixed />
         )}
         {SurfaceHeading}
         {(choices.length > 1 || fundChoices.length > 1) && (
@@ -371,7 +371,7 @@ export function FlowExperience({
 
         {/* always-visible Pay-in / Pay-out toggle (build brief §5) */}
         {onDirectionChange && (
-          <DirectionToggle direction={config.direction} onChange={onDirectionChange} />
+          <DirectionToggle direction={config.direction} onChange={onDirectionChange} options={directionOptions(config, config.flowId)} />
         )}
         {/* flow tag, bottom-left — internal only; hidden in presentation/client views */}
         {!presentation && (
@@ -475,24 +475,28 @@ function SettlementToggle({
 function DirectionToggle({
   direction,
   onChange,
+  options,
   fixed = false,
 }: {
   direction: Direction;
   onChange: (d: Direction) => void;
+  /** Ordered [Pay-in, Pay-out] with each label bound to its direction for this
+   *  flow (see FlowConfig.swapDirections). */
+  options: { value: Direction; label: string }[];
   fixed?: boolean;
 }) {
   return (
     <div className={`${fixed ? "fixed" : "absolute"} right-4 top-4 z-40 flex gap-0.5 rounded-[11px] border border-white/10 bg-[#0e1410]/70 p-[3px] backdrop-blur md:right-5 md:top-5`}>
-      {(["collection", "disbursement"] as Direction[]).map((d) => (
+      {options.map((o) => (
         <button
-          key={d}
-          onClick={() => onChange(d)}
-          aria-pressed={direction === d}
+          key={o.value}
+          onClick={() => onChange(o.value)}
+          aria-pressed={direction === o.value}
           className={`rounded-lg px-[15px] py-[6px] text-[12.5px] font-medium tracking-[0.2px] transition ${
-            direction === d ? "bg-[#46d39a24] text-[#bfe8d4]" : "text-[#8b948f] hover:text-[#bfe8d4]"
+            direction === o.value ? "bg-[#46d39a24] text-[#bfe8d4]" : "text-[#8b948f] hover:text-[#bfe8d4]"
           }`}
         >
-          {d === "collection" ? "Pay-in" : "Pay-out"}
+          {o.label}
         </button>
       ))}
     </div>

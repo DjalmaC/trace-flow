@@ -477,6 +477,13 @@ export interface FlowConfig {
    *  "disbursement" lock the link to that single direction and remove the
    *  switch entirely (the other function isn't part of the offer). */
   clientDirections?: "both" | "collection" | "disbursement";
+  /** Per-flow swap of the Pay-in / Pay-out LABELS, keyed by flowId. Some
+   *  hand-built flows have the two scenarios named the wrong way round (the
+   *  lanes are right, but what the app calls "Pay-in" is really the pay-out).
+   *  When set, the "Pay-in" control selects `disbursement` and "Pay-out"
+   *  selects `collection` for that flow — the token flow and lanes are
+   *  unchanged, only which scenario each label names. */
+  swapDirections?: Record<string, boolean>;
 }
 
 export interface PlatformFraming {
@@ -497,6 +504,30 @@ export function isPlatformFlow(config: FlowConfig, flowId: string): boolean {
 /** Client-facing flow name: the rep-side " · tailored" marker never ships. */
 export function clientFlowName(name: string): string {
   return name.replace(/\s*·\s*tailored\s*$/i, "").trim();
+}
+
+// ── Pay-in / Pay-out labelling ────────────────────────────────────────────
+// By default `collection` is "Pay-in" and `disbursement` is "Pay-out". A flow
+// can swap that binding per proposal (FlowConfig.swapDirections) without
+// touching the token flow or the lanes.
+
+/** The Pay-in / Pay-out label for a direction, honouring the per-flow swap. */
+export function directionLabel(dir: Direction, config: FlowConfig, flowId: string): "Pay-in" | "Pay-out" {
+  const swapped = !!config.swapDirections?.[flowId];
+  const isPayIn = swapped ? dir === "disbursement" : dir === "collection";
+  return isPayIn ? "Pay-in" : "Pay-out";
+}
+
+/** Toggle options, Pay-in first, with each label bound to the right direction
+ *  for this flow (swapped or not). */
+export function directionOptions(config: FlowConfig, flowId: string): { value: Direction; label: "Pay-in" | "Pay-out" }[] {
+  const swapped = !!config.swapDirections?.[flowId];
+  const payIn: Direction = swapped ? "disbursement" : "collection";
+  const payOut: Direction = swapped ? "collection" : "disbursement";
+  return [
+    { value: payIn, label: "Pay-in" },
+    { value: payOut, label: "Pay-out" },
+  ];
 }
 
 // ── Settlement options ────────────────────────────────────────────────────────
