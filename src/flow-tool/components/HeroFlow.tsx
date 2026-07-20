@@ -83,16 +83,27 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
   const convertsTo = displayCurrency(flow.headline.convertsTo ?? flow.headline.carries, config);
   const dir = config.direction;
 
-  // labels
+  // labels — the desired-transaction boxes are the same actors as their
+  // machinery counterparts, so they read the SAME per-proposal override maps
+  // (double-click edits on the build canvas): a party renamed / annotated /
+  // branded once stays consistent across both stages.
   const partyA = flow.nodes.find((n) => n.id === flow.headline.partyA);
   const partyB = flow.nodes.find((n) => n.id === flow.headline.partyB);
-  const clientSub = sentenceCase(partyA?.label ?? "Client");
+  const keyA = `${flow.id}:${flow.headline.partyA}`;
+  const keyB = `${flow.id}:${flow.headline.partyB}`;
+  const labelA = config.nodeLabels?.[keyA] ?? partyA?.label ?? "Client";
+  const labelB = config.nodeLabels?.[keyB] ?? partyB?.label ?? "Beneficiary";
+  const entityA = config.nodeEntities?.[keyA]?.trim();
+  const entityB = config.nodeEntities?.[keyB]?.trim();
+  const clientSub = sentenceCase(labelA);
   // Technology-provider framing: the client wraps the flow instead of being a
   // station in it — the hero shows the flow's own originating party instead.
   const platform = isPlatformFlow(config, flow.id);
   const heroClientName = platform ? clientSub : config.clientName;
   const heroClientLogo = platform ? undefined : config.clientLogoUrl;
-  const merchantName = sentenceCase(partyB?.label ?? "Beneficiary");
+  // The beneficiary box can be branded as a client entity too (a second logo).
+  const brandedB = !platform && !!config.nodeBranded?.[keyB] && !!config.clientLogoUrl;
+  const merchantName = sentenceCase(labelB);
   // the beneficiary isn't always abroad (the Foreigner-to-BR flow settles in Brazil)
   const merchantWhere = partyB?.lane === "brazil" ? "in Brazil" : "abroad";
 
@@ -219,7 +230,9 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
       <TraceArrow cx={dir === "collection" ? 736 : 836} cy={Y} size={26} direction={dir} />
 
       {/* client station — once a logo is uploaded it fills nearly the whole
-          block (the client's identity); otherwise show an initial + name + role */}
+          block (the client's identity); otherwise show an initial + name + role.
+          data-hero-node + pointer-events lets the build page double-click it. */}
+      <g data-hero-node={flow.headline.partyA} style={{ pointerEvents: "auto" }}>
       <ElevatedNode x={196} w={300} green>
         {heroClientLogo ? (
           config.clientLogoPlate === "light" ? (
@@ -259,16 +272,43 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
           </>
         )}
       </ElevatedNode>
+      {entityA && (
+        <text x={346} y={532} textAnchor="middle" fontSize={12} fill="#6f857b">
+          ({entityA})
+        </text>
+      )}
+      </g>
 
-      {/* beneficiary station */}
+      {/* beneficiary station — a plain name + role, unless branded as a client
+          entity (then it carries the client logo like the client station). */}
+      <g data-hero-node={flow.headline.partyB} style={{ pointerEvents: "auto" }}>
       <ElevatedNode x={864} w={300} green>
-        <text x={1014} y={455} textAnchor="middle" fontSize={20} fontWeight={600} fill="#f1f4f2">
-          {merchantName}
-        </text>
-        <text x={1014} y={477} textAnchor="middle" fontSize={13} fontWeight={400} fill="#6f857b">
-          Beneficiary, {merchantWhere}
-        </text>
+        {brandedB ? (
+          config.clientLogoPlate === "light" ? (
+            <>
+              <rect x={874} y={407} width={280} height={100} rx={16} fill="#ffffff" />
+              <image href={heroClientLogo} x={904} y={429} width={220} height={56} preserveAspectRatio="xMidYMid meet" />
+            </>
+          ) : (
+            <image href={heroClientLogo} x={904} y={429} width={220} height={56} preserveAspectRatio="xMidYMid meet" />
+          )
+        ) : (
+          <>
+            <text x={1014} y={455} textAnchor="middle" fontSize={20} fontWeight={600} fill="#f1f4f2">
+              {merchantName}
+            </text>
+            <text x={1014} y={477} textAnchor="middle" fontSize={13} fontWeight={400} fill="#6f857b">
+              Beneficiary, {merchantWhere}
+            </text>
+          </>
+        )}
       </ElevatedNode>
+      {entityB && (
+        <text x={1014} y={532} textAnchor="middle" fontSize={12} fill="#6f857b">
+          ({entityB})
+        </text>
+      )}
+      </g>
 
       {/* the Trace-mark conversion hub */}
       <circle cx={HUB.cx} cy={HUB.cy} r={HUB.r} fill="#0b110d" stroke={C.green} strokeOpacity={0.3} />

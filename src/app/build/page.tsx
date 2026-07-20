@@ -212,6 +212,29 @@ export default function BuildPage() {
       });
       return;
     }
+    // The two "desired transaction" boxes are the same actors as their
+    // machinery counterparts — edit them with the same card, keyed on the same
+    // node ids so a rename / entity / logo stays consistent across both stages.
+    const heroNodeEl = (e.target as Element).closest?.("[data-hero-node]");
+    if (heroNodeEl) {
+      const hid = heroNodeEl.getAttribute("data-hero-node")!;
+      const hkey = `${config.flowId}:${hid}`;
+      const hentity = config.nodeEntities?.[hkey];
+      const r = heroNodeEl.getBoundingClientRect();
+      setRename({
+        key: hkey,
+        node: true,
+        entity: hentity ?? "",
+        entityOn: !!hentity,
+        branded: !!config.nodeBranded?.[hkey],
+        original: getFlow(config.flowId)?.nodes.find((n) => n.id === hid)?.label ?? "",
+        value: config.nodeLabels?.[hkey] ?? getFlow(config.flowId)?.nodes.find((n) => n.id === hid)?.label ?? "",
+        left: r.left,
+        top: r.top + r.height / 2 - 17,
+        width: Math.max(Math.min(r.width, 240), 190),
+      });
+      return;
+    }
     const el = (e.target as Element).closest?.("[data-flow-node]");
     const id = el?.getAttribute("data-flow-node");
     if (!el || !id) return;
