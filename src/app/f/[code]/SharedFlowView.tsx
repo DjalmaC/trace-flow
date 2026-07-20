@@ -297,6 +297,12 @@ export function SharedFlowView({ code }: { code: string }) {
       : <PricingView pricing={proposalPricing} clientName={config.clientName} inline={isMobile} />
     : null;
 
+  // Only offer the Pricing tab when the link actually carries pricing. A link
+  // saved without any rates is flow-only — no toggle, and a ?view=pricing deep
+  // link falls back to the flow.
+  const hasPricing = !!config?.pricing;
+  const effView: "flow" | "pricing" = hasPricing ? view : "flow";
+
   return (
     <LayoutGroup>
       {/* overflow-x:clip (not hidden) contains horizontal overflow WITHOUT
@@ -330,11 +336,13 @@ export function SharedFlowView({ code }: { code: string }) {
                       </div>
                     </div>
                     <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                      <SegToggle value={view} onChange={setView} options={[{ value: "flow", label: "Flow" }, { value: "pricing", label: "Pricing" }]} />
-                      {view === "flow" && !config.hideDirectionToggle && (config.clientDirections ?? "both") === "both" && (
+                      {hasPricing && (
+                        <SegToggle value={view} onChange={setView} options={[{ value: "flow", label: "Flow" }, { value: "pricing", label: "Pricing" }]} />
+                      )}
+                      {effView === "flow" && !config.hideDirectionToggle && (config.clientDirections ?? "both") === "both" && (
                         <SegToggle value={direction} onChange={setDirection} options={directionOptions(config, flowId)} />
                       )}
-                      {view === "flow" && hasVariants && (
+                      {effView === "flow" && hasVariants && (
                         <SegToggle full value={flowId} onChange={switchFlow} options={variants!.map((v) => ({ value: v.flowId, label: clientFlowName(v.name) }))} />
                       )}
                     </div>
@@ -342,7 +350,7 @@ export function SharedFlowView({ code }: { code: string }) {
                 )}
               </header>
 
-              {view === "pricing" ? (
+              {effView === "pricing" ? (
                 pricingEl
               ) : (
                 <>
@@ -387,7 +395,7 @@ export function SharedFlowView({ code }: { code: string }) {
                   <>
                     <div className="tf-fade flex items-center gap-2">
                       <AnimatePresence initial={false}>
-                        {view === "flow" && (
+                        {effView === "flow" && (
                           <motion.div
                             key="direction"
                             initial={{ opacity: 0, x: 6 }}
@@ -405,10 +413,10 @@ export function SharedFlowView({ code }: { code: string }) {
                           </motion.div>
                         )}
                       </AnimatePresence>
-                      <ViewSwitch view={view} onChange={setView} />
+                      {hasPricing && <ViewSwitch view={view} onChange={setView} />}
                     </div>
                     <AnimatePresence initial={false}>
-                      {view === "flow" && hasVariants && (
+                      {effView === "flow" && hasVariants && (
                         <motion.div
                           key="variants"
                           initial={{ height: 0, opacity: 0 }}
@@ -426,7 +434,7 @@ export function SharedFlowView({ code }: { code: string }) {
                 )}
               </div>
 
-              {view === "pricing" ? (
+              {effView === "pricing" ? (
                 pricingEl
               ) : (
                 <>

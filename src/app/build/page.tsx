@@ -33,6 +33,8 @@ export default function BuildPage() {
   // Proposal pricing (2b): lives beside proposalFlows and rides into the share
   // config, so the client's Pricing view and the PDF show the rep's rates.
   const [pricing, setPricing] = useState<ProposalPricing>(() => deckPricing());
+  // Whether pricing ships into the client link (off → flow-only link).
+  const [includePricing, setIncludePricing] = useState(true);
   // Sandbox mode: links generated while on are tagged and kept off the pipeline.
   const [sandbox, setSandbox] = useState(false);
   // Editing an existing proposal (dashboard → Edit): its share code.
@@ -92,6 +94,7 @@ export default function BuildPage() {
           } as FlowConfig);
           setProposalFlows(c.variants ?? [{ flowId: flowIdR, name: getFlow(flowIdR)?.title ?? "Flow" }]);
           setPricing(normalizePricing(c.pricing, c.proposalType ?? "standard"));
+          setIncludePricing(!!c.pricing); // a link saved without pricing stays flow-only
           setSandbox(!!c.sandbox);
           setSetup({
             proposalType: c.proposalType ?? "standard",
@@ -688,6 +691,8 @@ export default function BuildPage() {
         onProposalFlowsChange={setProposalFlows}
         pricing={pricing}
         onPricingChange={setPricing}
+        includePricing={includePricing}
+        onIncludePricingChange={setIncludePricing}
         sandbox={sandbox}
         onSandboxChange={setSandbox}
         editingCode={editingCode}

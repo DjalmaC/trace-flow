@@ -111,6 +111,8 @@ export function ControlPanel({
   onProposalFlowsChange,
   pricing,
   onPricingChange,
+  includePricing = true,
+  onIncludePricingChange,
   sandbox = false,
   onSandboxChange,
   editingCode = null,
@@ -125,6 +127,10 @@ export function ControlPanel({
   onProposalFlowsChange?: (next: { flowId: string; name: string }[]) => void;
   pricing: ProposalPricing;
   onPricingChange: (next: ProposalPricing) => void;
+  /** Whether pricing rides into the client link. Off → the link is flow-only
+   *  and the client view hides the Pricing tab. */
+  includePricing?: boolean;
+  onIncludePricingChange?: (v: boolean) => void;
   /** Sandbox mode: generated links are tagged and kept off the pipeline. */
   sandbox?: boolean;
   onSandboxChange?: (v: boolean) => void;
@@ -246,8 +252,9 @@ export function ControlPanel({
       salesperson,
       // 2b pricing: the shared view's new renderer consumes the raw
       // ProposalPricing directly (legacy region/cards rows from pre-existing
-      // links keep the old renderer).
-      pricing,
+      // links keep the old renderer). Omitted when the rep excludes pricing —
+      // the client link then hides the Pricing tab entirely.
+      pricing: includePricing ? pricing : undefined,
       // Sandbox links are tagged so the dashboard keeps them off the pipeline.
       sandbox: sandbox || undefined,
     } as unknown as FlowConfig;
@@ -761,7 +768,29 @@ export function ControlPanel({
                   </select>
                 </Field>
 
-                <PricingEditor pricing={pricing} onChange={onPricingChange} proposalType={proposalType} />
+                <div className="flex items-center justify-between rounded-[9px] border border-hairline-control bg-surface-input px-3 py-2">
+                  <span className="text-[11px] text-muted">Include pricing in the client link</span>
+                  <button
+                    role="switch"
+                    aria-checked={includePricing}
+                    aria-label="Include pricing in the client link"
+                    onClick={() => onIncludePricingChange?.(!includePricing)}
+                    className="relative h-[18px] w-[32px] shrink-0 rounded-full transition duration-150 ease-ds"
+                    style={{ background: includePricing ? "#00f2b1" : "#2a332e" }}
+                  >
+                    <span
+                      className="absolute top-[2px] h-[14px] w-[14px] rounded-full bg-white transition-all duration-150 ease-ds"
+                      style={{ left: includePricing ? 16 : 2 }}
+                    />
+                  </button>
+                </div>
+                {includePricing ? (
+                  <PricingEditor pricing={pricing} onChange={onPricingChange} proposalType={proposalType} />
+                ) : (
+                  <p className="text-[11px] leading-snug text-muted">
+                    The client link will show the flow only — no Pricing tab.
+                  </p>
+                )}
               </div>
             </div>
           )}
