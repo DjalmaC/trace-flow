@@ -234,20 +234,27 @@ export default function BuildPage() {
     const heroNodeEl = (e.target as Element).closest?.("[data-hero-node]");
     if (heroNodeEl) {
       const hid = heroNodeEl.getAttribute("data-hero-node")!;
-      const hkey = `${config.flowId}:${hid}`;
-      const hentity = config.nodeEntities?.[hkey];
+      // Hero edits write a hero-namespaced key so the "desired transaction" can
+      // diverge from the machinery below (e.g. Client -> Client on top, client
+      // -> merchant beneath). Initial values fall back to the machinery edit,
+      // then the flow's own label.
+      const hkey = `${config.flowId}:__hero__:${hid}`;
+      const mkey = `${config.flowId}:${hid}`;
+      const flowLabel = getFlow(config.flowId)?.nodes.find((n) => n.id === hid)?.label ?? "";
+      const hentity = config.nodeEntities?.[hkey] ?? config.nodeEntities?.[mkey];
       const r = heroNodeEl.getBoundingClientRect();
+      const w = Math.max(Math.min(r.width, 240), 190);
       setRename({
         key: hkey,
         node: true,
         entity: hentity ?? "",
         entityOn: !!hentity,
-        branded: !!config.nodeBranded?.[hkey],
-        original: getFlow(config.flowId)?.nodes.find((n) => n.id === hid)?.label ?? "",
-        value: config.nodeLabels?.[hkey] ?? getFlow(config.flowId)?.nodes.find((n) => n.id === hid)?.label ?? "",
-        left: r.left,
+        branded: !!(config.nodeBranded?.[hkey] ?? config.nodeBranded?.[mkey]),
+        original: flowLabel,
+        value: config.nodeLabels?.[hkey] ?? config.nodeLabels?.[mkey] ?? flowLabel,
+        left: r.left + r.width / 2 - w / 2,
         top: r.top + r.height / 2 - 17,
-        width: Math.max(Math.min(r.width, 240), 190),
+        width: w,
       });
       return;
     }

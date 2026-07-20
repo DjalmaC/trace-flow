@@ -83,26 +83,30 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
   const convertsTo = displayCurrency(flow.headline.convertsTo ?? flow.headline.carries, config);
   const dir = config.direction;
 
-  // labels — the desired-transaction boxes are the same actors as their
-  // machinery counterparts, so they read the SAME per-proposal override maps
-  // (double-click edits on the build canvas): a party renamed / annotated /
-  // branded once stays consistent across both stages.
+  // labels — the desired-transaction boxes can DIVERGE from their machinery
+  // counterparts. Each reads a hero-namespaced override first, falling back to
+  // the machinery override, then the flow's own label. So by default the two
+  // stages match, but a hero-specific edit (e.g. Client -> Client with the logo
+  // both ends) leaves the machinery below untouched (client -> merchant).
   const partyA = flow.nodes.find((n) => n.id === flow.headline.partyA);
   const partyB = flow.nodes.find((n) => n.id === flow.headline.partyB);
-  const keyA = `${flow.id}:${flow.headline.partyA}`;
-  const keyB = `${flow.id}:${flow.headline.partyB}`;
-  const labelA = config.nodeLabels?.[keyA] ?? partyA?.label ?? "Client";
-  const labelB = config.nodeLabels?.[keyB] ?? partyB?.label ?? "Beneficiary";
-  const entityA = config.nodeEntities?.[keyA]?.trim();
-  const entityB = config.nodeEntities?.[keyB]?.trim();
+  const hero = (id: string) => `${flow.id}:__hero__:${id}`;
+  const mach = (id: string) => `${flow.id}:${id}`;
+  const ov = (m: Record<string, string> | undefined, id: string) => m?.[hero(id)] ?? m?.[mach(id)];
+  const ovb = (m: Record<string, boolean> | undefined, id: string) => m?.[hero(id)] ?? m?.[mach(id)];
+  const labelA = ov(config.nodeLabels, flow.headline.partyA) ?? partyA?.label ?? "Client";
+  const labelB = ov(config.nodeLabels, flow.headline.partyB) ?? partyB?.label ?? "Beneficiary";
+  const entityA = ov(config.nodeEntities, flow.headline.partyA)?.trim();
+  const entityB = ov(config.nodeEntities, flow.headline.partyB)?.trim();
   const clientSub = sentenceCase(labelA);
   // Technology-provider framing: the client wraps the flow instead of being a
   // station in it — the hero shows the flow's own originating party instead.
   const platform = isPlatformFlow(config, flow.id);
   const heroClientName = platform ? clientSub : config.clientName;
   const heroClientLogo = platform ? undefined : config.clientLogoUrl;
-  // The beneficiary box can be branded as a client entity too (a second logo).
-  const brandedB = !platform && !!config.nodeBranded?.[keyB] && !!config.clientLogoUrl;
+  // The beneficiary box can be branded as a client entity too (a second logo) —
+  // e.g. a "Client -> Client" desired transaction with the logo both ends.
+  const brandedB = !platform && !!ovb(config.nodeBranded, flow.headline.partyB) && !!config.clientLogoUrl;
   const merchantName = sentenceCase(labelB);
   // the beneficiary isn't always abroad (the Foreigner-to-BR flow settles in Brazil)
   const merchantWhere = partyB?.lane === "brazil" ? "in Brazil" : "abroad";
