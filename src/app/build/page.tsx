@@ -684,6 +684,18 @@ export default function BuildPage() {
         sandbox={sandbox}
         onSandboxChange={setSandbox}
         editingCode={editingCode}
+        onSaved={(code, savedConfig) => {
+          // Lock onto this link so the next save updates it in place, and
+          // refresh the edit stash + URL so reloading or re-editing keeps the
+          // edits instead of reverting to the pre-edit state.
+          setEditingCode(code);
+          try {
+            sessionStorage.setItem(EDIT_STASH_KEY, JSON.stringify({ code, config: savedConfig }));
+            window.history.replaceState(null, "", `/build?edit=${code}`);
+          } catch {
+            /* ignore storage/history failures */
+          }
+        }}
       />
       {renameOverlay}
       {editControls}

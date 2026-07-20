@@ -114,6 +114,7 @@ export function ControlPanel({
   sandbox = false,
   onSandboxChange,
   editingCode = null,
+  onSaved,
 }: {
   config: FlowConfig;
   onConfigChange: (next: FlowConfig) => void;
@@ -129,6 +130,9 @@ export function ControlPanel({
   onSandboxChange?: (v: boolean) => void;
   /** Editing an existing proposal: its share code — enables Update-in-place. */
   editingCode?: string | null;
+  /** Called after a successful save with the link code + the shipped config, so
+   *  the builder can lock onto that link and persist the edits for re-editing. */
+  onSaved?: (code: string, config: FlowConfig) => void;
 }) {
   const [open, setOpen] = useState(true);
   const [step, setStep] = useState(0);
@@ -249,25 +253,31 @@ export function ControlPanel({
     } as unknown as FlowConfig;
   }
 
-  async function generateProposal() {
+  // One save: persist edits (so re-editing keeps them), push them into the
+  // client link (creating it the first time, updating it in place after), then
+  // open the link in a new tab and copy it to the clipboard.
+  async function saveFlow() {
     setShare({ status: "loading" });
+    // Open the tab up-front (inside the click) so the pop-up isn't blocked
+    // after the network await; we redirect it once we have the code.
+    const win = typeof window !== "undefined" ? window.open("", "_blank") : null;
     try {
-      const { code } = await createShareLink(buildShareConfig());
+      const cfg = buildShareConfig();
+      let code = editingCode ?? null;
+      if (code) await updateShareLink(code, cfg);
+      else code = (await createShareLink(cfg)).code;
       const url = `${window.location.origin}/f/${code}`;
-      setShare({ status: "done", url });
+      onSaved?.(code, cfg as unknown as FlowConfig); // persist stash + lock the link for next save
+      try {
+        await navigator.clipboard.writeText(url);
+      } catch {
+        /* clipboard may be blocked; the Copy button is the fallback */
+      }
+      if (win) win.location.href = url;
+      else window.open(url, "_blank", "noopener");
+      setShare({ status: "done", url, copied: true });
     } catch (err) {
-      setShare({ status: "error", msg: err instanceof Error ? err.message : "Something went wrong." });
-    }
-  }
-
-  // Editing an existing proposal: push the edits into the SAME link.
-  async function updateProposal() {
-    if (!editingCode) return;
-    setShare({ status: "loading" });
-    try {
-      await updateShareLink(editingCode, buildShareConfig());
-      setShare({ status: "done", url: `${window.location.origin}/f/${editingCode}` });
-    } catch (err) {
+      if (win) win.close();
       setShare({ status: "error", msg: err instanceof Error ? err.message : "Something went wrong." });
     }
   }
@@ -357,13 +367,13 @@ export function ControlPanel({
     { id: "studio-describe", label: "Describe the deal", icon: "plus", run: () => setStudio("describe") },
     { id: "studio-browse", label: "Browse all flows", icon: "plus", run: () => setStudio("browse") },
     {
-      id: "generate-link",
-      label: "Generate client link",
+      id: "save-flow",
+      label: "Save flow",
       icon: "link",
       run: () => {
         setStep(2);
         setOpen(true);
-        void generateProposal();
+        void saveFlow();
       },
     },
     { id: "present", label: "Present", icon: "play", run: onPresent },
@@ -797,22 +807,16 @@ export function ControlPanel({
 
               {isShareConfigured() ? (
                 <>
-                  {editingCode && (
-                    <button
-                      onClick={updateProposal}
-                      disabled={share.status === "loading"}
-                      className="w-full rounded-[10px] bg-mint px-3 py-2.5 text-[13px] font-semibold text-mint-on transition duration-150 ease-ds hover:bg-mint-hover disabled:opacity-60"
-                    >
-                      {share.status === "loading" ? "Updating…" : `Update client link · ${editingCode}`}
-                    </button>
-                  )}
                   <button
-                    onClick={generateProposal}
+                    onClick={saveFlow}
                     disabled={share.status === "loading"}
-                    className="w-full rounded-[10px] border border-mint/50 px-3 py-2.5 text-[13px] font-medium text-mint transition duration-150 ease-ds hover:bg-mint/10 disabled:opacity-60"
+                    className="w-full rounded-[10px] bg-mint px-3 py-2.5 text-[13px] font-semibold text-mint-on transition duration-150 ease-ds hover:bg-mint-hover disabled:opacity-60"
                   >
-                    {share.status === "loading" ? "Generating…" : editingCode ? "Generate a new link instead" : "Generate client link"}
+                    {share.status === "loading" ? "Saving…" : "Save flow"}
                   </button>
+                  <p className="text-[10px] leading-snug text-muted">
+                    Saves your edits, updates the client link{editingCode ? "" : " (creates it the first time)"}, then opens it and copies it to your clipboard.
+                  </p>
                   {share.status === "done" && share.url && (
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-1.5">
@@ -829,10 +833,10 @@ export function ControlPanel({
                           {share.copied ? "Copied" : "Copy"}
                         </button>
                       </div>
-                      <p className={`text-[10px] leading-snug ${sandbox ? "text-[#e6b566]" : "text-muted"}`}>
+                      <p className={`text-[10px] leading-snug ${sandbox ? "text-[#e6b566]" : "text-mint-muted"}`}>
                         {sandbox
-                          ? "Sandbox link: it works like the real thing but stays off your pipeline."
-                          : `View-only proposal for ${config.clientName}: the flows, pricing, and your contact card.`}
+                          ? "Saved · opened · copied. Sandbox link: works like the real thing but stays off your pipeline."
+                          : "Saved · opened in a new tab · copied to your clipboard."}
                       </p>
                     </div>
                   )}
