@@ -294,7 +294,7 @@ export function FlowExperience({
       </h2>
       <p className="mt-2.5 text-sm font-medium text-mint md:text-base">{clientFlowName(flow.title)}</p>
       {(flowComment || editable) && (
-        <p
+        <div
           data-flow-comment
           className={
             flowComment
@@ -302,8 +302,8 @@ export function FlowExperience({
               : "mx-auto mt-3 max-w-[46rem] cursor-text rounded-md border border-dashed border-white/12 px-3 py-1.5 text-[12.5px] italic text-muted/70"
           }
         >
-          {flowComment || "Double-click to add a note that situates the viewer"}
-        </p>
+          {flowComment ? <NoteBody text={flowComment} /> : "Double-click to add a note that situates the viewer"}
+        </div>
       )}
     </div>
   );
@@ -336,7 +336,11 @@ export function FlowExperience({
           <DirectionToggle direction={config.direction} onChange={onDirectionChange} options={directionOptions(config, config.flowId)} fixed />
         )}
         {SurfaceHeading}
-        {flowComment && <p className="mx-auto mb-3 max-w-[34rem] text-center text-[13px] leading-relaxed text-subtitle">{flowComment}</p>}
+        {flowComment && (
+          <div className="mx-auto mb-3 max-w-[34rem] text-center text-[13px] leading-relaxed text-subtitle">
+            <NoteBody text={flowComment} />
+          </div>
+        )}
         {(choices.length > 1 || fundChoices.length > 1) && (
           <div className="mb-3 flex w-full flex-wrap justify-center gap-2">
             {fundToggleEl}
@@ -490,6 +494,30 @@ function SettlementToggle({
         </button>
       ))}
     </div>
+  );
+}
+
+// A flow note: one line per line of text. Lines starting with "- ", "* " or
+// "• " render as bullets (left-aligned block, centred as a whole); otherwise
+// it's a plain multi-line paragraph with the breaks preserved.
+const BULLET_RE = /^[-*•]\s+/;
+function NoteBody({ text }: { text: string }) {
+  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const asBullets = lines.length > 1 && lines.some((l) => BULLET_RE.test(l));
+  if (!asBullets) return <span style={{ whiteSpace: "pre-line" }}>{lines.join("\n")}</span>;
+  return (
+    <span className="mx-auto flex max-w-max flex-col gap-1.5 text-left">
+      {lines.map((l, i) =>
+        BULLET_RE.test(l) ? (
+          <span key={i} className="flex gap-2">
+            <span className="select-none text-mint">•</span>
+            <span>{l.replace(BULLET_RE, "")}</span>
+          </span>
+        ) : (
+          <span key={i}>{l}</span>
+        ),
+      )}
+    </span>
   );
 }
 

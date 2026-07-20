@@ -544,20 +544,20 @@ export default function BuildPage() {
       // adds a line, Escape cancels.
       <textarea
         autoFocus
-        rows={2}
+        rows={4}
         value={rename.value}
         onChange={(e) => setRename({ ...rename, value: e.target.value })}
         onFocus={(e) => e.target.select()}
         onBlur={commitRename}
         onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            commitRename();
-          } else if (e.key === "Escape") setRename(null);
+          // Enter adds a line (so you can build bullets); Escape cancels; click
+          // away to save.
+          if (e.key === "Escape") setRename(null);
+          e.stopPropagation();
         }}
-        placeholder="A short note to situate the viewer…"
+        placeholder="One line per point. Start a line with '- ' for a bullet. Click away to save."
         aria-label="Flow note"
-        className="fixed z-[80] resize-none rounded-lg border border-mint bg-[#0c110f] px-3 py-2 text-center text-[13px] leading-relaxed text-title shadow-xl outline-none placeholder:text-muted"
+        className="fixed z-[80] resize-none rounded-lg border border-mint bg-[#0c110f] px-3 py-2 text-left text-[13px] leading-relaxed text-title shadow-xl outline-none placeholder:text-muted"
         style={{ left: rename.left, top: rename.top, width: rename.width }}
       />
     ) : rename.node ? (

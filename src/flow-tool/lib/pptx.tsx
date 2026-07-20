@@ -216,11 +216,18 @@ function flowSlide(config: FlowConfig, flow: Flow, name: string, label: string, 
           <MachineryStage layout={layout} config={config} animate={false} showHeading={false} />
         )}
       </svg>
-      {flowComment && (
-        <text x={48} y={settleNote ? 498 : 514} fontSize={10.5} fill={SUB} opacity={0.9}>
-          {flowComment}
-        </text>
-      )}
+      {flowComment &&
+        (() => {
+          const lines = flowComment.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+          const bulletRe = /^[-*•]\s+/;
+          const baseY = settleNote ? 498 : 514;
+          const topY = baseY - (lines.length - 1) * 14;
+          return lines.map((l, i) => (
+            <text key={i} x={48} y={topY + i * 14} fontSize={10.5} fill={SUB} opacity={0.9}>
+              {bulletRe.test(l) ? `•  ${l.replace(bulletRe, "")}` : l}
+            </text>
+          ));
+        })()}
       {settleNote && (
         <text x={48} y={514} fontSize={10.5} fill={SUB} opacity={0.9}>
           {settleNote}
