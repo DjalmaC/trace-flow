@@ -218,15 +218,47 @@ function flowSlide(config: FlowConfig, flow: Flow, name: string, label: string, 
       </svg>
       {flowComment &&
         (() => {
-          const lines = flowComment.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
           const bulletRe = /^[-*•]\s+/;
+          // SVG text doesn't wrap — word-wrap each source line to a readable
+          // width, marking the first segment of a bullet with "•".
+          const wrap = (l: string): string[] => {
+            const bul = bulletRe.test(l);
+            const words = l.replace(bulletRe, "").split(/\s+/).filter(Boolean);
+            const MAX = 58;
+            const segs: string[] = [];
+            let cur = "";
+            for (const w of words) {
+              if ((cur + " " + w).trim().length > MAX) {
+                segs.push(cur);
+                cur = w;
+              } else cur = cur ? `${cur} ${w}` : w;
+            }
+            if (cur) segs.push(cur);
+            return segs.map((s, i) => (i === 0 && bul ? `•  ${s}` : s));
+          };
+          const flat = flowComment.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).flatMap(wrap);
+          const LH = 13;
+          const twoCol = flat.length > 6;
           const baseY = settleNote ? 498 : 514;
-          const topY = baseY - (lines.length - 1) * 14;
-          return lines.map((l, i) => (
-            <text key={i} x={48} y={topY + i * 14} fontSize={10.5} fill={SUB} opacity={0.9}>
-              {bulletRe.test(l) ? `•  ${l.replace(bulletRe, "")}` : l}
-            </text>
-          ));
+          if (!twoCol) {
+            const topY = baseY - (flat.length - 1) * LH;
+            return flat.map((t, i) => (
+              <text key={i} x={48} y={topY + i * LH} fontSize={10.5} fill={SUB} opacity={0.9}>{t}</text>
+            ));
+          }
+          const half = Math.ceil(flat.length / 2);
+          const rows = Math.max(half, flat.length - half);
+          const topY = baseY - (rows - 1) * LH;
+          return (
+            <>
+              {flat.slice(0, half).map((t, i) => (
+                <text key={`a${i}`} x={48} y={topY + i * LH} fontSize={10.5} fill={SUB} opacity={0.9}>{t}</text>
+              ))}
+              {flat.slice(half).map((t, i) => (
+                <text key={`b${i}`} x={498} y={topY + i * LH} fontSize={10.5} fill={SUB} opacity={0.9}>{t}</text>
+              ))}
+            </>
+          );
         })()}
       {settleNote && (
         <text x={48} y={514} fontSize={10.5} fill={SUB} opacity={0.9}>

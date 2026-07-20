@@ -542,24 +542,33 @@ export default function BuildPage() {
     (rename.comment ? (
       // Per-flow note: a small multi-line field. Enter commits, Shift+Enter
       // adds a line, Escape cancels.
-      <textarea
-        autoFocus
-        rows={4}
-        value={rename.value}
-        onChange={(e) => setRename({ ...rename, value: e.target.value })}
-        onFocus={(e) => e.target.select()}
-        onBlur={commitRename}
-        onKeyDown={(e) => {
-          // Enter adds a line (so you can build bullets); Escape cancels; click
-          // away to save.
-          if (e.key === "Escape") setRename(null);
-          e.stopPropagation();
-        }}
-        placeholder="One line per point. Start a line with '- ' for a bullet. Click away to save."
-        aria-label="Flow note"
-        className="fixed z-[80] resize-none rounded-lg border border-mint bg-[#0c110f] px-3 py-2 text-left text-[13px] leading-relaxed text-title shadow-xl outline-none placeholder:text-muted"
-        style={{ left: rename.left, top: rename.top, width: rename.width }}
-      />
+      <div className="fixed z-[80] flex flex-col gap-1" style={{ left: rename.left, top: rename.top, width: rename.width }}>
+        <textarea
+          autoFocus
+          rows={4}
+          value={rename.value}
+          onChange={(e) => setRename({ ...rename, value: e.target.value })}
+          onFocus={(e) => e.target.select()}
+          onBlur={commitRename}
+          onKeyDown={(e) => {
+            // Enter adds a line (so you can build bullets); Escape cancels;
+            // click away to save.
+            if (e.key === "Escape") setRename(null);
+            e.stopPropagation();
+          }}
+          placeholder="One line per point. Start a line with '- ' for a bullet. Click away to save."
+          aria-label="Flow note"
+          className="w-full resize-none rounded-lg border border-mint bg-[#0c110f] px-3 py-2 text-left text-[13px] leading-relaxed text-title shadow-xl outline-none placeholder:text-muted"
+        />
+        {(() => {
+          const n = rename.value.split(/\r?\n/).filter((l) => l.trim()).length;
+          return (
+            <span className={`self-end rounded px-1.5 py-0.5 text-[10px] ${n > 6 ? "text-amber-300/80" : "text-muted"}`}>
+              {n} line{n === 1 ? "" : "s"} · reads best under ~6
+            </span>
+          );
+        })()}
+      </div>
     ) : rename.node ? (
       // Node box: name + an opt-in "Specify entity" line that renders under the
       // box as "(Brazilian VASP)". Commits when focus leaves the whole card.

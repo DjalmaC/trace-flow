@@ -285,24 +285,25 @@ export function FlowExperience({
   );
 
   const DepthHeading = (
-    <div className="mx-auto mb-5 text-center" style={{ width: "min(36rem, calc(100vw - 2rem))" }}>
-      <div className="mb-2 font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-muted md:text-[11px] md:tracking-[0.32em]">
-        Beneath the surface
+    <div className="mx-auto mb-5 flex flex-col items-center text-center" style={{ width: "min(54rem, calc(100vw - 2rem))" }}>
+      <div style={{ width: "min(36rem, calc(100vw - 2rem))" }}>
+        <div className="mb-2 font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-muted md:text-[11px] md:tracking-[0.32em]">
+          Beneath the surface
+        </div>
+        <h2 className="font-display text-2xl font-semibold tracking-[-0.01em] text-title md:text-4xl">
+          How Trace makes it happen
+        </h2>
+        <p className="mt-2.5 text-sm font-medium text-mint md:text-base">{clientFlowName(flow.title)}</p>
       </div>
-      <h2 className="font-display text-2xl font-semibold tracking-[-0.01em] text-title md:text-4xl">
-        How Trace makes it happen
-      </h2>
-      <p className="mt-2.5 text-sm font-medium text-mint md:text-base">{clientFlowName(flow.title)}</p>
       {(flowComment || editable) && (
-        <div
-          data-flow-comment
-          className={
-            flowComment
-              ? "mx-auto mt-3 max-w-[46rem] text-[13.5px] leading-relaxed text-subtitle"
-              : "mx-auto mt-3 max-w-[46rem] cursor-text rounded-md border border-dashed border-white/12 px-3 py-1.5 text-[12.5px] italic text-muted/70"
-          }
-        >
-          {flowComment ? <NoteBody text={flowComment} /> : "Double-click to add a note that situates the viewer"}
+        <div data-flow-comment className="mt-3 max-h-[26vh] w-full overflow-y-auto text-[13.5px] leading-relaxed text-subtitle">
+          {flowComment ? (
+            <NoteBody text={flowComment} />
+          ) : (
+            <span className="mx-auto block max-w-[40rem] cursor-text rounded-md border border-dashed border-white/12 px-3 py-1.5 text-[12.5px] italic text-muted/70">
+              Double-click to add a note that situates the viewer
+            </span>
+          )}
         </div>
       )}
     </div>
@@ -504,20 +505,30 @@ const BULLET_RE = /^[-*•]\s+/;
 function NoteBody({ text }: { text: string }) {
   const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   const asBullets = lines.length > 1 && lines.some((l) => BULLET_RE.test(l));
-  if (!asBullets) return <span style={{ whiteSpace: "pre-line" }}>{lines.join("\n")}</span>;
+  // Plain paragraph: preserve breaks, bounded width so long lines wrap.
+  if (!asBullets) return <span className="mx-auto block max-w-[40rem]" style={{ whiteSpace: "pre-line" }}>{lines.join("\n")}</span>;
+  // Bullets: hanging indent (wrapped text lines up under the text, not the
+  // dot); two columns once the list gets long so it stays short vertically.
+  const twoCol = lines.length > 4;
+  const Item = (l: string, i: number) =>
+    BULLET_RE.test(l) ? (
+      <li key={i} className="flex gap-2">
+        <span className="mt-[3px] h-[3px] w-[3px] shrink-0 rounded-full bg-mint" />
+        <span className="min-w-0">{l.replace(BULLET_RE, "")}</span>
+      </li>
+    ) : (
+      <li key={i} className="min-w-0">{l}</li>
+    );
   return (
-    <span className="mx-auto flex max-w-max flex-col gap-1.5 text-left">
-      {lines.map((l, i) =>
-        BULLET_RE.test(l) ? (
-          <span key={i} className="flex gap-2">
-            <span className="select-none text-mint">•</span>
-            <span>{l.replace(BULLET_RE, "")}</span>
-          </span>
-        ) : (
-          <span key={i}>{l}</span>
-        ),
-      )}
-    </span>
+    <ul
+      className={
+        twoCol
+          ? "mx-auto block w-full max-w-[52rem] columns-2 gap-x-9 text-left [&>li]:mb-2 [&>li]:break-inside-avoid"
+          : "mx-auto flex w-fit max-w-[40rem] flex-col gap-1.5 text-left"
+      }
+    >
+      {lines.map(Item)}
+    </ul>
   );
 }
 
