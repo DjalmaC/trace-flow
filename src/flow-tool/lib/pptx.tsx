@@ -210,7 +210,7 @@ function flowSlide(config: FlowConfig, flow: Flow, name: string, label: string, 
       )}
       <svg x={x2} y={y2} width={w2} height={h2} viewBox={`0 ${(layout.stageY ?? CONT_Y) - 12} ${mw} ${mh}`} preserveAspectRatio="xMidYMid meet">
         {flow.archetype === "hub" ? (
-          <HubStage layout={layout} config={config} />
+          <HubStage layout={layout} config={config} animate={false} />
         ) : (
           <MachineryStage layout={layout} config={config} animate={false} showHeading={false} />
         )}

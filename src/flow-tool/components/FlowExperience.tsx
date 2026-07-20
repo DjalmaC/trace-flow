@@ -209,7 +209,7 @@ export function FlowExperience({
     >
       <Defs />
       {flow.archetype === "hub" ? (
-        <HubStage layout={layout} config={config} />
+        <HubStage layout={layout} config={config} animate={animate} />
       ) : (
         <MachineryStage layout={layout} config={config} animate={animate} showHeading={false} onPassComplete={onPassComplete} />
       )}
