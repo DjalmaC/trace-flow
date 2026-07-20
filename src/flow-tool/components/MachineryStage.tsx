@@ -432,17 +432,28 @@ export function MachineryStage({
 
       {/* station boxes — cover the rail's ends + the resting token.
           data-flow-node lets the build page offer double-click renaming. */}
-      {nodes.map((node) => (
-        <g key={node.id} data-flow-node={node.kind === "engine" ? undefined : node.srcId ?? node.id}>
-          <FlowNodeShape
-            node={node}
-            isPrimaryClient={node.id === layout.primaryClientId}
-            clientName={platformOn ? undefined : config.clientName}
-            clientLogoUrl={platformOn ? undefined : config.clientLogoUrl}
-            clientLogoPlate={config.clientLogoPlate}
-          />
-        </g>
-      ))}
+      {nodes.map((node) => {
+        // Opt-in entity annotation, shown in parentheses just below the box
+        // (e.g. "(Brazilian VASP)"). Keyed like nodeLabels, on the content id.
+        const entity =
+          node.kind === "engine" ? undefined : config.nodeEntities?.[`${config.flowId}:${node.srcId ?? node.id}`]?.trim();
+        return (
+          <g key={node.id} data-flow-node={node.kind === "engine" ? undefined : node.srcId ?? node.id}>
+            <FlowNodeShape
+              node={node}
+              isPrimaryClient={node.id === layout.primaryClientId}
+              clientName={platformOn ? undefined : config.clientName}
+              clientLogoUrl={platformOn ? undefined : config.clientLogoUrl}
+              clientLogoPlate={config.clientLogoPlate}
+            />
+            {entity && (
+              <text x={node.x + node.w / 2} y={node.y + node.h + 14} textAnchor="middle" fontSize={11} fill={C.subtitle}>
+                ({entity})
+              </text>
+            )}
+          </g>
+        );
+      })}
 
       {/* box landing ripples — a single quick green ring each station emits as
           value lands on it (driven by the relay loop). On top of the boxes. */}

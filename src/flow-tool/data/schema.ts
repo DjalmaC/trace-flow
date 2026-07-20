@@ -426,6 +426,12 @@ export interface FlowConfig {
    *  client link, mobile and the PDF all inherit them — works on library
    *  flows without forking them. */
   nodeLabels?: Record<string, string>;
+  /** Per-proposal entity annotations (double-click a box → "Specify entity"),
+   *  keyed "<flowId>:<nodeId>". Rendered in parentheses just under the box —
+   *  e.g. "(Brazilian VASP)" to name which of a client's entities a box is —
+   *  without changing the box label or its logo. Applied at render time, so the
+   *  canvas, the client link and the PDF all inherit it. Opt-in per box. */
+  nodeEntities?: Record<string, string>;
   /** Per-proposal box reordering (edit mode: drag a box onto another to swap,
    *  or into a gap to move it). Keyed by flowId; the value is the flow's node
    *  ids in their new display order across the flow's ORIGINAL slots. The

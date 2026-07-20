@@ -39,7 +39,7 @@ export default function BuildPage() {
   const [editingCode, setEditingCode] = useState<string | null>(null);
   // Double-click rename overlay for the flow boxes / lane names / hero
   // subtitle on the canvas.
-  const [rename, setRename] = useState<{ key: string; lane?: "brazil" | "abroad"; hero?: boolean; platformCaption?: boolean; original: string; value: string; left: number; top: number; width: number } | null>(null);
+  const [rename, setRename] = useState<{ key: string; lane?: "brazil" | "abroad"; hero?: boolean; platformCaption?: boolean; node?: boolean; entity?: string; entityOn?: boolean; original: string; value: string; left: number; top: number; width: number } | null>(null);
   const renameRef = useRef<HTMLInputElement>(null);
   // Edit mode ("Arrange boxes"): drag a box onto another to swap places, or
   // into a rail gap to move it. Stored as config.nodeOrder, so the client
@@ -218,13 +218,17 @@ export default function BuildPage() {
     const key = `${config.flowId}:${id}`;
     const original = getFlow(config.flowId)?.nodes.find((n) => n.id === id)?.label ?? "";
     const r = el.getBoundingClientRect();
+    const entity = config.nodeEntities?.[key];
     setRename({
       key,
+      node: true,
+      entity: entity ?? "",
+      entityOn: !!entity,
       original,
       value: config.nodeLabels?.[key] ?? original,
       left: r.left,
       top: r.top + r.height / 2 - 17,
-      width: Math.max(r.width, 170),
+      width: Math.max(r.width, 190),
     });
   }
   function commitRename() {
@@ -262,11 +266,20 @@ export default function BuildPage() {
       setRename(null);
       return;
     }
+    const entityVal = rename.entityOn ? (rename.entity ?? "").trim() : "";
     setConfig((c) => {
       const labels = { ...(c.nodeLabels ?? {}) };
       if (!v || v === rename.original) delete labels[rename.key]; // empty = back to the flow's own name
       else labels[rename.key] = v;
-      return { ...c, nodeLabels: Object.keys(labels).length ? labels : undefined };
+      // Entity annotation "(Brazilian VASP)" under the box — opt-in per box.
+      const ents = { ...(c.nodeEntities ?? {}) };
+      if (entityVal) ents[rename.key] = entityVal;
+      else delete ents[rename.key];
+      return {
+        ...c,
+        nodeLabels: Object.keys(labels).length ? labels : undefined,
+        nodeEntities: Object.keys(ents).length ? ents : undefined,
+      };
     });
     setRename(null);
   }
@@ -467,23 +480,75 @@ export default function BuildPage() {
     </>
   );
 
-  const renameOverlay = rename && (
-    <input
-      ref={renameRef}
-      autoFocus
-      value={rename.value}
-      onChange={(e) => setRename({ ...rename, value: e.target.value })}
-      onFocus={(e) => e.target.select()}
-      onBlur={commitRename}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") commitRename();
-        else if (e.key === "Escape") setRename(null);
-      }}
-      aria-label="Rename flow box"
-      className="fixed z-[80] rounded-lg border border-mint bg-[#0c110f] px-2.5 py-1.5 text-center text-[13px] font-semibold text-title shadow-xl outline-none"
-      style={{ left: rename.left, top: rename.top, width: rename.width }}
-    />
-  );
+  const inputCls =
+    "w-full rounded-md border border-mint bg-[#0c110f] px-2.5 py-1.5 text-center text-[13px] font-semibold text-title shadow-xl outline-none";
+  const renameOverlay =
+    rename &&
+    (rename.node ? (
+      // Node box: name + an opt-in "Specify entity" line that renders under the
+      // box as "(Brazilian VASP)". Commits when focus leaves the whole card.
+      <div
+        className="fixed z-[80] flex flex-col gap-1.5 rounded-lg border border-mint bg-[#0c110f] p-2 shadow-xl"
+        style={{ left: rename.left, top: rename.top - 4, width: Math.max(rename.width, 200) }}
+        onBlur={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) commitRename();
+        }}
+      >
+        <input
+          ref={renameRef}
+          autoFocus
+          value={rename.value}
+          onChange={(e) => setRename({ ...rename, value: e.target.value })}
+          onFocus={(e) => e.target.select()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commitRename();
+            else if (e.key === "Escape") setRename(null);
+          }}
+          aria-label="Rename flow box"
+          className={inputCls}
+        />
+        <label className="flex cursor-pointer items-center gap-2 px-0.5 text-[11px] font-medium text-subtitle">
+          <input
+            type="checkbox"
+            checked={!!rename.entityOn}
+            onChange={(e) => setRename({ ...rename, entityOn: e.target.checked })}
+            className="h-3 w-3 accent-mint"
+          />
+          Specify entity
+        </label>
+        {rename.entityOn && (
+          <input
+            autoFocus
+            value={rename.entity ?? ""}
+            onChange={(e) => setRename({ ...rename, entity: e.target.value })}
+            onFocus={(e) => e.target.select()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commitRename();
+              else if (e.key === "Escape") setRename(null);
+            }}
+            placeholder="e.g. Brazilian VASP"
+            aria-label="Entity under the box"
+            className="w-full rounded-md border border-node-stroke bg-[#0c110f] px-2.5 py-1.5 text-center text-[12px] text-title outline-none placeholder:text-muted focus:border-mint"
+          />
+        )}
+      </div>
+    ) : (
+      <input
+        ref={renameRef}
+        autoFocus
+        value={rename.value}
+        onChange={(e) => setRename({ ...rename, value: e.target.value })}
+        onFocus={(e) => e.target.select()}
+        onBlur={commitRename}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") commitRename();
+          else if (e.key === "Escape") setRename(null);
+        }}
+        aria-label="Rename flow box"
+        className={`fixed z-[80] ${inputCls}`}
+        style={{ left: rename.left, top: rename.top, width: rename.width }}
+      />
+    ));
 
   if (present) {
     return (
