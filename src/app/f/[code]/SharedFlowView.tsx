@@ -2,6 +2,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { FlowExperience, useIsMobile } from "@/flow-tool/components/FlowExperience";
+import { NotesDrawer } from "@/components/NotesDrawer";
 import { ASSETS, C, TRACE_LOGO_AR } from "@/flow-tool/components/tokens";
 import { loadSharedFlowGated } from "@/flow-tool/lib/share";
 import { getRep } from "@/flow-tool/data/reps";
@@ -457,6 +458,9 @@ export function SharedFlowView({ code }: { code: string }) {
             </>
           )
         )}
+
+        {/* proposal-level notes — a slide-out drawer, once the intro has settled */}
+        {showChrome && config && <NotesDrawer notes={config.proposalNotes} />}
 
         {/* 2c client gate — or the intro overlay for every other state */}
         {state.status === "locked" ? (
