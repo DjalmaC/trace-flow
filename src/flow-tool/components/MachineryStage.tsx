@@ -324,11 +324,17 @@ export function MachineryStage({
   const markH = markW / TRACE_LOGO_AR;
 
   const platformOn = !!layout.platformFrame;
+  // The client's name/logo are stripped from the boxes only when the CLIENT is
+  // the provider; with Trace as provider the client stays a branded party.
+  const clientSuppressed = platformOn && (config.platform?.provider ?? "client") === "client";
   const frame = layout.platformFrame;
-  const frameColor = config.platform?.color?.trim() || config.brandColor || C.green;
+  const traceProvider = config.platform?.provider === "trace";
+  const frameColor = config.platform?.color?.trim() || (traceProvider ? C.green : config.brandColor) || C.green;
   const frameCaption =
     config.platform?.caption?.trim() ||
-    `Native to the ${config.clientName} platform. Trace operates the rails underneath.`;
+    (traceProvider
+      ? "Powered by Trace Finance. We operate the rails beneath the flow."
+      : `Native to the ${config.clientName} platform. Trace operates the rails underneath.`);
 
   return (
     <g>
@@ -340,16 +346,24 @@ export function MachineryStage({
         <g>
           <rect x={frame.x} y={frame.y} width={frame.w} height={frame.h} rx={18} fill={frameColor} fillOpacity={0.028} stroke={frameColor} strokeOpacity={0.4} strokeWidth={1.2} />
           {(() => {
-            const hasLogo = !!config.clientLogoUrl;
-            const chipW = hasLogo ? 148 : Math.max(96, config.clientName.length * 8.5 + 36);
+            const hasLogo = !traceProvider && !!config.clientLogoUrl;
+            const chipW = traceProvider ? 158 : hasLogo ? 148 : Math.max(96, config.clientName.length * 8.5 + 36);
             const chipH = 30;
             const chipX = frame.x + 22;
             const chipY = frame.y - chipH / 2;
+            const markH = 16, markW = markH * TRACE_LOGO_AR;
             return (
               <g>
                 <rect x={chipX - 10} y={chipY - 3} width={chipW + 20} height={chipH + 6} rx={11} fill={C.base} />
                 <rect x={chipX} y={chipY} width={chipW} height={chipH} rx={9} fill="#0c1210" stroke={frameColor} strokeOpacity={0.55} />
-                {hasLogo ? (
+                {traceProvider ? (
+                  <g>
+                    <image href={ASSETS.traceLogo} x={chipX + 12} y={chipY + (chipH - markH) / 2} width={markW} height={markH} preserveAspectRatio="xMidYMid meet" />
+                    <text x={chipX + 12 + markW + 8} y={chipY + 19.5} fontSize={12.5} fontWeight={600} fill="#e6ebe8">
+                      Trace Finance
+                    </text>
+                  </g>
+                ) : hasLogo ? (
                   config.clientLogoPlate === "light" ? (
                     <g>
                       <rect x={chipX + 5} y={chipY + 5} width={chipW - 10} height={chipH - 10} rx={5} fill="#ffffff" />
@@ -442,8 +456,8 @@ export function MachineryStage({
             <FlowNodeShape
               node={node}
               isPrimaryClient={node.id === layout.primaryClientId}
-              clientName={platformOn ? undefined : config.clientName}
-              clientLogoUrl={platformOn ? undefined : config.clientLogoUrl}
+              clientName={clientSuppressed ? undefined : config.clientName}
+              clientLogoUrl={clientSuppressed ? undefined : config.clientLogoUrl}
               clientLogoPlate={config.clientLogoPlate}
             />
             {entity && (

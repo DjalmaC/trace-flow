@@ -2,7 +2,7 @@
 import { useEffect, useRef } from "react";
 import { useReducedMotion } from "framer-motion";
 import type { Currency, Flow, FlowConfig } from "../data/schema";
-import { isPlatformFlow } from "../data/schema";
+import { isPlatformFlow, platformSuppressesClient } from "../data/schema";
 import { ASSETS, C, TRACE_LOGO_AR, accentFor, tubeTint } from "./tokens";
 import { displayCurrency } from "./FlowSvg/Tokens";
 import { TraceArrow } from "./FlowSvg/TraceArrow";
@@ -99,14 +99,17 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
   const entityA = ov(config.nodeEntities, flow.headline.partyA)?.trim();
   const entityB = ov(config.nodeEntities, flow.headline.partyB)?.trim();
   const clientSub = sentenceCase(labelA);
-  // Technology-provider framing: the client wraps the flow instead of being a
-  // station in it — the hero shows the flow's own originating party instead.
+  // Technology-provider framing. `platform` draws the frame; `suppressClient`
+  // removes the client from the flow (only when the CLIENT is the provider —
+  // with Trace as provider the client still shows as the originating party).
   const platform = isPlatformFlow(config, flow.id);
-  const heroClientName = platform ? clientSub : config.clientName;
-  const heroClientLogo = platform ? undefined : config.clientLogoUrl;
+  const suppressClient = platformSuppressesClient(config, flow.id);
+  const traceProvider = platform && config.platform?.provider === "trace";
+  const heroClientName = suppressClient ? clientSub : config.clientName;
+  const heroClientLogo = suppressClient ? undefined : config.clientLogoUrl;
   // The beneficiary box can be branded as a client entity too (a second logo) —
   // e.g. a "Client -> Client" desired transaction with the logo both ends.
-  const brandedB = !platform && !!ovb(config.nodeBranded, flow.headline.partyB) && !!config.clientLogoUrl;
+  const brandedB = !suppressClient && !!ovb(config.nodeBranded, flow.headline.partyB) && !!config.clientLogoUrl;
   const merchantName = sentenceCase(labelB);
   // the beneficiary isn't always abroad (the Foreigner-to-BR flow settles in Brazil)
   const merchantWhere = partyB?.lane === "brazil" ? "in Brazil" : "abroad";
@@ -173,7 +176,7 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
   // Technology-provider framing on the desired-transaction layer too: the
   // hero band gets the same quiet brand enclosure + logo chip as the
   // machinery, and the payer station drops the avatar-circle affordance.
-  const frameColor = config.platform?.color?.trim() || config.brandColor || C.green;
+  const frameColor = config.platform?.color?.trim() || (traceProvider ? C.green : config.brandColor) || C.green;
   const heroFrame = platform ? { x: 176, y: 380, w: 1008, h: 154 } : null;
   const accent = accentFor(dir);
   // tube tint + token accent tween green↔cyan in sync with the arrow (Option A)
@@ -190,16 +193,24 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
         <g>
           <rect x={heroFrame.x} y={heroFrame.y} width={heroFrame.w} height={heroFrame.h} rx={18} fill={frameColor} fillOpacity={0.028} stroke={frameColor} strokeOpacity={0.4} strokeWidth={1.2} />
           {(() => {
-            const hasLogo = !!config.clientLogoUrl;
-            const chipW = hasLogo ? 148 : Math.max(96, config.clientName.length * 8.5 + 36);
+            const hasLogo = !traceProvider && !!config.clientLogoUrl;
+            const chipW = traceProvider ? 158 : hasLogo ? 148 : Math.max(96, config.clientName.length * 8.5 + 36);
             const chipH = 30;
             const chipX = heroFrame.x + 22;
             const chipY = heroFrame.y - chipH / 2;
+            const mH = 16, mW = mH * TRACE_LOGO_AR;
             return (
               <g>
                 <rect x={chipX - 10} y={chipY - 3} width={chipW + 20} height={chipH + 6} rx={11} fill="#08090b" />
                 <rect x={chipX} y={chipY} width={chipW} height={chipH} rx={9} fill="#0c1210" stroke={frameColor} strokeOpacity={0.55} />
-                {hasLogo ? (
+                {traceProvider ? (
+                  <g>
+                    <image href={ASSETS.traceLogo} x={chipX + 12} y={chipY + (chipH - mH) / 2} width={mW} height={mH} preserveAspectRatio="xMidYMid meet" />
+                    <text x={chipX + 12 + mW + 8} y={chipY + 19.5} fontSize={12.5} fontWeight={600} fill="#e6ebe8">
+                      Trace Finance
+                    </text>
+                  </g>
+                ) : hasLogo ? (
                   config.clientLogoPlate === "light" ? (
                     <g>
                       <rect x={chipX + 5} y={chipY + 5} width={chipW - 10} height={chipH - 10} rx={5} fill="#ffffff" />
@@ -250,7 +261,7 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
             // light/transparent logo sits straight on the deck, padded to breathe
             <image href={heroClientLogo} x={236} y={429} width={220} height={56} preserveAspectRatio="xMidYMid meet" />
           )
-        ) : platform ? (
+        ) : suppressClient ? (
           <text
             x={346}
             y={462}

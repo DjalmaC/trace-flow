@@ -162,7 +162,10 @@ export default function BuildPage() {
   function onCanvasDoubleClick(e: React.MouseEvent) {
     const capEl = (e.target as Element).closest?.("[data-platform-caption]");
     if (capEl) {
-      const original = `Native to the ${config.clientName} platform. Trace operates the rails underneath.`;
+      const original =
+        config.platform?.provider === "trace"
+          ? "Powered by Trace Finance. We operate the rails beneath the flow."
+          : `Native to the ${config.clientName} platform. Trace operates the rails underneath.`;
       const r = capEl.getBoundingClientRect();
       const width = Math.min(640, Math.max(r.width + 90, 400));
       setRename({

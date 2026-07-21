@@ -616,19 +616,35 @@ export function ControlPanel({
                     }
                   />
                   {config.platform?.enabled && (
-                    <div className="mt-2 flex items-center gap-2.5">
-                      <input
-                        type="color"
-                        value={config.platform.color ?? config.brandColor ?? "#00f2b1"}
-                        onChange={(e) => patch({ platform: { ...(config.platform ?? { enabled: true }), enabled: true, color: e.target.value } })}
-                        aria-label="Platform frame color"
-                        className="h-7 w-9 shrink-0 cursor-pointer rounded-[6px] border border-hairline-control bg-surface-input p-[2px]"
-                      />
-                      <p className="text-[10.5px] leading-normal text-muted">
-                        {config.clientName || "The client"} wraps the flow instead of appearing in it. The deck frames every
-                        flow in their brand; the caption on the canvas is double-click editable.
-                      </p>
-                    </div>
+                    <>
+                      <div className="mt-2">
+                        <div className="mb-1 text-[10.5px] font-medium uppercase tracking-[0.08em] text-muted">Provider</div>
+                        <Segmented
+                          value={config.platform.provider ?? "client"}
+                          options={[
+                            { value: "client", label: config.clientName || "Client" },
+                            { value: "trace", label: "Trace" },
+                          ]}
+                          onChange={(v) => patch({ platform: { ...(config.platform ?? { enabled: true }), enabled: true, provider: v as "client" | "trace" } })}
+                        />
+                      </div>
+                      <div className="mt-2 flex items-center gap-2.5">
+                        {(config.platform.provider ?? "client") === "client" && (
+                          <input
+                            type="color"
+                            value={config.platform.color ?? config.brandColor ?? "#00f2b1"}
+                            onChange={(e) => patch({ platform: { ...(config.platform ?? { enabled: true }), enabled: true, color: e.target.value } })}
+                            aria-label="Platform frame color"
+                            className="h-7 w-9 shrink-0 cursor-pointer rounded-[6px] border border-hairline-control bg-surface-input p-[2px]"
+                          />
+                        )}
+                        <p className="text-[10.5px] leading-normal text-muted">
+                          {(config.platform.provider ?? "client") === "trace"
+                            ? "Trace wraps the flow as the technology provider — the client stays a party inside a Trace-branded frame."
+                            : `${config.clientName || "The client"} wraps the flow instead of appearing in it. The deck frames every flow in their brand; the caption on the canvas is double-click editable.`}
+                        </p>
+                      </div>
+                    </>
                   )}
                 </Field>
 

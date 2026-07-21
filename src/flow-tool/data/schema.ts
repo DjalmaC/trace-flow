@@ -492,7 +492,11 @@ export interface FlowConfig {
 
 export interface PlatformFraming {
   enabled: boolean;
-  /** Frame color; defaults to brandColor, then Trace mint. */
+  /** Who the technology provider is. "client" (default): the client wraps the
+   *  flow and is removed from the boxes. "trace": Trace wraps the flow as the
+   *  provider — the client stays a party in the flow, the frame is Trace's. */
+  provider?: "client" | "trace";
+  /** Frame color; defaults to brandColor (client) / Trace green (trace). */
   color?: string;
   /** Client-facing caption on the frame (double-click editable on the canvas). */
   caption?: string;
@@ -500,9 +504,15 @@ export interface PlatformFraming {
   except?: string[];
 }
 
-/** Does this flow render inside the client's platform frame? */
+/** Does this flow render inside a technology-provider frame? */
 export function isPlatformFlow(config: FlowConfig, flowId: string): boolean {
   return !!config.platform?.enabled && !config.platform.except?.includes(flowId);
+}
+
+/** Whether the framing removes the CLIENT from the flow. Only true when the
+ *  client is the provider — with Trace as provider the client stays a party. */
+export function platformSuppressesClient(config: FlowConfig, flowId: string): boolean {
+  return isPlatformFlow(config, flowId) && (config.platform?.provider ?? "client") === "client";
 }
 
 /** Client-facing flow name: the rep-side " · tailored" marker never ships. */

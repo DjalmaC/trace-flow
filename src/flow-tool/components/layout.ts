@@ -1,5 +1,5 @@
 import type { Currency, Flow, FlowConfig } from "../data/schema";
-import { isPlatformFlow } from "../data/schema";
+import { isPlatformFlow, platformSuppressesClient } from "../data/schema";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The layout engine. Takes (Flow, FlowConfig) and computes pure geometry — node
@@ -311,9 +311,11 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
   // it, so hub flows can't destabilise the eleven corridor flows.
   if (flow.archetype === "hub") return computeHubLayout(flow, config);
   flow = applyNodeOrder(flow, config);
-  // Technology-provider framing: the client wraps the flow, so no box inside
-  // it carries their name or logo (and the headline pills stay generic).
+  // Technology-provider framing. `platform` = draw the frame; `suppressClient`
+  // = remove the client from the boxes (only when the CLIENT is the provider —
+  // with Trace as provider the client stays a party inside the frame).
   const platform = isPlatformFlow(config, flow.id);
+  const suppressClient = platformSuppressesClient(config, flow.id);
   const reverse = config.direction === "disbursement";
   const engine = detectEngine(flow);
   const collapsed = !!opts.collapsed && !!engine;
@@ -681,7 +683,7 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
   // When a reorder moved the client box off its headline slot, the logo travels
   // with it — otherwise the primary stays a headline endpoint, as always.
   const reordered = flow.nodes.some((n) => n.srcId && n.srcId !== n.id);
-  const primaryClientMach = platform
+  const primaryClientMach = suppressClient
     ? undefined
     : aMach.kind === "client"
       ? aMach
@@ -694,8 +696,8 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
   const headline: HeadlineLayout = {
     a,
     b,
-    aIsClient: !platform && aIsPrimary && aMach.kind === "client",
-    bIsClient: !platform && !aIsPrimary && bMach.kind === "client",
+    aIsClient: !suppressClient && aIsPrimary && aMach.kind === "client",
+    bIsClient: !suppressClient && !aIsPrimary && bMach.kind === "client",
     aLabel: aMach.label,
     bLabel: bMach.label,
     aId: aMach.srcId ?? aMach.id,
