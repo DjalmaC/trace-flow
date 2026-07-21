@@ -467,10 +467,10 @@ export interface FlowConfig {
    *  the viewer, shown under the "How Trace makes it happen" heading on the
    *  deck, the client link and the PDF. Double-click to edit on the canvas. */
   comments?: Record<string, string>;
-  /** Proposal-level notes (not tied to a flow) — shown in a slide-out Notes
-   *  drawer on the client link. One line per point; "- " lines render as
-   *  bullets. Empty = the client link shows no Notes tab. */
-  proposalNotes?: string;
+  /** Per-flow notes, keyed by flowId — shown in a slide-out Notes drawer, one
+   *  set per flow. One line per point; "- " lines render as bullets. A flow
+   *  with no note shows no Notes tab on the client link. */
+  proposalNotes?: Record<string, string>;
   /** Technology-provider framing: the client wraps the flow instead of
    *  appearing in it. The deck draws a quiet brand-colored frame around the
    *  machinery (logo chip + caption) and suppresses the client's name/logo

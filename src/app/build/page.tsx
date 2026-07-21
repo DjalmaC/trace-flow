@@ -670,7 +670,18 @@ export default function BuildPage() {
         {renameOverlay}
         {editControls}
         {dragChrome}
-        <NotesDrawer notes={config.proposalNotes} editable onChange={(v) => setConfig((c) => ({ ...c, proposalNotes: v || undefined }))} />
+        <NotesDrawer
+          notes={config.proposalNotes?.[config.flowId]}
+          editable
+          onChange={(v) =>
+            setConfig((c) => {
+              const m = { ...(c.proposalNotes ?? {}) };
+              if (v) m[c.flowId] = v;
+              else delete m[c.flowId];
+              return { ...c, proposalNotes: Object.keys(m).length ? m : undefined };
+            })
+          }
+        />
         <button
           onClick={() => setPresent(false)}
           className="fixed left-4 top-4 z-50 flex items-center gap-1.5 rounded-lg border border-node-stroke bg-[#0c110f]/90 px-3 py-1.5 text-sm text-subtitle backdrop-blur transition hover:text-title"
@@ -717,7 +728,18 @@ export default function BuildPage() {
       {renameOverlay}
       {editControls}
       {dragChrome}
-      <NotesDrawer notes={config.proposalNotes} editable onChange={(v) => setConfig((c) => ({ ...c, proposalNotes: v || undefined }))} />
+      <NotesDrawer
+        notes={config.proposalNotes?.[config.flowId]}
+        editable
+        onChange={(v) =>
+          setConfig((c) => {
+            const m = { ...(c.proposalNotes ?? {}) };
+            if (v) m[c.flowId] = v;
+            else delete m[c.flowId];
+            return { ...c, proposalNotes: Object.keys(m).length ? m : undefined };
+          })
+        }
+      />
       {/* Sits UNDER the rail (z-40 < z-50): reachable when the rail is collapsed. */}
       <a
         href="/"

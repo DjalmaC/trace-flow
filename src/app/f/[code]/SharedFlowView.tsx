@@ -460,7 +460,7 @@ export function SharedFlowView({ code }: { code: string }) {
         )}
 
         {/* proposal-level notes — a slide-out drawer, once the intro has settled */}
-        {showChrome && config && <NotesDrawer notes={config.proposalNotes} />}
+        {showChrome && config && <NotesDrawer notes={config.proposalNotes?.[flowId]} />}
 
         {/* 2c client gate — or the intro overlay for every other state */}
         {state.status === "locked" ? (
