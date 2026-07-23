@@ -222,6 +222,109 @@ export function computeHubLayout(flow: Flow, config: FlowConfig): FlowLayout {
 }
 type FlowNodeT = Flow["nodes"][number];
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Treasury-netting layout (archetype "netting"). Two opposite client flows meet
+// at a central treasury desk that sits ON the Brazil | Abroad divider: pay-in
+// corners on top, delivery corners below, Brazil on the left, Abroad on the
+// right. Each side is a closed loop in its own currency — the divider is the
+// regulatory story, and no leg crosses it. Isolated from the corridor solver;
+// renders through NettingStage, not MachineryStage.
+// ─────────────────────────────────────────────────────────────────────────────
+export const NETTING_HUB_R = 44;
+export function computeNettingLayout(flow: Flow, config: FlowConfig): FlowLayout {
+  const key = (n: { id: string; srcId?: string }) => `${flow.id}:${n.srcId ?? n.id}`;
+  const labelOf = (n: FlowNodeT) => config.nodeLabels?.[key(n)] ?? n.label;
+  const brandedOf = (n: FlowNodeT) => !!n.brandedClient || !!config.nodeBranded?.[key(n)];
+
+  const desk = flow.nodes.find((n) => n.kind === "trace") ?? flow.nodes[0];
+  const paysTo = new Set(flow.legs.filter((l) => l.to === desk.id).map((l) => l.from));
+  const corners = flow.nodes.filter((n) => n.id !== desk.id);
+
+  // geometry: four corners around the desk, the divider through its centre
+  const width = 940;
+  const hubCx = 470;
+  const hubCy = 372;
+  const TOP_Y = 268;
+  const BOT_Y = 476;
+  const LEFT_X = 186;
+  const RIGHT_X = 754;
+
+  const box = (cx: number, cy: number, w: number, h: number): Box => ({ x: cx - w / 2, y: cy - h / 2, w, h, cx, cy });
+  const cornerLayout = (n: FlowNodeT): NodeLayout => {
+    const pays = paysTo.has(n.id);
+    const cx = n.lane === "brazil" ? LEFT_X : RIGHT_X;
+    const cy = pays ? TOP_Y : BOT_Y;
+    return {
+      ...box(cx, cy, NODE_W, NODE_H),
+      id: n.id, srcId: n.srcId, label: labelOf(n), kind: n.kind, lane: n.lane,
+      lines: wrapLabel(labelOf(n)), depth: pays ? 0 : 2, onTrunk: true, brandedClient: brandedOf(n),
+    };
+  };
+  const nodes: NodeLayout[] = [
+    // the desk — a trace node the renderer draws as the offset mark
+    { ...box(hubCx, hubCy, NETTING_HUB_R * 2, NETTING_HUB_R * 2), id: desk.id, srcId: desk.srcId, label: labelOf(desk), kind: "trace", lane: desk.lane, lines: [labelOf(desk)], depth: 1, onTrunk: true },
+    ...corners.map(cornerLayout),
+  ];
+  const byId = new Map(nodes.map((n) => [n.id, n] as const));
+
+  // conduits: smooth S-curves with horizontal tangents both ends, so each
+  // side's in/out pair meets the desk at one shared port and reads as a loop
+  const legs: LegLayout[] = flow.legs.map((l, index) => {
+    const from = byId.get(l.from)!;
+    const to = byId.get(l.to)!;
+    const corner = from.id === desk.id ? to : from;
+    const left = corner.cx < hubCx;
+    const port = { x: left ? hubCx - NETTING_HUB_R : hubCx + NETTING_HUB_R, y: hubCy };
+    const edge = { x: left ? corner.x + corner.w : corner.x, y: corner.cy };
+    const s = from.id === desk.id ? port : edge;
+    const e = from.id === desk.id ? edge : port;
+    const mx = (s.x + e.x) / 2;
+    const d = `M${s.x} ${s.y} C${mx} ${s.y} ${mx} ${e.y} ${e.x} ${e.y}`;
+    // cubic midpoint (t=.5) with these controls: x = mx, y = (s.y + e.y) / 2
+    return {
+      index, from: l.from, to: l.to, d,
+      x1: s.x, y1: s.y, x2: e.x, y2: e.y,
+      carries: l.carries, convertsTo: l.convertsTo,
+      mid: { x: mx, y: (s.y + e.y) / 2 },
+    };
+  });
+
+  // headline: the client's two sides (pay-in corner → delivery corner)
+  const counterpart = (id: string) => byId.get(flow.sameActor.find((s) => s.headlineNode === id)?.machineryNode ?? id);
+  const aMach = counterpart(flow.headline.partyA) ?? nodes[1];
+  const bMach = counterpart(flow.headline.partyB) ?? nodes.at(-1)!;
+  const HEAD_W = 188;
+  const headBox = (cx: number): Box => ({ x: cx - HEAD_W / 2, y: HEAD_Y, w: HEAD_W, h: HEAD_H, cx, cy: HEAD_Y + HEAD_H / 2 });
+  const a = headBox(aMach.cx);
+  const b = headBox(bMach.cx);
+  const arcY = a.y + HEAD_H / 2;
+  const headline: HeadlineLayout = {
+    a, b,
+    aIsClient: aMach.kind === "client", bIsClient: false,
+    aLabel: aMach.label, bLabel: bMach.label,
+    aId: aMach.srcId ?? aMach.id, bId: bMach.srcId ?? bMach.id,
+    d: `M${a.x + a.w} ${arcY} Q${(a.x + a.w + b.x) / 2} ${arcY + 64} ${b.x} ${arcY}`,
+    carries: flow.headline.carries, convertsTo: flow.headline.convertsTo,
+    mid: { x: (a.x + a.w + b.x) / 2, y: arcY + 48 },
+  };
+
+  return {
+    width, height: VIEW_H, nodes, legs, headline,
+    projectors: [
+      { x1: a.cx, y1: a.y + a.h, x2: aMach.cx, y2: aMach.y },
+      { x1: b.cx, y1: b.y + b.h, x2: bMach.cx, y2: bMach.y },
+    ],
+    dividerX: hubCx, railY: hubCy,
+    brazilLabelX: LEFT_X, abroadLabelX: RIGHT_X,
+    brazilLabel: config.laneLabels?.[flow.id]?.brazil?.trim() || "Brazil",
+    abroadLabel: config.laneLabels?.[flow.id]?.abroad?.trim() || "Abroad",
+    contY: CONT_Y, contH: CONT_H, stageY: CONT_Y, stageH: CONT_H,
+    reverse: config.direction === "disbursement",
+    primaryClientId: aMach.kind === "client" ? aMach.id : undefined,
+    collapsed: false,
+  };
+}
+
 /** Naive label wrap: split into <=2 lines near the middle on a word boundary. */
 function wrapLabel(label: string): string[] {
   if (label.length <= 20) return [label];
@@ -310,6 +413,8 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
   // path below (trunk DP, Brazil|Abroad border, engine folding) never runs on
   // it, so hub flows can't destabilise the eleven corridor flows.
   if (flow.archetype === "hub") return computeHubLayout(flow, config);
+  // Treasury-netting archetype: its own solver too, same isolation rationale.
+  if (flow.archetype === "netting") return computeNettingLayout(flow, config);
   flow = applyNodeOrder(flow, config);
   // Technology-provider framing. `platform` = draw the frame; `suppressClient`
   // = remove the client from the boxes (only when the CLIENT is the provider —

@@ -116,8 +116,11 @@ export interface Flow {
   /** Layout archetype. "corridor" (default) is the eleven-flow left→right rail
    *  across the Brazil | Abroad border. "hub" is the liquidity-hub archetype:
    *  a client-journey rail with a central Trace desk and a pool of
-   *  counterparties trading two-way from below. */
-  archetype?: "corridor" | "hub";
+   *  counterparties trading two-way from below. "netting" is the treasury-
+   *  offset archetype: two opposite client flows (BRL in Brazil, USD abroad)
+   *  meet at a central treasury desk that nets one leg against the other —
+   *  each side settles locally and no value crosses the border. */
+  archetype?: "corridor" | "hub" | "netting";
   dials: DialCoordinate; // used by the intake resolver (Stage B match)
   traceRole: TraceRole[]; // computed: 'VASP' and/or 'Correspondente Cambial'
   directions: Direction[]; // all flows: ['collection','disbursement']

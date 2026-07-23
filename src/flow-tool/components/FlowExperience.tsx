@@ -30,6 +30,7 @@ import { Defs, displayCurrency } from "./FlowSvg";
 import { HeroFlow } from "./HeroFlow";
 import { MachineryStage } from "./MachineryStage";
 import { HubStage } from "./HubStage";
+import { NettingStage } from "./NettingStage";
 import { ASSETS, C, TRACE_LOGO_AR } from "./tokens";
 import { MobileFlow } from "./MobileFlow";
 import type { Direction } from "../data/schema";
@@ -214,6 +215,8 @@ export function FlowExperience({
       <Defs />
       {flow.archetype === "hub" ? (
         <HubStage layout={layout} config={config} animate={animate} />
+      ) : flow.archetype === "netting" ? (
+        <NettingStage layout={layout} config={config} animate={animate} showHeading={false} />
       ) : (
         <MachineryStage layout={layout} config={config} animate={animate} showHeading={false} onPassComplete={onPassComplete} />
       )}
@@ -361,7 +364,7 @@ export function FlowExperience({
               {config.platform?.caption?.trim() || `Native to the ${config.clientName} platform. Trace operates the rails underneath.`}
             </p>
           </div>
-        ) : flow.archetype === "hub" ? (
+        ) : flow.archetype === "hub" || flow.archetype === "netting" ? (
           MachinerySvg
         ) : (
           <MobileFlow flow={flow} config={config} />

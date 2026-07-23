@@ -2,6 +2,7 @@ import { computeLayout, CONT_Y, CONT_H } from "../components/layout";
 import { Defs } from "../components/FlowSvg";
 import { MachineryStage } from "../components/MachineryStage";
 import { HubStage } from "../components/HubStage";
+import { NettingStage } from "../components/NettingStage";
 import { ASSETS } from "../components/tokens";
 import { getFlow, defaultConfig } from "../data";
 import { tierText, flatRowText, settlementChoices, fundingChoices, clientFlowName } from "../data/schema";
@@ -212,6 +213,8 @@ function flowSlide(config: FlowConfig, flow: Flow, name: string, label: string, 
       <svg x={x2} y={y2} width={w2} height={h2} viewBox={`0 ${(layout.stageY ?? CONT_Y) - 12} ${mw} ${mh}`} preserveAspectRatio="xMidYMid meet">
         {flow.archetype === "hub" ? (
           <HubStage layout={layout} config={config} animate={false} />
+        ) : flow.archetype === "netting" ? (
+          <NettingStage layout={layout} config={config} animate={false} showHeading={false} />
         ) : (
           <MachineryStage layout={layout} config={config} animate={false} showHeading={false} />
         )}

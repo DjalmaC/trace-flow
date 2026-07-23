@@ -14,6 +14,7 @@ import { flow10 } from "./flows/flow-10";
 import { flow11 } from "./flows/flow-11";
 import { flow111 } from "./flows/flow-11-1";
 import { flow12 } from "./flows/flow-12";
+import { flow13 } from "./flows/flow-13";
 
 export * from "./schema";
 
@@ -35,7 +36,7 @@ export const INTAKE_FLOWS: Flow[] = [
 
 // Everything selectable in the manual picker: the canonical eleven plus the
 // Foreigner-to-BR pair (#11 / #11.1), which are picked manually, not via intake.
-export const FLOWS: Flow[] = [...INTAKE_FLOWS, flow11, flow111, flow12];
+export const FLOWS: Flow[] = [...INTAKE_FLOWS, flow11, flow111, flow12, flow13];
 
 export const FLOW_BY_ID: Record<string, Flow> = Object.fromEntries(
   FLOWS.map((f) => [f.id, f]),

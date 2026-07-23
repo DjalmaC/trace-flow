@@ -21,7 +21,7 @@ const Y = 457;
 const HUB = { cx: 680, cy: Y, r: 34 };
 const VIEWBOX = "150 384 1060 168";
 
-const ACRONYMS = new Set(["eFX", "NRA", "LP", "IP", "Pix", "Inc", "USDC", "USDT", "USDC/USDT", "USD/USDT", "BRL", "USD", "EUR", "USD/EUR", "BR"]);
+const ACRONYMS = new Set(["eFX", "NRA", "LP", "IP", "Pix", "Inc", "USDC", "USDT", "USDC/USDT", "USD/USDT", "BRL", "USD", "EUR", "USD/EUR", "BR", "A", "B"]);
 function sentenceCase(label: string): string {
   const words = label.split(" ").map((w, i) => {
     if (ACRONYMS.has(w) || w === "/") return w;
