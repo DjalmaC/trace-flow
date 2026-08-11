@@ -2,6 +2,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { FlowExperience, useIsMobile } from "@/flow-tool/components/FlowExperience";
+import { GlassPanel, SilkBackdrop } from "@/flow-tool/components/Glass";
 import { NotesDrawer } from "@/components/NotesDrawer";
 import { ASSETS, C, TRACE_LOGO_AR } from "@/flow-tool/components/tokens";
 import { loadSharedFlowGated } from "@/flow-tool/lib/share";
@@ -309,7 +310,11 @@ export function SharedFlowView({ code }: { code: string }) {
       {/* overflow-x:clip (not hidden) contains horizontal overflow WITHOUT
           making <main> a scroll container — `hidden` would promote overflow-y
           to auto and break the desktop scroll-dive's position:sticky. */}
-      <main className="relative overflow-x-clip bg-surface-page">
+      {/* No opaque background here — the fixed SilkBackdrop (-z-10) must show
+          through; it carries the #07090b base under the silk plate itself. */}
+      <main className="relative overflow-x-clip">
+        {/* BRLT deck backdrop: silk plate + dark wash + top-right green glow */}
+        <SilkBackdrop />
         {/* 1c: 3px mint→cyan strip, above FlowExperience's solid rule */}
         {(showChrome || state.status === "locked") && (
           <div
@@ -323,10 +328,10 @@ export function SharedFlowView({ code }: { code: string }) {
           isMobile ? (
             /* ── phone: sticky top bar + inline controls + vertical flow ── */
             <>
-              <header className="sticky top-0 z-40 border-b border-white/5 bg-surface-page/90 px-4 pb-2.5 pt-3 backdrop-blur">
+              <header className="sticky top-0 z-40 border-b border-white/10 bg-[#07090b]/70 px-4 pb-2.5 pt-3 backdrop-blur-xl">
                 {showChrome && (
                   <div className="tf-fade">
-                    <div className="mb-2 font-mono text-[9.5px] font-medium uppercase tracking-[0.34em] text-mint-muted">
+                    <div className="mb-2 font-jbmono text-[9.5px] font-medium uppercase tracking-[0.34em] text-[#6f8a7f]">
                       A Trace Finance Proposal
                     </div>
                     <div className="flex items-center gap-3">
@@ -355,8 +360,8 @@ export function SharedFlowView({ code }: { code: string }) {
                 pricingEl
               ) : (
                 <>
-                  <FlowExperience config={fxConfig} presentation onDirectionChange={config.hideDirectionToggle || (config.clientDirections ?? "both") !== "both" ? undefined : setDirection} />
-                  <div className="flex flex-col gap-2 px-4 pb-10 pt-1">
+                  <FlowExperience config={fxConfig} presentation skin="glass" onDirectionChange={config.hideDirectionToggle || (config.clientDirections ?? "both") !== "both" ? undefined : setDirection} />
+                  <div className="relative flex flex-col gap-2 px-4 pb-10 pt-1">
                     <button
                       onClick={onProposal}
                       disabled={pdf === "working"}
@@ -376,7 +381,7 @@ export function SharedFlowView({ code }: { code: string }) {
               <div className="no-print fixed left-6 top-4 z-[55] flex flex-col items-start gap-3">
                 {showChrome && (
                   <>
-                    <div className="tf-fade font-mono text-[10.5px] font-medium uppercase tracking-[0.34em] text-mint-muted">
+                    <div className="tf-fade font-jbmono text-[10.5px] font-medium uppercase tracking-[0.34em] text-[#6f8a7f]">
                       A Trace Finance Proposal
                     </div>
                     <div className="flex items-center gap-3">
@@ -439,13 +444,13 @@ export function SharedFlowView({ code }: { code: string }) {
                 pricingEl
               ) : (
                 <>
-                  <FlowExperience config={fxConfig} presentation />
+                  <FlowExperience config={fxConfig} presentation skin="glass" />
                   {config.salesperson && <SalespersonClosing sp={config.salesperson} company={config.clientName} />}
                 </>
               )}
 
               {showChrome && (
-                <div className="tf-fade fixed bottom-6 left-6 z-40 flex items-center gap-2">
+                <div className="tf-fade tf-dlbtn fixed bottom-6 left-6 z-40 flex items-center gap-2">
                   <button
                     onClick={onProposal}
                     disabled={pdf === "working"}
@@ -467,8 +472,13 @@ export function SharedFlowView({ code }: { code: string }) {
           <GateScreen wrong={!!state.wrong} onSubmit={submitPassword} />
         ) : intro !== "done" ? (
           <div
-            className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-surface-page px-6 text-center"
-            style={{ transition: `opacity ${FADE_MS}ms cubic-bezier(.4,0,.2,1)`, opacity: intro === "fadeout" ? 0 : 1, pointerEvents: intro === "fadeout" ? "none" : "auto" }}
+            className="fixed inset-0 z-50 flex flex-col items-center justify-center px-6 text-center backdrop-blur-2xl"
+            style={{
+              background: "linear-gradient(rgba(2,4,7,.6), rgba(2,4,7,.78))",
+              transition: `opacity ${FADE_MS}ms cubic-bezier(.4,0,.2,1)`,
+              opacity: intro === "fadeout" ? 0 : 1,
+              pointerEvents: intro === "fadeout" ? "none" : "auto",
+            }}
           >
             {state.status === "ready" ? (
               <div className="flex flex-col items-center gap-5">
@@ -526,8 +536,10 @@ function GateScreen({ wrong, onSubmit }: { wrong: boolean; onSubmit: (pw: string
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-surface-page px-6">
-      <form onSubmit={submit} className="tf-rise flex w-full max-w-[300px] flex-col items-center text-center">
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center px-6">
+      <SilkBackdrop />
+      <GlassPanel className="w-full max-w-[380px] px-10 py-9">
+      <form onSubmit={submit} className="tf-rise flex w-full flex-col items-center text-center">
         <span className="mb-[18px] flex h-[46px] w-[46px] items-center justify-center rounded-full border border-[rgba(0,242,177,.3)] bg-[#0f1814] text-mint">
           {/* Lucide-style lock, 2px stroke */}
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -566,6 +578,7 @@ function GateScreen({ wrong, onSubmit }: { wrong: boolean; onSubmit: (pw: string
         </button>
         <p className="mt-3.5 text-[11px] text-[#4a5651]">Link expires 30 days after sending.</p>
       </form>
+      </GlassPanel>
     </div>
   );
 }
@@ -671,13 +684,12 @@ function PricingView({ pricing, clientName, inline }: { pricing: ProposalPricing
     rows: cardRows(card),
   }));
   return (
-    <div
-      className={inline ? "w-full overflow-x-hidden" : "fixed inset-0 z-10 overflow-y-auto overflow-x-hidden"}
-      style={{ background: "radial-gradient(62% 60% at 50% 28%, #15392d40 0%, rgba(7,9,11,0) 70%), #07090b" }}
-    >
-      <div className={`mx-auto flex flex-col ${inline ? "px-4 pb-12 pt-5" : "min-h-full justify-center px-5 pb-20 pt-24 md:px-10"}`} style={{ width: "min(60rem, 100vw)" }}>
+    <div className={inline ? "w-full overflow-x-hidden" : "fixed inset-0 z-10 overflow-y-auto overflow-x-hidden"}>
+      {!inline && <SilkBackdrop />}
+      <div className={`mx-auto flex flex-col ${inline ? "px-4 pb-12 pt-5" : "min-h-full justify-center px-5 pb-20 pt-24 md:px-10"}`} style={{ width: "min(64rem, 100vw)" }}>
+        <GlassPanel className={inline ? "px-5 py-7" : "px-8 py-9 md:px-10"}>
         <div className="text-center">
-          <div className="mb-3 font-mono text-[12px] font-medium uppercase leading-none tracking-[0.34em] text-mint-muted">
+          <div className="mb-3 font-jbmono text-[12px] font-medium uppercase leading-none tracking-[0.34em] text-[#6f8a7f]">
             Transparent pricing
           </div>
           <h1 className="font-display text-[28px] font-semibold leading-[1.05] tracking-[-0.02em] text-title md:text-[37px]">
@@ -706,12 +718,13 @@ function PricingView({ pricing, clientName, inline }: { pricing: ProposalPricing
               {card.rows.map((r) => (
                 <div key={r.label} className="flex items-center justify-between gap-3 border-t border-hairline-row py-[6.5px]">
                   <span className="min-w-0 truncate text-[12.5px] text-node-text">{r.label}</span>
-                  <span className="shrink-0 font-mono text-[12.5px] font-medium text-mint">{r.value}</span>
+                  <span className="shrink-0 font-jbmono text-[12.5px] font-medium text-mint">{r.value}</span>
                 </div>
               ))}
             </div>
           ))}
         </div>
+        </GlassPanel>
       </div>
     </div>
   );
@@ -721,11 +734,10 @@ function PricingView({ pricing, clientName, inline }: { pricing: ProposalPricing
 // hand-built cards, e.g. the live ARQ proposal). Data renders as-is.
 function LegacyPricingView({ pricing, inline }: { pricing: LegacyPricing; inline?: boolean }) {
   return (
-    <div
-      className={inline ? "w-full overflow-x-hidden" : "fixed inset-0 z-10 overflow-y-auto overflow-x-hidden"}
-      style={{ background: "radial-gradient(62% 60% at 50% 28%, #15392d40 0%, rgba(7,9,11,0) 70%), #07090b" }}
-    >
-      <div className={`mx-auto flex flex-col ${inline ? "px-4 pb-12 pt-4" : "min-h-full justify-center px-5 pb-16 pt-28 md:px-10"}`} style={{ width: "min(64rem, 100vw)" }}>
+    <div className={inline ? "w-full overflow-x-hidden" : "fixed inset-0 z-10 overflow-y-auto overflow-x-hidden"}>
+      {!inline && <SilkBackdrop />}
+      <div className={`mx-auto flex flex-col ${inline ? "px-4 pb-12 pt-4" : "min-h-full justify-center px-5 pb-16 pt-28 md:px-10"}`} style={{ width: "min(68rem, 100vw)" }}>
+        <GlassPanel className={inline ? "px-5 py-7" : "px-8 py-9 md:px-10"}>
         <div className="mb-7">
           <div className="flex items-center gap-3">
             {pricing.flag && <span className="shrink-0 text-4xl leading-none">{pricing.flag}</span>}
@@ -767,6 +779,7 @@ function LegacyPricingView({ pricing, inline }: { pricing: LegacyPricing; inline
         </div>
 
         {pricing.footer && <p className="mt-8 text-[11px] text-muted">{pricing.footer}</p>}
+        </GlassPanel>
       </div>
     </div>
   );
@@ -783,47 +796,47 @@ function SalespersonClosing({ sp, company }: { sp: Salesperson; company?: string
   const subject = company?.trim() ? `Trace Finance proposal for ${company.trim()}` : "Our Trace Finance proposal";
   const emailHref = sp.email ? `mailto:${sp.email}?subject=${encodeURIComponent(subject)}` : undefined;
   return (
-    <section
-      className="relative flex min-h-screen w-full flex-col items-center justify-center px-6 text-center"
-      style={{ background: "radial-gradient(60% 60% at 50% 42%, #15392d40 0%, rgba(7,9,11,0) 70%), #07090b" }}
-    >
-      <div className="mb-7 font-mono text-[11px] font-medium uppercase tracking-[0.34em] text-mint-muted">Your Trace Finance contact</div>
-      <div className="flex max-w-md flex-col items-center gap-5">
-        {photo ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={photo} alt={sp.name} className="h-28 w-28 rounded-full border border-white/10 object-cover" />
-        ) : (
-          <div className="flex h-28 w-28 items-center justify-center rounded-full border border-green-accent/30 bg-[#0f1814] text-3xl font-semibold text-[#9cc4b3]">
-            {initials}
+    <section className="relative flex min-h-screen w-full flex-col items-center justify-center px-6">
+      <GlassPanel className="w-full max-w-4xl px-8 py-8 md:px-10">
+        <div className="flex flex-wrap items-center justify-between gap-7">
+          <div className="flex min-w-0 items-center gap-5">
+            {photo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={photo} alt={sp.name} className="h-24 w-24 shrink-0 rounded-full border border-white/10 object-cover" />
+            ) : (
+              <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full border border-green-accent/30 bg-[#0f1814] text-2xl font-semibold text-[#9cc4b3]">
+                {initials}
+              </div>
+            )}
+            <div className="min-w-0">
+              <div className="font-jbmono text-[10px] font-medium uppercase tracking-[0.34em] text-[#6f8a7f]">Your Trace Finance contact</div>
+              <div className="mt-2 font-display text-[19px] font-semibold tracking-[-0.01em] text-title">{sp.name}</div>
+              {sp.title && <div className="mt-0.5 text-[13px] text-subtitle">{sp.title}</div>}
+            </div>
           </div>
-        )}
-        <div>
-          <div className="font-display text-2xl font-semibold tracking-tight text-title">{sp.name}</div>
-          {sp.title && <div className="mt-0.5 text-sm text-subtitle">{sp.title}</div>}
+          <div className="flex flex-wrap items-center gap-2.5">
+            {bookingUrl && (
+              <a href={bookingUrl} target="_blank" rel="noreferrer" className="rounded-xl bg-green-accent px-5 py-2.5 text-sm font-semibold text-[#06120c] transition duration-200 ease-ds hover:brightness-110">
+                Book a call →
+              </a>
+            )}
+            {sp.email && emailHref && (
+              <a href={emailHref} className="rounded-xl border border-green-accent/40 px-4 py-2.5 text-sm font-medium text-[#bfe8d4] transition duration-200 ease-ds hover:bg-[#13201a]">
+                {sp.email}
+              </a>
+            )}
+            {sp.phone && (
+              <a href={`tel:${sp.phone.replace(/[^+\d]/g, "")}`} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-medium text-subtitle transition duration-200 ease-ds hover:text-title">
+                {sp.phone}
+              </a>
+            )}
+          </div>
         </div>
-        {sp.bio && <p className="text-sm leading-relaxed text-subtitle">{sp.bio}</p>}
-        <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
-          {bookingUrl && (
-            <a href={bookingUrl} target="_blank" rel="noreferrer" className="rounded-xl bg-green-accent px-5 py-2.5 text-sm font-semibold text-[#06120c] transition duration-200 ease-ds hover:brightness-110">
-              Book a call →
-            </a>
-          )}
-          {sp.email && emailHref && (
-            <a href={emailHref} className="rounded-xl border border-green-accent/40 px-4 py-2.5 text-sm font-medium text-[#bfe8d4] transition duration-200 ease-ds hover:bg-[#13201a]">
-              {sp.email}
-            </a>
-          )}
-          {sp.phone && (
-            <a href={`tel:${sp.phone.replace(/[^+\d]/g, "")}`} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-medium text-subtitle transition duration-200 ease-ds hover:text-title">
-              {sp.phone}
-            </a>
-          )}
-        </div>
-      </div>
+        {sp.bio && <p className="mt-6 border-t border-white/10 pt-5 text-sm leading-relaxed text-subtitle">{sp.bio}</p>}
+      </GlassPanel>
       <div className="absolute bottom-6 flex items-center gap-2">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={ASSETS.traceLogo} alt="" style={{ height: 20, width: 20 * TRACE_LOGO_AR }} />
-        <span className="text-[14px] font-semibold text-title">Trace Finance</span>
+        <img src="/assets/trace-logo-white.svg" alt="Trace Finance" className="h-[18px] w-auto opacity-85" />
       </div>
     </section>
   );
