@@ -81,6 +81,8 @@ const config: Config = {
         sans: ["var(--font-dm-sans)", "system-ui", "Arial", "sans-serif"],
         display: ["var(--font-poppins)", "var(--font-dm-sans)", "sans-serif"],
         mono: ["var(--font-dm-mono)", "ui-monospace", "SFMono-Regular", "monospace"],
+        // Shared-link (/f/) presentation chrome: eyebrows, labels, numerics.
+        jbmono: ["var(--font-jetbrains)", "ui-monospace", "SFMono-Regular", "monospace"],
         inter: ["var(--font-inter)", "system-ui", "sans-serif"],
       },
       transitionTimingFunction: {
