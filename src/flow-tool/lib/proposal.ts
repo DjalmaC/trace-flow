@@ -61,6 +61,10 @@ interface Manifest {
   /** brazil-market: deck-card key → the template page priced by that card;
    *  customized cards replace their page in place. */
   pricingCardPages?: Record<string, number>;
+  /** Index of the template's blank canvas page (background + header chrome,
+   *  card stripped): re-rendered rate pages are drawn onto a COPY of it so
+   *  they keep the exact template look. Removed before the PDF ships. */
+  blankPage?: number | null;
   logo: { page: number; box: [number, number, number, number] };
   fields: ManifestField[];
 }
@@ -318,6 +322,10 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
     repEmail: rep?.email ?? "",
     repPhone: rep?.phone ?? "",
     repLinkedIn: rep?.linkedin ?? "",
+    // Row labels on the fallback closing slide appear only when the rep has
+    // the value (the template's baked labels were redacted with the values).
+    repPhoneLabel: rep?.phone ? "PHONE" : "",
+    repLinkedInLabel: rep?.linkedin ? "LINKEDIN" : "",
   };
 
   // ── the proposal's real corridor ──────────────────────────────────────────
@@ -399,24 +407,37 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
     opts.proposalType === "standard"
       ? `BRL payins and payouts via Pix / TED · ${foreignCur || "USDC"} ↔ BRL`
       : `Cross-border payins and payouts · ${foreignCur || "USDT"} ↔ BRL`;
-  // The standard template's rate page carries this line as an overlay field
-  // (the baked one was redacted out), so a deck-priced PDF shows the real
-  // corridor too. When the page is live-rendered instead, the render already
-  // includes it and the overlay skips the field (below).
   vars.pricingSubLine = pricingSub;
-  if (pricingCustomized && typeof manifest.pricingPage === "number") {
-    // standard: replace the template's own rate page in place (page count
-    // unchanged, so every downstream index stays valid). The overlay loop
-    // below still stamps this page's footer field onto the replacement.
-    const png = await doc.embedPng(dataUrlToBytes(await renderPricingPagePng(pricing!, pricingSub)));
-    doc.removePage(manifest.pricingPage);
-    const page = doc.insertPage(manifest.pricingPage, [DW, DH]);
-    page.drawImage(png, { x: 0, y: 0, width: DW, height: DH });
+
+  // The blank canvas page (manifest.blankPage): the template's background and
+  // header chrome with the card stripped. Every live-rendered rate page is a
+  // TRANSPARENT overlay drawn onto a copy of it, so re-rendered pages keep the
+  // exact template look. Tracked as a live index through the page surgery
+  // below and removed before the PDF ships.
+  let blankIdx = typeof manifest.blankPage === "number" ? manifest.blankPage : -1;
+  const canvasPageAt = async (idx: number) => {
+    if (blankIdx >= 0) {
+      const [canvas] = await doc.copyPages(doc, [blankIdx]);
+      doc.insertPage(idx, canvas);
+      return doc.getPage(idx);
+    }
+    return doc.insertPage(idx, [DW, DH]);
+  };
+
+  // standard: the template ships the pricing page AS a blank canvas — the
+  // two-card rate page (Pix API + FX spread) is ALWAYS live-rendered onto it,
+  // deck-priced or not, so the PDF and the client's web Pricing view share one
+  // source of truth. The overlay loop below still stamps its footer field.
+  if (typeof manifest.pricingPage === "number") {
+    const std = pricing ?? normalizePricing(undefined, opts.proposalType);
+    const png = await doc.embedPng(dataUrlToBytes(await renderPricingPagePng(std, pricingSub)));
+    doc.getPage(manifest.pricingPage).drawImage(png, { x: 0, y: 0, width: DW, height: DH });
   }
-  // brazil-market: each product has its own template page. Edited cards
-  // replace their page in place (indices stay valid for the overlay loop);
-  // deck products REMOVED from the offer and brand-new products the rep ADDED
-  // are handled after the overlay loop, with index bookkeeping (see below).
+  // brazil-market: each product has its own hand-designed template page, kept
+  // when its card still matches the deck. Edited cards replace their page with
+  // a fresh canvas + overlay render (in place, so indices stay valid for the
+  // overlay loop); deck products REMOVED from the offer and brand-new products
+  // the rep ADDED are handled after the overlay loop, with index bookkeeping.
   const removedPages: number[] = [];
   const addedCards: PriceCard[] = [];
   if (pricingCustomized && manifest.pricingCardPages) {
@@ -434,7 +455,7 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
       if (cardEqualsDeck(card, deck.cards.find((c) => c.key === card.key))) continue;
       const png = await doc.embedPng(dataUrlToBytes(await renderBrazilCardPagePng(card)));
       doc.removePage(pno);
-      const page = doc.insertPage(pno, [DW, DH]);
+      const page = await canvasPageAt(pno);
       page.drawImage(png, { x: 0, y: 0, width: DW, height: DH });
     }
   }
@@ -446,8 +467,6 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
   for (const pno of pages) {
     if (willReplace && pno === manifest.closingPage) continue;
     let fields = manifest.fields.filter((f) => f.page === pno);
-    // the live-rendered pricing page already draws its own subtitle
-    if (pricingCustomized && pno === manifest.pricingPage) fields = fields.filter((f) => f.key !== "pricingSub");
     // when no company contact, drop the "— company" tail to avoid "Acme — Acme"
     if (!opts.companyRep) {
       fields = fields.map((f) =>
@@ -492,6 +511,7 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
     doc.removePage(pno);
     if (pno < flowsInsertAt) flowsInsertAt--;
     if (pno < closingPage) closingPage--;
+    if (pno < blankIdx) blankIdx--;
   }
   if (addedCards.length) {
     // added product pages join the pricing block, right before the flows,
@@ -501,10 +521,11 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
     const footerText = footerField ? resolveTemplate(footerField.template, vars).trim() : undefined;
     for (const card of addedCards) {
       const png = await doc.embedPng(dataUrlToBytes(await renderBrazilCardPagePng(card, footerText)));
-      const page = doc.insertPage(flowsInsertAt, [DW, DH]);
+      const page = await canvasPageAt(flowsInsertAt);
       page.drawImage(png, { x: 0, y: 0, width: DW, height: DH });
       flowsInsertAt++;
       closingPage++;
+      if (blankIdx >= 0) blankIdx++;
     }
   }
 
@@ -514,6 +535,7 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
     const page = doc.insertPage(flowsInsertAt + k, [DW, DH]);
     page.drawImage(png, { x: 0, y: 0, width: DW, height: DH });
   }
+  if (blankIdx >= 0) blankIdx += flowPngs.length;
 
   // Swap in the rep's pre-designed contact slide (preloaded above). If it wasn't
   // available the closing page was stamped normally, so nothing ships blank.
@@ -524,6 +546,9 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
     doc.removePage(closingIdx);
     doc.insertPage(closingIdx, repSlide);
   }
+
+  // The blank canvas served its purpose — it never ships.
+  if (blankIdx >= 0) doc.removePage(blankIdx);
 
   return doc.save();
 }

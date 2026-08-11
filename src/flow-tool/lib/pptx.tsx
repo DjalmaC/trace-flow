@@ -283,15 +283,17 @@ function flowSlide(config: FlowConfig, flow: Flow, name: string, label: string, 
 const PP = {
   text: "#e8ecf0",
   grey: "#8f98a3",
-  // Exact Trace-logo mark colours (sampled from trace_logo.png) so the badges,
-  // bullets and values read as the SAME green/blue as the lockup on the page:
-  // the Pix API table is Trace green, the FX Spread table is Trace blue.
-  green: "#06f1af",
+  // The unified August-2026 template's accent green (subtitles, badges, rates)
+  // and Trace blue for the FX-spread card on the standard two-card page.
+  green: "#2be896",
   blue: "#4ae1fc",
-  card: "#1a1a1f",
-  hairline: "#3a3f47",
-  rowline: "#3a3e45",
-  badgeInk: "#06120c",
+  // Glass card over the template's wavy canvas: dark translucent tint +
+  // white hairlines, approximating the baked pages' glassmorphism.
+  card: "rgba(11,15,14,0.52)",
+  hairline: "rgba(255,255,255,0.09)",
+  divider: "rgba(255,255,255,0.16)",
+  rowline: "rgba(255,255,255,0.12)",
+  badgeInk: "#0b0b0d",
 };
 
 // The Pix brand mark (four-arrowhead diamond), single monochrome path in a
@@ -329,20 +331,6 @@ function BadgeGlyph({ badge, cx, cy }: { badge: PriceCard["badge"]; cx: number; 
   );
 }
 
-function BrazilFlag() {
-  return (
-    <g>
-      <rect x={40} y={30} width={61} height={41} rx={6} fill="#009c3b" stroke="#4a4f57" strokeWidth={0.75} />
-      <path d="M70.5 34 L94 50.5 L70.5 67 L47 50.5 Z" fill="#fedf00" />
-      <clipPath id="pp-flag-circle">
-        <circle cx={70.5} cy={50.5} r={10.5} />
-      </clipPath>
-      <circle cx={70.5} cy={50.5} r={10.5} fill="#002776" />
-      <rect x={59} y={47} width={23} height={4} fill="#ffffff" transform="rotate(-9 70.5 50.5)" clipPath="url(#pp-flag-circle)" />
-    </g>
-  );
-}
-
 function PriceCardSvg({
   card,
   x,
@@ -363,38 +351,39 @@ function PriceCardSvg({
     card.type === "flat"
       ? [{ label: "All volumes", value: flatRowText(card) }]
       : card.tiers.map((t) => ({ label: t.label, value: tierText(card, t) }));
-  // Rows anchor to the top of the body band at the card's design rhythm
-  // (5 rows on the standard two-card page, 3 on a Brazil-market card page), so
-  // a short table reads like the full table's first rows instead of floating
-  // mid-card. Card heights stay matched; extra rows compress to fit.
-  const bodyTop = top + 96;
-  const bodyBottom = top + h - 22;
+  // Rows anchor to the top of the body band at the template's design rhythm —
+  // header block (badge/title/sub/divider) is 90pt tall, rows run on a 46pt
+  // pitch on the Brazil-market card (3 rows) — so a short table reads like the
+  // full table's first rows instead of floating mid-card. Card heights stay
+  // matched; extra rows compress to fit.
+  const bodyTop = top + 90;
+  const bodyBottom = top + h - 21;
   const pitch = (bodyBottom - bodyTop) / Math.max(rows.length, minRows);
   const padX = 30;
   return (
     <g>
-      <rect x={x} y={top} width={w} height={h} rx={14} fill={PP.card} stroke={PP.hairline} strokeWidth={0.75} />
-      <circle cx={x + 45} cy={top + 45} r={20} fill={accent} />
-      <BadgeGlyph badge={card.badge} cx={x + 45} cy={top + 45} />
-      <text x={x + 75} y={top + 44} fontSize={20} fontWeight={700} fill={PP.text}>
+      <rect x={x} y={top} width={w} height={h} rx={14} fill={PP.card} stroke={PP.hairline} strokeWidth={1} />
+      <circle cx={x + 44} cy={top + 45} r={19.5} fill={accent} />
+      <BadgeGlyph badge={card.badge} cx={x + 44} cy={top + 45} />
+      <text x={x + 74} y={top + 40} fontSize={20} fontWeight={700} fill={PP.text}>
         {card.title}
       </text>
-      <text x={x + 75} y={top + 63} fontSize={10.5} fill={PP.grey}>
+      <text x={x + 74} y={top + 60} fontSize={10} fill={PP.grey}>
         {card.sub}
       </text>
-      <line x1={x + 25} y1={top + 82} x2={x + w - 25} y2={top + 82} stroke={PP.hairline} strokeWidth={0.75} />
+      <line x1={x + 24} y1={top + 82} x2={x + w - 25} y2={top + 82} stroke={PP.divider} strokeWidth={0.9} />
       {rows.map((r, i) => {
         const yc = bodyTop + (i + 0.5) * pitch; // row centre
         return (
           <g key={i}>
             {i > 0 && (
-              <line x1={x + padX} y1={bodyTop + i * pitch} x2={x + w - padX} y2={bodyTop + i * pitch} stroke={PP.rowline} strokeWidth={0.75} />
+              <line x1={x + padX} y1={bodyTop + i * pitch} x2={x + w - padX} y2={bodyTop + i * pitch} stroke={PP.rowline} strokeWidth={0.7} />
             )}
-            <ArrowBullet x={x + padX + 1} y={yc - 6.5} h={13} color={accent} />
-            <text x={x + padX + 27} y={yc + 4.5} fontSize={12.5} fill={PP.text}>
+            <ArrowBullet x={x + padX + 1} y={yc - 7} h={14} color={accent} />
+            <text x={x + padX + 27} y={yc + 4.5} fontSize={13} fill={PP.text}>
               {r.label}
             </text>
-            <text x={x + w - padX} y={yc + 4.5} fontSize={13} fontWeight={700} fill={accent} textAnchor="end" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+            <text x={x + w - padX} y={yc + 4.5} fontSize={14} fontWeight={700} fill={accent} textAnchor="end" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
               {r.value}
             </text>
             {card.type === "flat" && (
@@ -409,25 +398,16 @@ function PriceCardSvg({
   );
 }
 
+// The pricing renders are TRANSPARENT overlays: the proposal builder draws
+// them onto the template's blank canvas page (the wavy background, top rule,
+// flag, "Brazil" header, wordmark and lockup are all baked there), so a
+// re-rendered rate page keeps the exact template look. They draw only the
+// green product subtitle, the glass card(s), and — for pages the template
+// never had, where no manifest footer field exists — the confidential footer.
 function pricingPageSlide(pricing: ProposalPricing, subLine: string, footerText?: string) {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox={`0 0 ${DW} ${DH}`} width={DW} height={DH} style={{ fontFamily: "Inter, sans-serif" }}>
-      <defs>
-        <linearGradient id="pp-bg" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#0d1313" />
-          <stop offset="1" stopColor="#0a0d0d" />
-        </linearGradient>
-      </defs>
-      <rect x={0} y={0} width={DW} height={DH} fill="url(#pp-bg)" />
-      <rect x={0} y={0} width={DW} height={1.6} fill={PP.green} />
-      <text x={943} y={36} fontSize={11} fontWeight={700} fill={PP.text} textAnchor="end">
-        Trace Finance
-      </text>
-      <BrazilFlag />
-      <text x={112} y={61} fontSize={32} fontWeight={700} fill={PP.text}>
-        Brazil
-      </text>
-      <text x={113} y={83} fontSize={13.5} fill={PP.green}>
+      <text x={111.6} y={82.1} fontSize={12} fill={PP.green}>
         {subLine}
       </text>
       {pricing.cards.slice(0, 2).map((card, i) => (
@@ -438,48 +418,24 @@ function pricingPageSlide(pricing: ProposalPricing, subLine: string, footerText?
           {footerText}
         </text>
       )}
-      <image href={ASSETS.traceLockupMark} x={759.6} y={486.7} width={44.6} height={44.6} />
-      <text x={808.6} y={516.2} fontSize={20} fontWeight={700} fill={PP.text}>
-        Trace Finance
-      </text>
     </svg>
   );
 }
 
-// A Brazil-market product page: the same Brazil header, one centred card —
-// geometry measured off the template's own pricing pages (card 557×246 at
-// 201.5/152, three rows through the body band).
+// A Brazil-market product page: one centred card in the template's measured
+// geometry (panel 557.5×249 at 201.5/150, rows on a 46pt pitch).
 function brazilCardPageSlide(card: PriceCard, footerText?: string) {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox={`0 0 ${DW} ${DH}`} width={DW} height={DH} style={{ fontFamily: "Inter, sans-serif" }}>
-      <defs>
-        <linearGradient id="pp-bg" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#0d1313" />
-          <stop offset="1" stopColor="#0a0d0d" />
-        </linearGradient>
-      </defs>
-      <rect x={0} y={0} width={DW} height={DH} fill="url(#pp-bg)" />
-      <rect x={0} y={0} width={DW} height={1.6} fill={PP.green} />
-      <text x={943} y={36} fontSize={11} fontWeight={700} fill={PP.text} textAnchor="end">
-        Trace Finance
-      </text>
-      <BrazilFlag />
-      <text x={112} y={61} fontSize={32} fontWeight={700} fill={PP.text}>
-        Brazil
-      </text>
-      <text x={113} y={83} fontSize={13.5} fill={PP.green}>
+      <text x={111.6} y={82.1} fontSize={12} fill={PP.green}>
         {card.pageSub ?? ""}
       </text>
-      <PriceCardSvg card={card} x={201.5} top={152} w={557} h={246} minRows={3} />
+      <PriceCardSvg card={card} x={201.5} top={150} w={557.5} h={249} minRows={3} />
       {footerText && (
         <text x={36} y={514.8} fontSize={9} fill={PP.grey}>
           {footerText}
         </text>
       )}
-      <image href={ASSETS.traceLockupMark} x={759.6} y={486.7} width={44.6} height={44.6} />
-      <text x={808.6} y={516.2} fontSize={20} fontWeight={700} fill={PP.text}>
-        Trace Finance
-      </text>
     </svg>
   );
 }

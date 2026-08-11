@@ -4,6 +4,15 @@
   "pageH": 540,
   "closingPage": 6,
   "flowsInsertAt": 6,
+  "pricingPage": null,
+  "pricingCardPages": {
+    "nonres": 1,
+    "pixinc": 2,
+    "onramp": 3,
+    "offramp": 4,
+    "pixout": 5
+  },
+  "blankPage": 7,
   "logo": {
     "page": 0,
     "box": [
@@ -14,17 +23,6 @@
     ]
   },
   "fields": [
-    {
-      "key": "repCompany",
-      "page": 0,
-      "template": "{rep} — {company}",
-      "x": 93.6,
-      "baseline": 456.1,
-      "size": 13.0,
-      "color": "#e8ecf0",
-      "font": "bold",
-      "align": "left"
-    },
     {
       "key": "corridor",
       "page": 0,
@@ -37,10 +35,21 @@
       "align": "left"
     },
     {
+      "key": "repCompany",
+      "page": 0,
+      "template": "{rep} \u2014 {company}",
+      "x": 93.6,
+      "baseline": 456.1,
+      "size": 13.0,
+      "color": "#e8ecf0",
+      "font": "bold",
+      "align": "left"
+    },
+    {
       "key": "date",
       "page": 0,
       "template": "{date}",
-      "x": 880.89,
+      "x": 880.92,
       "baseline": 456.1,
       "size": 13.0,
       "color": "#e8ecf0",
@@ -50,7 +59,7 @@
     {
       "key": "footer",
       "page": 1,
-      "template": "Confidential — prepared for {company} · {date}",
+      "template": "Confidential \u2014 prepared for {company} \u00b7 {date}",
       "x": 36.0,
       "baseline": 514.8,
       "size": 9.0,
@@ -61,7 +70,7 @@
     {
       "key": "footer",
       "page": 2,
-      "template": "Confidential — prepared for {company} · {date}",
+      "template": "Confidential \u2014 prepared for {company} \u00b7 {date}",
       "x": 36.0,
       "baseline": 514.8,
       "size": 9.0,
@@ -72,7 +81,7 @@
     {
       "key": "footer",
       "page": 3,
-      "template": "Confidential — prepared for {company} · {date}",
+      "template": "Confidential \u2014 prepared for {company} \u00b7 {date}",
       "x": 36.0,
       "baseline": 514.8,
       "size": 9.0,
@@ -83,7 +92,7 @@
     {
       "key": "footer",
       "page": 4,
-      "template": "Confidential — prepared for {company} · {date}",
+      "template": "Confidential \u2014 prepared for {company} \u00b7 {date}",
       "x": 36.0,
       "baseline": 514.8,
       "size": 9.0,
@@ -94,7 +103,7 @@
     {
       "key": "footer",
       "page": 5,
-      "template": "Confidential — prepared for {company} · {date}",
+      "template": "Confidential \u2014 prepared for {company} \u00b7 {date}",
       "x": 36.0,
       "baseline": 514.8,
       "size": 9.0,
@@ -136,6 +145,17 @@
       "align": "left"
     },
     {
+      "key": "phoneLabel",
+      "page": 6,
+      "template": "{repPhoneLabel}",
+      "x": 680.0,
+      "baseline": 368.0,
+      "size": 10.0,
+      "color": "#8f98a3",
+      "font": "bold",
+      "align": "left"
+    },
+    {
       "key": "repPhone",
       "page": 6,
       "template": "{repPhone}",
@@ -147,23 +167,26 @@
       "align": "left"
     },
     {
+      "key": "linkedinLabel",
+      "page": 6,
+      "template": "{repLinkedInLabel}",
+      "x": 680.0,
+      "baseline": 468.0,
+      "size": 10.0,
+      "color": "#8f98a3",
+      "font": "bold",
+      "align": "left"
+    },
+    {
       "key": "repLinkedIn",
       "page": 6,
       "template": "{repLinkedIn}",
       "x": 680.0,
-      "baseline": 438.0,
+      "baseline": 488.0,
       "size": 13.0,
       "color": "#e8ecf0",
       "font": "regular",
       "align": "left"
     }
-  ],
-  "pricingPage": null,
-  "pricingCardPages": {
-    "nonres": 1,
-    "pixinc": 2,
-    "onramp": 3,
-    "offramp": 4,
-    "pixout": 5
-  }
+  ]
 }

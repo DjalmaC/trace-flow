@@ -4,6 +4,7 @@
   "pageH": 540,
   "closingPage": 2,
   "flowsInsertAt": 2,
+  "pricingPage": 1,
   "logo": {
     "page": 0,
     "box": [
@@ -15,22 +16,11 @@
   },
   "fields": [
     {
-      "key": "headline",
-      "page": 0,
-      "template": "for {company}",
-      "x": 79.2,
-      "baseline": 291.12,
-      "size": 52.0,
-      "color": "#e8ecf0",
-      "font": "bold",
-      "align": "left"
-    },
-    {
       "key": "corridor",
       "page": 0,
       "template": "{corridorLine}",
       "x": 79.2,
-      "baseline": 357.72,
+      "baseline": 379.6,
       "size": 14.0,
       "color": "#e8ecf0",
       "font": "regular",
@@ -39,9 +29,9 @@
     {
       "key": "repCompany",
       "page": 0,
-      "template": "{rep} — {company}",
+      "template": "{rep} \u2014 {company}",
       "x": 93.6,
-      "baseline": 456.12,
+      "baseline": 456.1,
       "size": 13.0,
       "color": "#e8ecf0",
       "font": "bold",
@@ -51,8 +41,8 @@
       "key": "date",
       "page": 0,
       "template": "{date}",
-      "x": 808.28,
-      "baseline": 456.12,
+      "x": 880.92,
+      "baseline": 456.1,
       "size": 13.0,
       "color": "#e8ecf0",
       "font": "bold",
@@ -61,7 +51,7 @@
     {
       "key": "footer",
       "page": 1,
-      "template": "Confidential — prepared for {company} · {date}",
+      "template": "Confidential \u2014 prepared for {company} \u00b7 {date}",
       "x": 36.0,
       "baseline": 514.8,
       "size": 9.0,
@@ -103,6 +93,17 @@
       "align": "left"
     },
     {
+      "key": "phoneLabel",
+      "page": 2,
+      "template": "{repPhoneLabel}",
+      "x": 680.0,
+      "baseline": 368.0,
+      "size": 10.0,
+      "color": "#8f98a3",
+      "font": "bold",
+      "align": "left"
+    },
+    {
       "key": "repPhone",
       "page": 2,
       "template": "{repPhone}",
@@ -114,27 +115,26 @@
       "align": "left"
     },
     {
+      "key": "linkedinLabel",
+      "page": 2,
+      "template": "{repLinkedInLabel}",
+      "x": 680.0,
+      "baseline": 468.0,
+      "size": 10.0,
+      "color": "#8f98a3",
+      "font": "bold",
+      "align": "left"
+    },
+    {
       "key": "repLinkedIn",
       "page": 2,
       "template": "{repLinkedIn}",
       "x": 680.0,
-      "baseline": 438.0,
+      "baseline": 488.0,
       "size": 13.0,
       "color": "#e8ecf0",
       "font": "regular",
       "align": "left"
-    },
-    {
-      "key": "pricingSub",
-      "page": 1,
-      "template": "{pricingSubLine}",
-      "x": 111.6,
-      "baseline": 82.08,
-      "size": 12.0,
-      "color": "#2be896",
-      "font": "regular",
-      "align": "left"
     }
-  ],
-  "pricingPage": 1
+  ]
 }
