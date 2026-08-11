@@ -33,6 +33,7 @@ import { HubStage } from "./HubStage";
 import { NettingStage } from "./NettingStage";
 import { ASSETS, C, TRACE_LOGO_AR } from "./tokens";
 import { MobileFlow } from "./MobileFlow";
+import { glassStyle, SpecularEdge } from "./Glass";
 import type { Direction } from "../data/schema";
 
 // Public surface of the flow-tool module (build brief §8).
@@ -50,6 +51,7 @@ export function FlowExperience({
   onDirectionChange,
   forceStatic = false,
   editable = false,
+  skin,
 }: {
   config: FlowConfig;
   presentation?: boolean;
@@ -62,7 +64,12 @@ export function FlowExperience({
   /** Build canvas only: show the "add a note" placeholder for the per-flow
    *  comment when none is set. The client view never shows the placeholder. */
   editable?: boolean;
+  /** "glass" (the shared /f/ link): the page goes transparent over the silk
+   *  backdrop and the flow floats on a liquid-glass panel. Purely
+   *  presentational — the dive, layers and interactions are untouched. */
+  skin?: "glass";
 }) {
+  const glass = skin === "glass";
   const baseFlow = getFlow(config.flowId);
 
   // ── settlement toggle: one rail, more than one settlement ────────────────
@@ -258,6 +265,9 @@ export function FlowExperience({
   const deckGlow =
     `radial-gradient(62% 62% at 50% 46%, ${C.ambientGlow1} 0%, ${C.ambientGlow2} 58%, rgba(7,9,11,0) 100%),` +
     `radial-gradient(72% 72% at 50% 50%, rgba(7,9,11,0) 58%, ${C.vignette} 100%)`;
+  // Glass skin: a section reads as a liquid-glass panel — the pure mock recipe,
+  // no deck vignette (the silk plate provides the ambience through the blur).
+  const glassSection = glass ? { ...glassStyle } : undefined;
 
   // Per-proposal override first (double-click the line on the build canvas),
   // then the flow's own copy, then the direction defaults.
@@ -315,8 +325,11 @@ export function FlowExperience({
   // ── single-section static render (QA hook + future two-page mode) ────────
   if (only) {
     return (
-      <div className="relative flex min-h-screen w-full flex-col items-center justify-center px-6" style={{ background: deckGlow }}>
-        <div className="absolute left-0 top-0 h-[3px] w-full" style={{ background: C.rule }} />
+      <div
+        className={`relative flex min-h-screen w-full flex-col items-center justify-center px-6 ${glass ? "overflow-hidden" : ""}`}
+        style={glassSection ?? { background: deckGlow }}
+      >
+        {glass ? <SpecularEdge /> : <div className="absolute left-0 top-0 h-[3px] w-full" style={{ background: C.rule }} />}
         {only === "surface" ? SurfaceHeading : DepthHeading}
         {only === "depth" && settlementToggle}
         <div className={only === "surface" ? "w-full max-w-[1200px]" : "w-full max-w-[1500px]"}>
@@ -333,7 +346,10 @@ export function FlowExperience({
   // rather than the desktop machinery scaled down to phone width.
   if (isMobile && !forceStatic) {
     return (
-      <div className="w-full overflow-x-hidden px-4 pb-8 pt-2" style={{ background: deckGlow }}>
+      <div
+        className={`w-full overflow-x-hidden px-4 pb-8 pt-2 ${glass ? "relative" : ""}`}
+        style={glassSection ? { ...glassSection, borderRadius: 20, margin: "10px 10px 28px", width: "auto" } : { background: deckGlow }}
+      >
         {/* On /build there's no other Pay-in/Pay-out control on a phone; the
             shared /f/ view supplies its own toggle, so skip it in presentation. */}
         {onDirectionChange && !presentation && (
@@ -375,14 +391,17 @@ export function FlowExperience({
 
   // ── reduced motion / print: stack the two sections, no dive ──────────────
   if (reduced || forceStatic) {
+    const sectionCls = `flex min-h-screen flex-col items-center justify-center px-6 ${glass ? "relative mx-6 my-8 overflow-hidden" : ""}`;
     return (
-      <div className="w-full" data-flow-dive style={{ background: C.base }}>
-        <div className="absolute left-0 top-0 z-10 h-[3px] w-full" style={{ background: C.rule }} />
-        <section className="flex min-h-screen flex-col items-center justify-center px-6" style={{ background: deckGlow }}>
+      <div className="w-full" data-flow-dive style={{ background: glass ? "transparent" : C.base }}>
+        {!glass && <div className="absolute left-0 top-0 z-10 h-[3px] w-full" style={{ background: C.rule }} />}
+        <section className={sectionCls} style={glassSection ?? { background: deckGlow }}>
+          {glass && <SpecularEdge />}
           {SurfaceHeading}
           <div className="w-full max-w-[1200px]">{SurfaceSvg}</div>
         </section>
-        <section className="flex min-h-screen flex-col items-center justify-center px-6" style={{ background: deckGlow }}>
+        <section className={sectionCls} style={glassSection ?? { background: deckGlow }}>
+          {glass && <SpecularEdge />}
           {DepthHeading}
           {settlementToggle}
           <div className="w-full max-w-[1500px]">{MachinerySvg}</div>
@@ -393,10 +412,18 @@ export function FlowExperience({
   }
 
   return (
-    <div ref={sectionRef} data-flow-dive className="relative h-[340vh] w-full" style={{ background: C.base }}>
-      <div className="sticky top-0 h-screen w-full overflow-hidden" style={{ background: C.base }}>
-        <div className="absolute inset-0" style={{ background: deckGlow }} />
-        <div className="absolute left-0 top-0 z-30 h-[3px] w-full" style={{ background: C.rule }} />
+    <div ref={sectionRef} data-flow-dive className="relative h-[340vh] w-full" style={{ background: glass ? "transparent" : C.base }}>
+      <div className="sticky top-0 h-screen w-full overflow-hidden" style={{ background: glass ? "transparent" : C.base }}>
+        {glass ? (
+          /* the liquid-glass canvas the dive floats on — inset so the silk
+             backdrop frames it, below the fixed header and download chrome */
+          <div className="absolute inset-x-6 bottom-14 top-[76px] overflow-hidden" style={glassSection}>
+            <SpecularEdge />
+          </div>
+        ) : (
+          <div className="absolute inset-0" style={{ background: deckGlow }} />
+        )}
+        {!glass && <div className="absolute left-0 top-0 z-30 h-[3px] w-full" style={{ background: C.rule }} />}
 
         {/* always-visible Pay-in / Pay-out toggle (build brief §5) */}
         {onDirectionChange && (
@@ -410,7 +437,7 @@ export function FlowExperience({
         {/* DEPTH — behind */}
         <motion.div
           style={{ opacity: depthOpacity, y: depthY, scale: depthScale, filter: depthBlur }}
-          className="absolute inset-0 z-10 flex flex-col items-center justify-center px-6"
+          className={`absolute inset-0 z-10 flex flex-col items-center justify-center ${glass ? "px-14" : "px-6"}`}
         >
           <motion.div style={{ opacity: depthHeadingOpacity }}>{DepthHeading}</motion.div>
           {settlementToggle}
@@ -430,7 +457,7 @@ export function FlowExperience({
         {/* SURFACE — front */}
         <motion.div
           style={{ opacity: surfaceOpacity, y: surfaceY, scale: surfaceScale }}
-          className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center px-6"
+          className={`pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center ${glass ? "px-14" : "px-6"}`}
         >
           <div className="pointer-events-auto">{SurfaceHeading}</div>
           <div className="w-full max-w-[1200px]">{SurfaceSvg}</div>
@@ -438,7 +465,7 @@ export function FlowExperience({
 
         <motion.div
           style={{ opacity: hintOpacity }}
-          className="pointer-events-none absolute bottom-9 left-1/2 z-30 -translate-x-1/2 text-center"
+          className={`pointer-events-none absolute left-1/2 z-30 -translate-x-1/2 text-center ${glass ? "bottom-[72px]" : "bottom-9"}`}
         >
           <div className="mb-1.5 text-sm font-medium tracking-wide text-subtitle">Explore the full flow below</div>
           <div className="animate-bounce text-2xl leading-none text-green-accent">↓</div>
