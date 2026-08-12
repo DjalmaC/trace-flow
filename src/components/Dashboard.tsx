@@ -9,6 +9,7 @@ import {
   isShareConfigured,
   listProposals,
   loadSharedFlow,
+  shareUrl,
   type ProposalRecord,
 } from "@/flow-tool/lib/share";
 
@@ -178,9 +179,9 @@ export function Dashboard({ rep, onSwitch }: { rep: TraceRep; onSwitch: () => vo
   const pipeline = useMemo(() => sorted.filter((r) => statusOf(r) !== "sandbox"), [sorted]);
   const viewedCount = useMemo(() => pipeline.filter((r) => statusOf(r) === "viewed").length, [pipeline]);
 
-  function copyLink(code: string) {
-    navigator.clipboard.writeText(`${window.location.origin}/f/${code}`);
-    setCopied(code);
+  function copyLink(r: ProposalRecord) {
+    navigator.clipboard.writeText(shareUrl(r));
+    setCopied(r.code);
     setTimeout(() => setCopied(null), 1500);
   }
 
@@ -432,7 +433,7 @@ export function Dashboard({ rep, onSwitch }: { rep: TraceRep; onSwitch: () => vo
                     {/* action */}
                     <div className="flex justify-self-end">
                       <a
-                        href={`/f/${r.code}`}
+                        href={r.slug ? `/${r.slug}` : `/f/${r.code}`}
                         target="_blank"
                         rel="noreferrer"
                         onClick={(e) => e.stopPropagation()}
@@ -511,7 +512,7 @@ export function Dashboard({ rep, onSwitch }: { rep: TraceRep; onSwitch: () => vo
                         borderTop: viewedOpen ? "1px solid rgba(0,242,177,.1)" : "1px solid #141b17",
                       }}
                     >
-                      <button onClick={() => copyLink(r.code)} className={ghostBtn}>
+                      <button onClick={() => copyLink(r)} className={ghostBtn}>
                         {copied === r.code ? "Copied" : "Copy link"}
                       </button>
                       <button

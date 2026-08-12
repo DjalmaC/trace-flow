@@ -22,11 +22,20 @@ export async function GET(req: Request, ctx: { params: Promise<{ code: string }>
   const sb = admin();
   if (!sb) return NextResponse.json({ error: "unconfigured" }, { status: 503 });
 
-  const { data, error } = await sb
+  // Resolve by code first, then by the client-named slug alias (/nuvera-k4x2).
+  // Analytics and expiry always use the ROW's code, whichever form matched.
+  let { data, error } = await sb
     .from(TABLE)
-    .select("config, created_at")
+    .select("code, config, created_at")
     .eq("code", code)
     .maybeSingle();
+  if (!error && !data) {
+    ({ data, error } = await sb
+      .from(TABLE)
+      .select("code, config, created_at")
+      .eq("config->>slug", code)
+      .maybeSingle());
+  }
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (!data) return NextResponse.json({ error: "notfound" }, { status: 404 });
 
@@ -53,7 +62,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ code: string }>
       const deviceHash = createHash("sha256").update(`${ip}|${ua}`).digest("hex").slice(0, 16);
       const country = h.get("x-vercel-ip-country") ?? null;
       const city = h.get("x-vercel-ip-city") ? decodeURIComponent(h.get("x-vercel-ip-city")!) : null;
-      await sb.from("flow_views").insert({ code, device_hash: deviceHash, country, city });
+      await sb.from("flow_views").insert({ code: data.code, device_hash: deviceHash, country, city });
     } catch {
       /* table missing or insert failed — analytics are best-effort */
     }

@@ -17,10 +17,14 @@ export const dynamic = "force-dynamic";
 const ALLOWED = new Set(["sales-slides.pdf", "arq-proposal-june-2026.pdf"]);
 
 async function codeExists(code: string): Promise<boolean> {
+  // accepts the share code OR its client-named slug alias — the /f/ page
+  // passes back whichever form the viewer opened
   const sb = admin();
   if (!sb || !code) return false;
   const { data } = await sb.from(TABLE).select("code").eq("code", code).maybeSingle();
-  return !!data;
+  if (data) return true;
+  const { data: bySlug } = await sb.from(TABLE).select("code").eq("config->>slug", code).maybeSingle();
+  return !!bySlug;
 }
 
 export async function GET(req: Request, ctx: { params: Promise<{ name: string }> }) {

@@ -30,10 +30,19 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ code: string 
     return NextResponse.json({ error: "config object required" }, { status: 400 });
 
   const { code } = await ctx.params;
+  // Preserve the row's slug — the client already holds the named link, and an
+  // edit from the build page rebuilds the config from scratch without it.
+  const { data: existing } = await admin()!
+    .from(TABLE)
+    .select("slug:config->>slug")
+    .eq("code", code)
+    .maybeSingle();
+  const slug = (existing as { slug?: string | null } | null)?.slug;
+  const merged = slug && !config.slug ? { ...config, slug } : config;
   const { data, error } = await admin()!
     .from(TABLE)
     .update({
-      config,
+      config: merged,
       client_name: typeof config.clientName === "string" ? config.clientName : null,
       client_rep: typeof config.clientRep === "string" ? config.clientRep : null,
     })
@@ -41,5 +50,5 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ code: string 
     .select("code");
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (!data?.length) return NextResponse.json({ error: "not found" }, { status: 404 });
-  return NextResponse.json({ ok: true, code });
+  return NextResponse.json({ ok: true, code, slug: (merged as { slug?: string | null }).slug ?? null });
 }

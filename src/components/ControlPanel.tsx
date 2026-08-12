@@ -18,7 +18,7 @@ import { LogoDrop } from "@/components/LogoDrop";
 import { TRACE_REPS, getRep } from "@/flow-tool/data/reps";
 import type { IntakeAnswers } from "@/flow-tool/intake/questions";
 import { resolve } from "@/flow-tool/intake/resolver";
-import { createShareLink, isShareConfigured, updateShareLink } from "@/flow-tool/lib/share";
+import { createShareLink, isShareConfigured, shareUrl, updateShareLink } from "@/flow-tool/lib/share";
 import { loadRepKey } from "@/flow-tool/lib/rep-session";
 import { dominantColor, normalizeLogo } from "@/flow-tool/lib/logo";
 import { downloadProposalPdf } from "@/flow-tool/lib/proposal";
@@ -271,9 +271,10 @@ export function ControlPanel({
     try {
       const cfg = buildShareConfig();
       let code = editingCode ?? null;
-      if (code) await updateShareLink(code, cfg);
-      else code = (await createShareLink(cfg)).code;
-      const url = `${window.location.origin}/f/${code}`;
+      let slug: string | null | undefined;
+      if (code) ({ slug } = await updateShareLink(code, cfg));
+      else ({ code, slug } = await createShareLink(cfg));
+      const url = shareUrl({ code: code!, slug });
       onSaved?.(code, cfg as unknown as FlowConfig); // persist stash + lock the link for next save
       try {
         await navigator.clipboard.writeText(url);

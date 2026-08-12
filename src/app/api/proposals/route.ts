@@ -45,7 +45,7 @@ export async function GET(req: Request) {
   const { data, error } = await sb
     .from(TABLE)
     .select(
-      "code, client_name, client_rep, created_at, " +
+      "code, slug:config->>slug, client_name, client_rep, created_at, " +
         "logo:config->>clientLogoUrl, plate:config->>clientLogoPlate, " +
         "ptype:config->>proposalType, pdate:config->>date, rep_id:config->>traceRepId, " +
         "sandbox:config->>sandbox",
@@ -97,6 +97,28 @@ export async function GET(req: Request) {
   return NextResponse.json({ rows: data ?? [], analytics }, { headers: { "cache-control": "no-store" } });
 }
 
+// Client-named link slug: kebab-case company name + a short random tail
+// ("nuvera-k4x2"). The name makes the link read as the client's; the tail
+// keeps it unguessable (the gate is retired — unguessability IS the privacy
+// model). Stored INSIDE config (config->>slug), so no schema migration; the
+// code remains the primary key everywhere (analytics, PATCH/DELETE).
+function makeSlug(clientName: unknown): string | null {
+  if (typeof clientName !== "string") return null;
+  const base = clientName
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
+  if (!base) return null;
+  const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789";
+  const bytes = randomBytes(4);
+  let tail = "";
+  for (let i = 0; i < 4; i++) tail += alphabet[bytes[i] % alphabet.length];
+  return `${base}-${tail}`;
+}
+
 export async function POST(req: Request) {
   const blocked = guard(req);
   if (blocked) return blocked;
@@ -111,16 +133,22 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "invalid body" }, { status: 400 });
   }
 
-  // retry on the (extremely unlikely) code collision
+  // retry on the (extremely unlikely) code or slug collision
   for (let attempt = 0; attempt < 3; attempt++) {
     const code = makeCode();
+    const slug = makeSlug(config.clientName);
+    if (slug) {
+      const { data: taken } = await sb.from(TABLE).select("code").eq("config->>slug", slug).maybeSingle();
+      if (taken) continue; // regenerate the tail
+    }
+    const cfg = slug ? { ...config, slug } : config;
     const { error } = await sb.from(TABLE).insert({
       code,
-      config,
+      config: cfg,
       client_name: (config.clientName as string) ?? null,
       client_rep: (config.clientRep as string) ?? null,
     });
-    if (!error) return NextResponse.json({ code });
+    if (!error) return NextResponse.json({ code, slug });
     if ((error as { code?: string }).code !== "23505")
       return NextResponse.json({ error: error.message || "insert failed" }, { status: 500 });
   }

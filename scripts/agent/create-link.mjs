@@ -67,10 +67,18 @@ if (!res.ok) {
   console.error(`create failed: ${res.status} ${await res.text()}`);
   process.exit(1);
 }
-const { code } = await res.json();
+const { code, slug } = await res.json();
 console.log(
   JSON.stringify(
-    { code, url: `${base}/f/${code}`, password: config.gatePassword, sandbox: !approved, flows: flows.map((f) => f.name) },
+    {
+      code,
+      slug: slug ?? null,
+      url: slug ? `${base}/${slug}` : `${base}/f/${code}`,
+      codeUrl: `${base}/f/${code}`,
+      password: config.gatePassword,
+      sandbox: !approved,
+      flows: flows.map((f) => f.name),
+    },
     null,
     2,
   ),
