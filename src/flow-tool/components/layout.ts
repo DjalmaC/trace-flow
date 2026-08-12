@@ -617,9 +617,15 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
   const cyFor = (i: number): number => (trunkNodeIdx.has(i) ? BAND_Y : BAND_Y + (rowOf.get(i) ?? 1) * STACK_OFF);
 
   // The machinery container grows to hold extra rows (the classic single flow
-  // and one-payer fan-ins keep the exact default frame).
-  const contY = Math.min(CONT_Y, BAND_Y - rowsAbove * STACK_OFF - NODE_H / 2 - 44);
-  const contH = Math.max(CONT_Y + CONT_H, BAND_Y + rowsBelow * STACK_OFF + NODE_H / 2 + 28) - contY;
+  // and one-payer fan-ins keep the exact default frame). TINY flows — a short
+  // chain of ≤3 stations with no branch rows — get a COMPACT frame instead:
+  // the classic tall container reads as dead space around one short rail, so
+  // the frame hugs the row (lane labels above, entity notes below) and the
+  // diagram renders large and fitted wherever it's shown.
+  const compact =
+    srcNodes.length <= 3 && rowsAbove === 0 && rowsBelow === 0 && !srcNodes.some((n) => n.kind === "engine");
+  const contY = compact ? BAND_Y - 146 : Math.min(CONT_Y, BAND_Y - rowsAbove * STACK_OFF - NODE_H / 2 - 44);
+  const contH = compact ? 260 : Math.max(CONT_Y + CONT_H, BAND_Y + rowsBelow * STACK_OFF + NODE_H / 2 + 28) - contY;
 
   const nodes: NodeLayout[] = srcNodes.map((node, i) => {
     const c = depths[i];

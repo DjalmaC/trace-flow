@@ -321,10 +321,11 @@ export function SharedFlowView({ code }: { code: string }) {
       : <PricingView pricing={proposalPricing} clientName={config.clientName} inline={isMobile} />
     : null;
 
-  // Only offer pricing when the link actually carries it. A link saved
-  // without any rates is flow-only — no rail/tab, and a ?view=pricing deep
-  // link falls back to the flow.
-  const hasPricing = !!config?.pricing;
+  // Only offer pricing when the link actually carries RATES. A link saved
+  // without any (or with an emptied custom card list) is flow-only — no
+  // rail/tab, no "What X pays", and ?view=pricing falls back to the flow.
+  const hasPricing =
+    !!config?.pricing && (legacyPricing ? legacyPricing.cards.length > 0 : proposalPricing.cards.length > 0);
   const effView: "flow" | "pricing" = hasPricing ? view : "flow";
   const showDirectionToggle = !!config && !config.hideDirectionToggle && (config.clientDirections ?? "both") === "both";
   // Rail density: the side rail comfortably fits ~12 "rows" beside the canvas

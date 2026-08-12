@@ -419,6 +419,15 @@ export function FlowExperience({
     const eyebrow = `${clientFlowName(flow.title)} · ${directionLabel(config.direction, config, config.flowId)}`;
     const rail = panelSlots?.rail;
     const railBelow = panelSlots?.railPosition === "below";
+    // Tiny tailored flows don't earn a second panel. A 2-station machinery IS
+    // the desired transaction (skip "Beneath the surface" entirely); a
+    // 3-station one is small enough to join the top panel under the hero. The
+    // rep-contact row gets its own small panel when the machinery panel goes.
+    const machNodes = layout.nodes.filter((n) => n.kind !== "engine").length;
+    const branched = layout.legs.some((l) => l.offTrunk);
+    const tinyFlow = flow.archetype == null && !branched && machNodes <= 2;
+    const inlineMach = flow.archetype == null && !branched && machNodes === 3;
+    const showDepthPanel = !tinyFlow && !inlineMach;
     return (
       <div className="w-full px-4 md:px-11">
         {/* Panel 1 — the desired transaction; pricing rides beside it, or
@@ -444,17 +453,32 @@ export function FlowExperience({
               <p className="mt-3 max-w-[560px] text-[14.5px] leading-[1.55] text-subtitle" data-hero-support>
                 {support}
               </p>
+              {/* the machinery panel's note moves up here when that panel goes */}
+              {!showDepthPanel && flowComment && (
+                <div data-flow-comment className="mt-3 max-w-[640px] text-[13.5px] leading-relaxed text-subtitle">
+                  <NoteBody text={flowComment} />
+                </div>
+              )}
               <div className="mt-2.5">{SurfaceSvg}</div>
+              {/* small flows: the full machinery joins the top panel — no scroll */}
+              {inlineMach && (
+                <div className="mt-4 flex flex-col items-center">
+                  {settlementToggle}
+                  <div className="w-full">{MachinerySvg}</div>
+                </div>
+              )}
             </div>
-            <button
-              onClick={goHow}
-              className="no-print -mx-8 flex flex-none items-center justify-between gap-5 border-t border-white/[.12] bg-[rgba(10,17,13,.35)] px-8 py-3.5 text-left transition duration-200 ease-ds hover:bg-[rgba(19,32,26,.5)]"
-            >
-              <span className="font-jbmono text-[11px] font-medium uppercase tracking-[0.34em] text-[#bfe8d4]">
-                Beneath the surface · how Trace makes it happen
-              </span>
-              <span className="text-[14px] text-mint">↓</span>
-            </button>
+            {showDepthPanel && (
+              <button
+                onClick={goHow}
+                className="no-print -mx-8 flex flex-none items-center justify-between gap-5 border-t border-white/[.12] bg-[rgba(10,17,13,.35)] px-8 py-3.5 text-left transition duration-200 ease-ds hover:bg-[rgba(19,32,26,.5)]"
+              >
+                <span className="font-jbmono text-[11px] font-medium uppercase tracking-[0.34em] text-[#bfe8d4]">
+                  Beneath the surface · how Trace makes it happen
+                </span>
+                <span className="text-[14px] text-mint">↓</span>
+              </button>
+            )}
           </div>
           {rail && (
             <div className="tf-rail relative box-border flex scroll-mt-[96px] flex-col border-l border-white/[.14] bg-[rgba(7,11,9,.4)] px-7 pb-6 pt-7">
@@ -466,22 +490,31 @@ export function FlowExperience({
         {/* Panel 2 — beneath the surface: the full machinery */}
         {/* scroll-mt clears the stuck header banner (~80px) so "How Trace
             makes it happen" lands fully visible below it */}
-        <div ref={howRef} data-flow-dive className="tf-rise relative mt-8 scroll-mt-[96px] overflow-hidden px-8 pb-7 pt-9 md:px-10" style={glassStyle}>
-          <SpecularEdge />
-          <div className="font-jbmono text-[11px] font-medium uppercase tracking-[0.34em] text-[#6f8a7f]">Beneath the surface</div>
-          <h2 className="mt-3 font-display text-[26px] font-semibold tracking-[-0.01em] text-[#eef1ee]">How Trace makes it happen</h2>
-          <p className="mt-2 text-sm font-medium text-mint">{clientFlowName(flow.title)}</p>
-          {flowComment && (
-            <div data-flow-comment className="mt-2.5 max-w-[640px] text-[13.5px] leading-relaxed text-subtitle">
-              <NoteBody text={flowComment} />
+        {showDepthPanel ? (
+          <div ref={howRef} data-flow-dive className="tf-rise relative mt-8 scroll-mt-[96px] overflow-hidden px-8 pb-7 pt-9 md:px-10" style={glassStyle}>
+            <SpecularEdge />
+            <div className="font-jbmono text-[11px] font-medium uppercase tracking-[0.34em] text-[#6f8a7f]">Beneath the surface</div>
+            <h2 className="mt-3 font-display text-[26px] font-semibold tracking-[-0.01em] text-[#eef1ee]">How Trace makes it happen</h2>
+            <p className="mt-2 text-sm font-medium text-mint">{clientFlowName(flow.title)}</p>
+            {flowComment && (
+              <div data-flow-comment className="mt-2.5 max-w-[640px] text-[13.5px] leading-relaxed text-subtitle">
+                <NoteBody text={flowComment} />
+              </div>
+            )}
+            <div className="mt-2 flex flex-col items-center">
+              {settlementToggle}
+              <div className="w-full">{MachinerySvg}</div>
             </div>
-          )}
-          <div className="mt-2 flex flex-col items-center">
-            {settlementToggle}
-            <div className="w-full">{MachinerySvg}</div>
+            {panelSlots?.closing && <div className="mt-6 border-t border-white/[.12] pt-6">{panelSlots.closing}</div>}
           </div>
-          {panelSlots?.closing && <div className="mt-6 border-t border-white/[.12] pt-6">{panelSlots.closing}</div>}
-        </div>
+        ) : (
+          panelSlots?.closing && (
+            <div className="tf-rise relative mt-8 overflow-hidden px-8 py-7 md:px-10" style={glassStyle}>
+              <SpecularEdge />
+              {panelSlots.closing}
+            </div>
+          )
+        )}
       </div>
     );
   }
