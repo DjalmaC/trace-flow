@@ -302,6 +302,10 @@ export function FlowExperience({
   // situate the viewer. Double-click editable on the build canvas.
   const flowComment = config.comments?.[config.flowId]?.trim();
 
+  // Links without a client name (e.g. anonymised slug routes) degrade to
+  // "Built for you" instead of a dangling "Built for ".
+  const clientDisplay = config.clientName.trim() || "you";
+
   const SurfaceHeading = (
     // width min(…, 100%): sized by the PARENT, so the heading never overflows
     // the inset glass panel on phones (100vw ignores the panel's margins).
@@ -310,7 +314,7 @@ export function FlowExperience({
         The desired transaction
       </div>
       <h1 className="font-display text-3xl font-semibold tracking-[-0.01em] text-[#f2f5f3] md:text-5xl">
-        Built for <span className="text-mint">{config.clientName}</span>
+        Built for <span className="text-mint">{clientDisplay}</span>
       </h1>
       <p className="mt-3 text-[15px] font-normal leading-relaxed text-[#8b948f] md:text-base" data-hero-support>
         {support}
@@ -453,7 +457,7 @@ export function FlowExperience({
             <div className="flex min-h-0 flex-1 flex-col justify-center py-7">
               <div className="font-jbmono text-[11px] font-medium uppercase tracking-[0.34em] text-[#6f8a7f]">{eyebrow}</div>
               <h1 className="mt-3 font-display text-[34px] font-semibold leading-[1.1] tracking-[-0.02em] text-[#eef1ee]">
-                Built for <span className="text-mint">{config.clientName}</span>
+                Built for <span className="text-mint">{clientDisplay}</span>
               </h1>
               <p className="mt-3 max-w-[560px] text-[14.5px] leading-[1.55] text-subtitle" data-hero-support>
                 {support}
@@ -679,7 +683,7 @@ function SettlementToggle({
           key={i}
           onClick={() => onChange(i)}
           aria-pressed={active === i}
-          className={`rounded-lg px-[13px] py-2 text-[13px] font-medium tracking-[0.2px] transition md:py-[5px] md:text-[12px] ${
+          className={`min-h-[44px] rounded-lg px-[13px] py-2 text-[13px] font-medium tracking-[0.2px] transition md:min-h-0 md:py-[5px] md:text-[12px] ${
             active === i ? "bg-[#46d39a24] text-[#bfe8d4]" : "text-[#8b948f] hover:text-[#bfe8d4]"
           }`}
         >

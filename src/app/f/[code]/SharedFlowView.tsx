@@ -91,9 +91,13 @@ type State =
 //   "magic-moves" (layoutId) from the centred welcome to its header slot, while
 //   the welcome backdrop + text fade and the flow is revealed underneath.
 type Intro = "loading" | "welcome" | "fadeout" | "done";
-const MIN_LOAD_MS = 1500;
-const WELCOME_HOLD_MS = 2300;
-const FADE_MS = 950;
+// Tight intro: the whole welcome beat (hold + crossfade) reads in under two
+// seconds, and the spinner only shows for as long as the fetch actually takes
+// (a tiny floor keeps a fast fetch from flashing). The overlay unmounts the
+// moment the fade completes so nothing ghosts over the revealed content.
+const MIN_LOAD_MS = 350;
+const WELCOME_HOLD_MS = 1250;
+const FADE_MS = 450;
 
 // 3px brand strip (design 1c): mint→cyan gradient, full width. FlowExperience
 // paints its own solid rule; this overlay sits above it (z-60) so the client
@@ -416,7 +420,7 @@ export function SharedFlowView({ code }: { code: string }) {
                               key={v.flowId}
                               onClick={() => switchFlow(v.flowId)}
                               aria-pressed={active}
-                              className={`whitespace-nowrap rounded-full border px-4 py-2.5 text-[13.5px] transition duration-200 ease-ds ${
+                              className={`min-h-[44px] whitespace-nowrap rounded-full border px-4 py-2.5 text-[13.5px] transition duration-200 ease-ds ${
                                 active
                                   ? "border-transparent bg-mint font-semibold text-mint-on"
                                   : "border-white/10 bg-[#0e1410]/70 font-medium text-[#8b948f]"
@@ -574,9 +578,11 @@ export function SharedFlowView({ code }: { code: string }) {
                   Welcome{repName ? `, ${repName}` : ""}
                 </h1>
                 <p className="max-w-md text-sm text-subtitle">
+                  {/* no client name on the link: drop the "for …" clause instead
+                      of rendering "prepared for ." with dangling grammar */}
                   {hasVariants
-                    ? `Here are the cross-border payment flows we’ve prepared for ${config!.clientName}.`
-                    : `Here’s the cross-border payment flow we’ve prepared for ${config!.clientName}.`}
+                    ? `Here are the cross-border payment flows we’ve prepared${config!.clientName.trim() ? ` for ${config!.clientName.trim()}` : ""}.`
+                    : `Here’s the cross-border payment flow we’ve prepared${config!.clientName.trim() ? ` for ${config!.clientName.trim()}` : ""}.`}
                 </p>
               </div>
             ) : (
@@ -678,7 +684,9 @@ function ClientLogo({ config, size }: { config: SharedConfig; size: "header" | "
     if (size === "header") return null;
     return <div className="font-display text-2xl font-semibold text-title">{config.clientName}</div>;
   }
-  const t = { layout: { duration: 0.78, ease: [0.4, 0, 0.2, 1] as [number, number, number, number] } };
+  // Keep the magic-move inside the overlay's crossfade window (FADE_MS) so the
+  // logo has settled into its header slot by the time the overlay unmounts.
+  const t = { layout: { duration: 0.42, ease: [0.4, 0, 0.2, 1] as [number, number, number, number] } };
   const light = config.clientLogoPlate === "light";
   if (light) {
     const wrap = size === "header" ? "px-1.5 py-1 rounded-md" : "px-6 py-4 rounded-2xl";
@@ -729,7 +737,11 @@ function PricingRail({ pricing, legacy, clientName }: { pricing: ProposalPricing
   return (
     <>
       <div className="font-display text-[21px] font-semibold tracking-[-0.01em] text-title">
-        What <span className="text-mint">{clientName}</span> pays
+        {clientName.trim() ? (
+          <>What <span className="text-mint">{clientName}</span> pays</>
+        ) : (
+          <>What <span className="text-mint">you</span> pay</>
+        )}
       </div>
       {legacy && (
         <div className="mt-1.5 flex items-center gap-2 text-[12.5px] text-[#8b948f]">
@@ -841,7 +853,7 @@ function SegToggle<T extends string>({
           key={o.value}
           onClick={() => onChange(o.value)}
           aria-pressed={value === o.value}
-          className={`rounded-lg ${lg ? "px-3.5 py-[9px] text-[13.5px]" : "px-3 py-[6px] text-[12.5px]"} tracking-[0.2px] transition duration-200 ease-ds ${full ? "flex-1" : ""} ${
+          className={`rounded-lg ${lg ? "min-h-[44px] px-3.5 py-2 text-[13.5px]" : "px-3 py-[6px] text-[12.5px]"} tracking-[0.2px] transition duration-200 ease-ds ${full ? "flex-1" : ""} ${
             value === o.value ? "bg-mint font-semibold text-mint-on" : "font-medium text-[#8b948f] hover:text-[#bfe8d4]"
           }`}
         >
@@ -879,7 +891,11 @@ function PricingView({ pricing, clientName, inline }: { pricing: ProposalPricing
         <GlassPanel className={inline ? "px-5 py-7" : "px-8 py-9 md:px-10"}>
         <div className="text-center">
           <h1 className="font-display text-[28px] font-semibold leading-[1.05] tracking-[-0.02em] text-title md:text-[37px]">
-            What <span className="text-mint">{clientName}</span> pays
+            {clientName.trim() ? (
+              <>What <span className="text-mint">{clientName}</span> pays</>
+            ) : (
+              <>What <span className="text-mint">you</span> pay</>
+            )}
           </h1>
         </div>
 

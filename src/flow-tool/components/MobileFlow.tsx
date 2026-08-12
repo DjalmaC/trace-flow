@@ -120,18 +120,18 @@ export function MobileFlow({ flow, config }: { flow: Flow; config: FlowConfig })
 
   // coin position: top->bottom on Pay-in, bottom->top on Pay-out
   const coinTop = useTransform(progress, (p) => `${(travelDown ? p : 1 - p) * 100}%`);
-  // bright (1) inside a connector gap, dim (0.22) over a card; fade out at the ends
+  // Bright (1) only strictly INSIDE a connector gap, ramping to zero AT the
+  // card edge — the token is fully hidden while it passes an entity card, so
+  // stills and screen-shares never catch a ghost chip inside a card.
   const coinOpacity = useTransform(progress, (p) => {
     const f = travelDown ? p : 1 - p;
     let inGap = 0;
     const ramp = 0.02;
     for (const g of gapsRef.current) {
-      if (f >= g.a && f <= g.b) { inGap = 1; break; }
-      if (f >= g.a - ramp && f < g.a) inGap = Math.max(inGap, (f - (g.a - ramp)) / ramp);
-      if (f > g.b && f <= g.b + ramp) inGap = Math.max(inGap, 1 - (f - g.b) / ramp);
+      if (f > g.a && f < g.b) inGap = Math.max(inGap, Math.min(1, Math.min(f - g.a, g.b - f) / ramp));
     }
     const env = Math.min(1, Math.min(p, 1 - p) / 0.04); // fade in/out at the ends
-    return (0.22 + 0.78 * inGap) * env;
+    return inGap * env;
   });
   // hub spins one turn as the coin sweeps across it, then rests
   const hubRotation = useTransform(progress, (p) => {
@@ -197,6 +197,7 @@ export function MobileFlow({ flow, config }: { flow: Flow; config: FlowConfig })
       {/* the single gliding value coin — labelled, converting across the hub */}
       {!reduced && segCount > 0 && (
         <motion.span
+          data-flow-coin
           className="pointer-events-none absolute left-1/2 z-30 -translate-x-1/2 -translate-y-1/2"
           style={{ top: coinTop, opacity: coinOpacity }}
         >
@@ -379,10 +380,14 @@ const Connector = forwardRef<
 // rotates + colour-tweens on toggle. The +90° wrapper + TraceArrow's own inner
 // rotation (0° collection / 180° disbursement) net out to down / up, and the
 // inner 0°↔180° tween animates the swing on toggle.
+// TraceArrow returns an SVG <g>, so it needs a real <svg> host here — rendered
+// bare in HTML it trips React's "<g> is unrecognized in this browser" error.
 function VArrow({ direction, accent }: { direction: FlowConfig["direction"]; accent: string }) {
   return (
     <span className="inline-flex" style={{ transform: "rotate(90deg)" }}>
-      <TraceArrow cx={9} cy={9} size={16} direction={direction} color={accent} />
+      <svg width={18} height={18} viewBox="0 0 18 18" overflow="visible" aria-hidden style={{ display: "block" }}>
+        <TraceArrow cx={9} cy={9} size={16} direction={direction} color={accent} />
+      </svg>
     </span>
   );
 }

@@ -19,6 +19,9 @@ export const metadata: Metadata = {
   title: "Trace Flow — Interactive cross-border payment flows",
   description:
     "Describe the deal, and the right Trace Finance flow appears — animated and branded for the client.",
+  // Without an explicit icon the browser probes /favicon.ico, which doesn't
+  // exist here and logged a 404 on every proposal open.
+  icons: { icon: "/assets/trace_logo.png" },
 };
 
 // Without this, phones default to a ~980px layout viewport (content overflows /
