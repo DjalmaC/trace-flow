@@ -331,6 +331,9 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
     repLinkedIn: rep?.linkedin ?? "",
     // Row labels on the fallback closing slide appear only when the rep has
     // the value (the template's baked labels were redacted with the values).
+    // With NO assigned representative, the whole contact column stays clean.
+    contactLabel: rep ? "YOUR POINT OF CONTACT" : "",
+    repEmailLabel: rep?.email ? "EMAIL" : "",
     repPhoneLabel: rep?.phone ? "PHONE" : "",
     repLinkedInLabel: rep?.linkedin ? "LINKEDIN" : "",
   };

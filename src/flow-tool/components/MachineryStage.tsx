@@ -409,9 +409,9 @@ export function MachineryStage({
       {railSegs.map((l) => (
         <rect
           key={`rail-${l.index}`}
-          x={Math.min(l.x1, l.x2) + RAIL_IN - 2}
+          x={Math.min(l.x1, l.x2) + RAIL_IN}
           y={railY - 15}
-          width={Math.max(0, Math.abs(l.x2 - l.x1) - RAIL_IN * 2 + 4)}
+          width={Math.max(0, Math.abs(l.x2 - l.x1) - RAIL_IN * 2)}
           height={30}
           rx={0}
           fill={tubeTint(config.direction)}

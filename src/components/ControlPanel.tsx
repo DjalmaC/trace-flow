@@ -19,7 +19,7 @@ import { TRACE_REPS, getRep } from "@/flow-tool/data/reps";
 import type { IntakeAnswers } from "@/flow-tool/intake/questions";
 import { resolve } from "@/flow-tool/intake/resolver";
 import { createShareLink, isShareConfigured, shareUrl, updateShareLink } from "@/flow-tool/lib/share";
-import { loadRepKey } from "@/flow-tool/lib/rep-session";
+import { loadRep, loadRepKey } from "@/flow-tool/lib/rep-session";
 import { dominantColor, normalizeLogo } from "@/flow-tool/lib/logo";
 import { downloadProposalPdf } from "@/flow-tool/lib/proposal";
 import { defaultProposalDate, saveSetup } from "@/flow-tool/lib/setup";
@@ -173,6 +173,10 @@ export function ControlPanel({
   const proposalType: ProposalType = setup?.proposalType ?? "standard";
   const proposalDate = setup?.date ?? defaultProposalDate();
   const traceRepId = setup?.traceRepId ?? TRACE_REPS[0]?.id;
+  // "none" = present without an assigned representative (no rep card on the
+  // link, no contact column on the PDF closing). getRep("none") is undefined,
+  // so every downstream consumer already handles it.
+  const includeRep = traceRepId !== "none";
 
   // ⌘K / ctrl+K toggles the palette anywhere on /build; Escape is handled by
   // the palette itself.
@@ -853,6 +857,31 @@ export function ControlPanel({
                     <span
                       className="absolute top-[2px] h-[14px] w-[14px] rounded-full bg-white transition-all duration-150 ease-ds"
                       style={{ left: includePricing ? 16 : 2 }}
+                    />
+                  </button>
+                </div>
+
+                <div className="mt-2 flex items-center justify-between rounded-[9px] border border-hairline-control bg-surface-input px-3 py-2">
+                  <span className="text-[11px] text-muted">
+                    Include your contact card{includeRep ? ` (${getRep(traceRepId)?.name?.split(" ")[0] ?? "you"})` : ""}
+                  </span>
+                  <button
+                    role="switch"
+                    aria-checked={includeRep}
+                    aria-label="Include your contact card on the link and PDF"
+                    onClick={() => {
+                      // "none" is a sentinel getRep never resolves — the link
+                      // ships no rep card, the PDF closing stays generic/clean.
+                      const next = { ...(setup ?? { proposalType, date: proposalDate, company: config.clientName }), traceRepId: includeRep ? "none" : loadRep()?.id ?? TRACE_REPS[0]?.id };
+                      saveSetup(next);
+                      onSetupChange?.(next);
+                    }}
+                    className="relative h-[18px] w-[32px] shrink-0 rounded-full transition duration-150 ease-ds"
+                    style={{ background: includeRep ? "#00f2b1" : "#2a332e" }}
+                  >
+                    <span
+                      className="absolute top-[2px] h-[14px] w-[14px] rounded-full bg-white transition-all duration-150 ease-ds"
+                      style={{ left: includeRep ? 16 : 2 }}
                     />
                   </button>
                 </div>

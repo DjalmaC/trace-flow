@@ -60,6 +60,17 @@
       "align": "left"
     },
     {
+      "key": "contactLabel",
+      "page": 2,
+      "template": "{contactLabel}",
+      "x": 680.0,
+      "baseline": 207.0,
+      "size": 11.0,
+      "color": "#2be896",
+      "font": "bold",
+      "align": "left"
+    },
+    {
       "key": "repName",
       "page": 2,
       "template": "{repName}",
@@ -79,6 +90,17 @@
       "size": 12.0,
       "color": "#8f98a3",
       "font": "regular",
+      "align": "left"
+    },
+    {
+      "key": "emailLabel",
+      "page": 2,
+      "template": "{repEmailLabel}",
+      "x": 680.0,
+      "baseline": 318.0,
+      "size": 10.0,
+      "color": "#8f98a3",
+      "font": "bold",
       "align": "left"
     },
     {

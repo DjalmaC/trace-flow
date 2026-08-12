@@ -130,7 +130,7 @@ export function HubStage({ layout, config, animate = true }: { layout: FlowLayou
     <>
       {/* pool tributary channels — recessed material, curved up into the desk */}
       {pool.map((p) => {
-        const d = poolPathD(p, 2);
+        const d = poolPathD(p);
         return (
           <g key={`ch-${p.id}`}>
             <path d={d} fill="none" stroke={tint} strokeWidth={30} strokeLinecap="butt" style={{ transition: railTransition }} />
@@ -142,7 +142,7 @@ export function HubStage({ layout, config, animate = true }: { layout: FlowLayou
       })}
 
       {/* client-journey rail — one recessed channel; the desk interrupts it */}
-      <rect x={railX0 - 2} y={hy - 15} width={Math.max(0, railX1 - railX0 + 4)} height={30} rx={0} fill={tint} stroke={accent} strokeOpacity={0.42} style={{ transition: railTransition }} />
+      <rect x={railX0} y={hy - 15} width={Math.max(0, railX1 - railX0)} height={30} rx={0} fill={tint} stroke={accent} strokeOpacity={0.42} style={{ transition: railTransition }} />
 
       {/* value — two-way live exchange, or resting (PDF / reduced motion) */}
       {moving ? (

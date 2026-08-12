@@ -62,6 +62,10 @@ def classify(text, pno):
         # stamp only when the rep has the value (resolved in proposal.ts).
         if t == "Diogo Cassinelli": return ("repName", "{repName}", "left")
         if t == "Business Development Manager": return ("repTitle", "{repTitle}", "left")
+        # section labels become conditional overlays too, so a proposal with NO
+        # assigned representative ships a clean closing (no orphan labels)
+        if t == "YOUR POINT OF CONTACT": return ("contactLabel", "{contactLabel}", "left")
+        if t == "EMAIL": return ("emailLabel", "{repEmailLabel}", "left")
         if "@trace.finance" in t: return ("repEmail", "{repEmail}", "left")
         if t == "WHATSAPP": return ("phoneLabel", "{repPhoneLabel}", "left")
         if re.match(r"^\+55 ", t): return ("repPhone", "{repPhone}", "left")
