@@ -138,11 +138,12 @@ export function NettingStage({
       {conduits.map((c) => (
         <g key={`ch-${c.leg.index}`}>
           <path
-            ref={(el) => { pathRefs.current[c.leg.index] = el; }}
-            d={c.leg.d} fill="none" stroke={tintOf(c.left)} strokeWidth={30} strokeLinecap="round"
+            d={c.leg.dShow ?? c.leg.d} fill="none" stroke={tintOf(c.left)} strokeWidth={30} strokeLinecap="butt"
             style={{ transition: railTransition }}
           />
-          <path d={c.leg.d} fill="none" stroke={accentOf(c.left)} strokeOpacity={0.3} strokeWidth={1} style={{ transition: railTransition }} />
+          <path d={c.leg.dShow ?? c.leg.d} fill="none" stroke={accentOf(c.left)} strokeOpacity={0.3} strokeWidth={1} style={{ transition: railTransition }} />
+          {/* invisible docked path — carries the token travel into the housing */}
+          <path ref={(el) => { pathRefs.current[c.leg.index] = el; }} d={c.leg.d} fill="none" stroke="none" />
         </g>
       ))}
 

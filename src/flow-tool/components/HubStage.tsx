@@ -32,14 +32,16 @@ export function HubStage({ layout, config, animate = true }: { layout: FlowLayou
   const hx = hub?.cx ?? 470, hy = hub?.cy ?? 224;
   const railTransition = reduced ? undefined : `fill .55s ${EASE}, stroke .55s ${EASE}`;
 
-  // pipes dock RAIL_IN inside the translucent glass boxes (not under them)
-  const railX0 = Math.min(...rail.map((n) => n.x + n.w - RAIL_IN), hx);
-  const railX1 = Math.max(...rail.map((n) => n.x + RAIL_IN), hx);
+  // The VISIBLE rail spans box edge to box edge; token travel docks RAIL_IN
+  // inside the translucent housings (see e0 below) without the pipe showing.
+  const railX0 = Math.min(...rail.map((n) => n.x + n.w), hx);
+  const railX1 = Math.max(...rail.map((n) => n.x), hx);
   const poolMinX = Math.min(...pool.map((p) => p.x), hx - 40);
   const poolMaxX = Math.max(...pool.map((p) => p.x + p.w), hx + 40);
   const poolBottom = Math.max(...pool.map((p) => p.y + p.h), hy);
 
-  const poolPathD = (p: { cx: number; y: number }) => `M${hx} ${hy + HUB_R} C ${hx} ${hy + HUB_R + 54}, ${p.cx} ${p.y - 54}, ${p.cx} ${p.y + 14}`;
+  // visible pipe stops at the box top; the travel path (invisible) docks inside
+  const poolPathD = (p: { cx: number; y: number }, dock = 0) => `M${hx} ${hy + HUB_R} C ${hx} ${hy + HUB_R + 54}, ${p.cx} ${p.y - 54}, ${p.cx} ${p.y + dock}`;
 
   // One conduit per leg: the counterparty sends `carries` toward the desk and
   // receives the other currency back.
@@ -131,8 +133,10 @@ export function HubStage({ layout, config, animate = true }: { layout: FlowLayou
         const d = poolPathD(p);
         return (
           <g key={`ch-${p.id}`}>
-            <path ref={(el) => { poolPaths.current[p.id] = el; }} d={d} fill="none" stroke={tint} strokeWidth={30} strokeLinecap="round" style={{ transition: railTransition }} />
+            <path d={d} fill="none" stroke={tint} strokeWidth={30} strokeLinecap="butt" style={{ transition: railTransition }} />
             <path d={d} fill="none" stroke={accent} strokeOpacity={0.3} strokeWidth={1} style={{ transition: railTransition }} />
+            {/* invisible docked path — carries the token travel into the housing */}
+            <path ref={(el) => { poolPaths.current[p.id] = el; }} d={poolPathD(p, 14)} fill="none" stroke="none" />
           </g>
         );
       })}

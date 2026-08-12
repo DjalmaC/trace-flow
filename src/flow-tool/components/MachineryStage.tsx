@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { useReducedMotion } from "framer-motion";
 import type { Currency, FlowConfig } from "../data/schema";
 import { ASSETS, C, TRACE_LOGO_AR, accentFor, tubeTint, GLASS_CARD } from "./tokens";
-import type { FlowLayout, NodeLayout } from "./layout";
+import { RAIL_IN, type FlowLayout, type NodeLayout } from "./layout";
 import {
   CurrencyToken,
   FlowNodeShape,
@@ -398,18 +398,20 @@ export function MachineryStage({
         .filter((l) => l.offTrunk)
         .map((l) => (
           <g key={`trib-${l.index}`}>
-            <path d={l.d} fill="none" stroke={tubeTint(config.direction)} strokeWidth={30} strokeLinecap="round" style={{ transition: railTransition }} />
-            <path d={l.d} fill="none" stroke={accent} strokeOpacity={0.3} strokeWidth={1} style={{ transition: railTransition }} />
+            <path d={l.dShow ?? l.d} fill="none" stroke={tubeTint(config.direction)} strokeWidth={30} strokeLinecap={l.dShow ? "butt" : "round"} style={{ transition: railTransition }} />
+            <path d={l.dShow ?? l.d} fill="none" stroke={accent} strokeOpacity={0.3} strokeWidth={1} style={{ transition: railTransition }} />
           </g>
         ))}
 
-      {/* rail pipe segments — one per trunk gap, docking into the housings */}
+      {/* rail pipe segments — one per trunk gap. The VISIBLE pipe spans only
+          box edge to box edge (the docked ends exist for the token's travel
+          but stay invisible under the translucent glass). */}
       {railSegs.map((l) => (
         <rect
           key={`rail-${l.index}`}
-          x={Math.min(l.x1, l.x2)}
+          x={Math.min(l.x1, l.x2) + RAIL_IN}
           y={railY - 15}
-          width={Math.abs(l.x2 - l.x1)}
+          width={Math.max(0, Math.abs(l.x2 - l.x1) - RAIL_IN * 2)}
           height={30}
           rx={15}
           fill={tubeTint(config.direction)}
@@ -513,7 +515,7 @@ export function MachineryStage({
         .map((l) => (
           <TraceArrow
             key={l.index}
-            cx={config.direction === "collection" ? Math.min(l.x1, l.x2) + 22 : Math.max(l.x1, l.x2) - 22}
+            cx={config.direction === "collection" ? Math.min(l.x1, l.x2) + RAIL_IN + 22 : Math.max(l.x1, l.x2) - RAIL_IN - 22}
             cy={railY}
             size={22}
             direction={config.direction}
@@ -526,7 +528,7 @@ export function MachineryStage({
         .map((l) => (
           <TraceArrow
             key={`ba-${l.index}`}
-            cx={config.direction === "collection" ? Math.min(l.x1, l.x2) + 22 : Math.max(l.x1, l.x2) - 22}
+            cx={config.direction === "collection" ? Math.min(l.x1, l.x2) + RAIL_IN + 22 : Math.max(l.x1, l.x2) - RAIL_IN - 22}
             cy={l.y1}
             size={22}
             direction={config.direction}

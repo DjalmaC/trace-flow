@@ -66,6 +66,10 @@ export interface LegLayout {
   /** SVG path for the connector (right edge of `from` → left edge of `to`).
    *  Straight along the rail; a smooth curve when a tributary joins it. */
   d: string;
+  /** Visible path for curved conduits: trimmed to the box EDGES. The boxes
+   *  are translucent glass, so the pipe itself must not show inside them —
+   *  `d` (docked/center-anchored) keeps carrying the token travel. */
+  dShow?: string;
   /** Travel endpoints (already oriented for collection; reverse for disbursement). */
   x1: number;
   y1: number;
@@ -282,13 +286,18 @@ export function computeNettingLayout(flow: Flow, config: FlowConfig): FlowLayout
     const left = corner.cx < hubCx;
     const port = { x: left ? hubCx - NETTING_HUB_R : hubCx + NETTING_HUB_R, y: hubCy };
     const edge = { x: left ? corner.x + corner.w - RAIL_IN : corner.x + RAIL_IN, y: corner.cy };
+    const edgeShow = { x: left ? corner.x + corner.w : corner.x, y: corner.cy };
     const s = from.id === desk.id ? port : edge;
     const e = from.id === desk.id ? edge : port;
+    const sV = from.id === desk.id ? port : edgeShow;
+    const eV = from.id === desk.id ? edgeShow : port;
     const mx = (s.x + e.x) / 2;
     const d = `M${s.x} ${s.y} C${mx} ${s.y} ${mx} ${e.y} ${e.x} ${e.y}`;
     // cubic midpoint (t=.5) with these controls: x = mx, y = (s.y + e.y) / 2
     return {
       index, from: l.from, to: l.to, d,
+      // the visible pipe stops at the box edge; `d` docks RAIL_IN inside for travel
+      dShow: `M${sV.x} ${sV.y} C${mx} ${sV.y} ${mx} ${eV.y} ${eV.x} ${eV.y}`,
       x1: s.x, y1: s.y, x2: e.x, y2: e.y,
       carries: l.carries, convertsTo: l.convertsTo,
       mid: { x: mx, y: (s.y + e.y) / 2 },
@@ -697,11 +706,22 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
     // the folded engine's conversion hub sits AT the engine center
     const midX = leg.hubAtEngine ? to.cx : (x1 + x2) / 2;
     const dx = Math.max(64, Math.abs(x2 - x1) * 0.55);
+    // Curved conduits: the travel path (`d`) anchors at box centers, but the
+    // VISIBLE pipe must stop at the box edges (translucent glass — nothing may
+    // show inside a housing). Rightward curves only; anything else falls back.
+    let dShow: string | undefined;
+    if (!straight && to.x > from.x + from.w) {
+      const sx = from.x + from.w;
+      const ex = to.x;
+      const dxv = Math.max(48, Math.abs(ex - sx) * 0.55);
+      dShow = `M${sx} ${y1} C${sx + dxv} ${y1} ${ex - dxv} ${y2} ${ex} ${y2}`;
+    }
     return {
       index,
       from: leg.from,
       to: leg.to,
       d: straight ? `M${x1} ${y1} L${x2} ${y2}` : `M${x1} ${y1} C${x1 + dx} ${y1} ${x2 - dx} ${y2} ${x2} ${y2}`,
+      dShow,
       x1,
       y1,
       x2,
