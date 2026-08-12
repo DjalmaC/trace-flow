@@ -361,57 +361,97 @@ export function SharedFlowView({ code }: { code: string }) {
 
         {config && fxConfig && (
           isMobile ? (
-            /* ── phone: sticky top bar + inline controls + vertical flow ── */
+            /* ── phone: compact sticky identity bar (the eyebrow collapses on
+                  scroll), swipeable variant chips, the vertical flow story,
+                  and a bottom-anchored Download bar over the safe area ── */
             <>
-              <header className="sticky top-0 z-40 border-b border-white/10 bg-[#07090b]/70 px-4 pb-2.5 pt-3 backdrop-blur-xl">
+              <header
+                className="sticky top-0 z-40 border-b border-white/10 bg-[#07090b]/80 backdrop-blur-xl"
+                style={{ paddingTop: "env(safe-area-inset-top)" }}
+              >
                 {showChrome && (
-                  <div className="tf-fade">
-                    <div className="mb-2 font-jbmono text-[9.5px] font-medium uppercase tracking-[0.34em] text-[#6f8a7f]">
-                      A Trace Finance Proposal
+                  <div className="tf-fade px-4 pb-2.5 pt-2.5">
+                    <div className={`overflow-hidden transition-all duration-300 ease-ds ${stuck ? "max-h-0 opacity-0" : "max-h-6 opacity-100"}`}>
+                      <div className="pb-1.5 font-jbmono text-[9.5px] font-medium uppercase tracking-[0.34em] text-[#6f8a7f]">
+                        A Trace Finance Proposal
+                      </div>
                     </div>
                     <div className="flex items-center gap-3">
                       <ClientLogo config={config} size="header" />
                       <div className="min-w-0 flex-1 leading-tight">
-                        <div className="truncate text-sm font-semibold text-title">{config.clientName}</div>
-                        {config.clientRep && <div className="truncate text-[11px] text-muted">Prepared for {config.clientRep}</div>}
+                        <div className="truncate text-[15px] font-semibold text-title">{config.clientName}</div>
+                        {config.clientRep && <div className="truncate text-[11.5px] text-muted">Prepared for {config.clientRep}</div>}
                       </div>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src="/assets/trace-logo-white.svg" alt="Trace Finance" className="h-[15px] w-auto shrink-0 opacity-80" />
                     </div>
-                    <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                      {hasPricing && (
-                        <SegToggle value={view} onChange={setView} options={[{ value: "flow", label: "Flow" }, { value: "pricing", label: "Pricing" }]} />
-                      )}
-                      {effView === "flow" && !config.hideDirectionToggle && (config.clientDirections ?? "both") === "both" && (
-                        <SegToggle value={direction} onChange={setDirection} options={directionOptions(config, flowId)} />
-                      )}
-                      {effView === "flow" && hasVariants && (
-                        <div className="w-full">
-                          <div className="mb-1 font-jbmono text-[9px] font-medium uppercase tracking-[0.24em] text-[#6f8a7f]">
-                            {config.flowsLabel?.trim() || "Flows"}
-                          </div>
-                          <SegToggle full value={flowId} onChange={switchFlow} options={variants!.map((v) => ({ value: v.flowId, label: clientFlowName(v.name) }))} />
-                        </div>
-                      )}
-                    </div>
+                    {(hasPricing || (effView === "flow" && showDirectionToggle)) && (
+                      <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                        {hasPricing && (
+                          <SegToggle lg value={view} onChange={setView} options={[{ value: "flow", label: "Flow" }, { value: "pricing", label: "Pricing" }]} />
+                        )}
+                        {effView === "flow" && showDirectionToggle && (
+                          <SegToggle lg value={direction} onChange={setDirection} options={directionOptions(config, flowId)} />
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </header>
 
               {effView === "pricing" ? (
-                pricingEl
+                <div className="pb-16">{pricingEl}</div>
               ) : (
                 <>
+                  {hasVariants && (
+                    <div className="relative z-10 pt-3">
+                      <div className="px-4 pb-1.5 font-jbmono text-[9.5px] font-medium uppercase tracking-[0.28em] text-[#6f8a7f]">
+                        {config.flowsLabel?.trim() || "Flows"}
+                      </div>
+                      <div className="tf-noscrollbar flex gap-2 overflow-x-auto px-4 pb-1">
+                        {variants!.map((v) => {
+                          const active = v.flowId === flowId;
+                          return (
+                            <button
+                              key={v.flowId}
+                              onClick={() => switchFlow(v.flowId)}
+                              aria-pressed={active}
+                              className={`whitespace-nowrap rounded-full border px-4 py-2.5 text-[13.5px] transition duration-200 ease-ds ${
+                                active
+                                  ? "border-transparent bg-mint font-semibold text-mint-on"
+                                  : "border-white/10 bg-[#0e1410]/70 font-medium text-[#8b948f]"
+                              }`}
+                            >
+                              {clientFlowName(v.name)}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                   <FlowExperience config={fxConfig} presentation skin="glass" onDirectionChange={config.hideDirectionToggle || (config.clientDirections ?? "both") !== "both" ? undefined : setDirection} />
-                  <div className="relative flex flex-col gap-2 px-4 pb-10 pt-1">
-                    <button
-                      onClick={onProposal}
-                      disabled={pdf === "working"}
-                      className="flex w-full items-center justify-center gap-2 rounded-xl border border-green-accent/40 bg-[#0e1410] px-5 py-3 text-sm font-semibold text-[#bfe8d4] transition duration-200 ease-ds hover:bg-[#13201a] disabled:opacity-60"
-                    >
-                      {pdf === "working" ? "Building deck…" : pdf === "error" ? "Try again" : "Download Proposal ↓"}
-                    </button>
-                  </div>
                   {config.salesperson && <SalespersonClosing sp={config.salesperson} company={config.clientName} />}
+                  <div className="relative z-10 flex items-center justify-center pb-24 pt-4">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/assets/trace-logo-white.svg" alt="Trace Finance" className="h-[16px] w-auto opacity-70" />
+                  </div>
                 </>
+              )}
+
+              {/* bottom-anchored primary action, clear of the home indicator */}
+              {showChrome && (
+                <div
+                  className="no-print tf-fade fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#07090b]/80 px-4 pt-3 backdrop-blur-xl"
+                  style={{ paddingBottom: "max(env(safe-area-inset-bottom), 12px)" }}
+                >
+                  <button
+                    onClick={onProposal}
+                    disabled={pdf === "working"}
+                    className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-mint text-[15px] font-semibold text-mint-on transition duration-200 ease-ds hover:bg-mint-hover active:bg-mint-press disabled:opacity-60"
+                  >
+                    {pdf === "working" ? "Building your proposal…" : pdf === "error" ? "Try again" : "Download Proposal"}
+                  </button>
+                </div>
               )}
             </>
           ) : (
@@ -584,7 +624,7 @@ function GateScreen({ wrong, onSubmit }: { wrong: boolean; onSubmit: (pw: string
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center px-6">
       <SilkBackdrop />
-      <GlassPanel className="w-full max-w-[380px] px-10 py-9">
+      <GlassPanel className="w-full max-w-[380px] px-7 py-8 sm:px-10 sm:py-9">
       <form onSubmit={submit} className="tf-rise flex w-full flex-col items-center text-center">
         <span className="mb-[18px] flex h-[46px] w-[46px] items-center justify-center rounded-full border border-[rgba(0,242,177,.3)] bg-[#0f1814] text-mint">
           {/* Lucide-style lock, 2px stroke */}
@@ -618,7 +658,7 @@ function GateScreen({ wrong, onSubmit }: { wrong: boolean; onSubmit: (pw: string
         <button
           type="submit"
           disabled={busy || !pw.trim()}
-          className="mt-2.5 w-full rounded-[9px] bg-mint px-4 py-[11px] text-[13px] font-semibold text-mint-on transition duration-200 ease-ds hover:bg-mint-hover active:bg-mint-press disabled:opacity-60"
+          className="mt-2.5 w-full rounded-[9px] bg-mint px-4 py-3 text-[13.5px] font-semibold text-mint-on transition duration-200 ease-ds hover:bg-mint-hover active:bg-mint-press disabled:opacity-60"
         >
           {busy ? "Checking…" : "View proposal"}
         </button>
@@ -785,11 +825,14 @@ function SegToggle<T extends string>({
   value,
   onChange,
   full,
+  lg,
 }: {
   options: { value: T; label: string }[];
   value: T;
   onChange: (v: T) => void;
   full?: boolean;
+  /** Phone-sized touch targets (44px-class) for the mobile chrome. */
+  lg?: boolean;
 }) {
   return (
     <div className={`flex gap-0.5 rounded-[11px] border border-white/10 bg-[#0e1410]/70 p-[3px] backdrop-blur ${full ? "w-full" : ""}`}>
@@ -798,7 +841,7 @@ function SegToggle<T extends string>({
           key={o.value}
           onClick={() => onChange(o.value)}
           aria-pressed={value === o.value}
-          className={`rounded-lg px-3 py-[6px] text-[12.5px] tracking-[0.2px] transition duration-200 ease-ds ${full ? "flex-1" : ""} ${
+          className={`rounded-lg ${lg ? "px-3.5 py-[9px] text-[13.5px]" : "px-3 py-[6px] text-[12.5px]"} tracking-[0.2px] transition duration-200 ease-ds ${full ? "flex-1" : ""} ${
             value === o.value ? "bg-mint font-semibold text-mint-on" : "font-medium text-[#8b948f] hover:text-[#bfe8d4]"
           }`}
         >
@@ -851,14 +894,14 @@ function PricingView({ pricing, clientName, inline }: { pricing: ProposalPricing
                   {card.badge}
                 </span>
                 <div className="min-w-0">
-                  <div className="font-display text-[15px] font-semibold text-title">{card.title}</div>
-                  <div className="text-[11px] text-muted">{card.sub}</div>
+                  <div className={`font-display font-semibold text-title ${inline ? "text-[16px]" : "text-[15px]"}`}>{card.title}</div>
+                  <div className={`text-muted ${inline ? "text-[11.5px]" : "text-[11px]"}`}>{card.sub}</div>
                 </div>
               </div>
               {card.rows.map((r) => (
-                <div key={r.label} className="flex items-center justify-between gap-3 border-t border-hairline-row py-[6.5px]">
-                  <span className="min-w-0 truncate text-[12.5px] text-node-text">{r.label}</span>
-                  <span className="shrink-0 font-jbmono text-[12.5px] font-medium text-mint">{r.value}</span>
+                <div key={r.label} className={`flex items-center justify-between gap-3 border-t border-hairline-row ${inline ? "py-2" : "py-[6.5px]"}`}>
+                  <span className={`min-w-0 truncate text-node-text ${inline ? "text-[13.5px]" : "text-[12.5px]"}`}>{r.label}</span>
+                  <span className={`shrink-0 font-jbmono font-medium text-mint ${inline ? "text-[13.5px]" : "text-[12.5px]"}`}>{r.value}</span>
                 </div>
               ))}
             </div>
@@ -935,49 +978,46 @@ function SalespersonClosing({ sp, company }: { sp: Salesperson; company?: string
   // can triage at a glance. Personalised to the company when we have it.
   const subject = company?.trim() ? `Trace Finance proposal for ${company.trim()}` : "Our Trace Finance proposal";
   const emailHref = sp.email ? `mailto:${sp.email}?subject=${encodeURIComponent(subject)}` : undefined;
+  // Phone composition: a compact contact card that follows the flow story
+  // naturally (no full-screen section, no stranded whitespace), with
+  // full-width thumb-sized contact actions.
   return (
-    <section className="relative flex min-h-screen w-full flex-col items-center justify-center px-6">
-      <GlassPanel className="w-full max-w-4xl px-8 py-8 md:px-10">
-        <div className="flex flex-wrap items-center justify-between gap-7">
-          <div className="flex min-w-0 items-center gap-5">
-            {photo ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={photo} alt={sp.name} className="h-24 w-24 shrink-0 rounded-full border border-white/10 object-cover" />
-            ) : (
-              <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full border border-green-accent/30 bg-[#0f1814] text-2xl font-semibold text-[#9cc4b3]">
-                {initials}
-              </div>
-            )}
-            <div className="min-w-0">
-              <div className="font-jbmono text-[10px] font-medium uppercase tracking-[0.34em] text-[#6f8a7f]">Your Trace Finance contact</div>
-              <div className="mt-2 font-display text-[19px] font-semibold tracking-[-0.01em] text-title">{sp.name}</div>
-              {sp.title && <div className="mt-0.5 text-[13px] text-subtitle">{sp.title}</div>}
+    <section className="relative w-full px-3 pt-1">
+      <GlassPanel className="px-6 py-7">
+        <div className="font-jbmono text-[10px] font-medium uppercase tracking-[0.3em] text-[#6f8a7f]">Your Trace Finance contact</div>
+        <div className="mt-4 flex items-center gap-4">
+          {photo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={photo} alt={sp.name} className="h-16 w-16 shrink-0 rounded-full border border-white/10 object-cover" />
+          ) : (
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-green-accent/30 bg-[#0f1814] text-xl font-semibold text-[#9cc4b3]">
+              {initials}
             </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2.5">
-            {bookingUrl && (
-              <a href={bookingUrl} target="_blank" rel="noreferrer" className="rounded-xl bg-green-accent px-5 py-2.5 text-sm font-semibold text-[#06120c] transition duration-200 ease-ds hover:brightness-110">
-                Book a call →
-              </a>
-            )}
-            {sp.email && emailHref && (
-              <a href={emailHref} className="rounded-xl border border-green-accent/40 px-4 py-2.5 text-sm font-medium text-[#bfe8d4] transition duration-200 ease-ds hover:bg-[#13201a]">
-                {sp.email}
-              </a>
-            )}
-            {sp.phone && (
-              <a href={`tel:${sp.phone.replace(/[^+\d]/g, "")}`} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-medium text-subtitle transition duration-200 ease-ds hover:text-title">
-                {sp.phone}
-              </a>
-            )}
+          )}
+          <div className="min-w-0">
+            <div className="font-display text-[19px] font-semibold tracking-[-0.01em] text-title">{sp.name}</div>
+            {sp.title && <div className="mt-0.5 text-[13.5px] text-subtitle">{sp.title}</div>}
           </div>
         </div>
-        {sp.bio && <p className="mt-6 border-t border-white/10 pt-5 text-sm leading-relaxed text-subtitle">{sp.bio}</p>}
+        {sp.bio && <p className="mt-4 text-[14px] leading-relaxed text-subtitle">{sp.bio}</p>}
+        <div className="mt-5 flex flex-col gap-2.5">
+          {bookingUrl && (
+            <a href={bookingUrl} target="_blank" rel="noreferrer" className="flex h-12 items-center justify-center rounded-xl bg-green-accent px-5 text-[15px] font-semibold text-[#06120c] transition duration-200 ease-ds hover:brightness-110">
+              Book a call →
+            </a>
+          )}
+          {sp.email && emailHref && (
+            <a href={emailHref} className="flex h-12 items-center justify-center truncate rounded-xl border border-green-accent/40 px-4 text-[14px] font-medium text-[#bfe8d4] transition duration-200 ease-ds hover:bg-[#13201a]">
+              {sp.email}
+            </a>
+          )}
+          {sp.phone && (
+            <a href={`tel:${sp.phone.replace(/[^+\d]/g, "")}`} className="flex h-12 items-center justify-center rounded-xl border border-white/10 px-4 text-[14px] font-medium text-subtitle transition duration-200 ease-ds hover:text-title">
+              {sp.phone}
+            </a>
+          )}
+        </div>
       </GlassPanel>
-      <div className="absolute bottom-6 flex items-center gap-2">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/assets/trace-logo-white.svg" alt="Trace Finance" className="h-[18px] w-auto opacity-85" />
-      </div>
     </section>
   );
 }
