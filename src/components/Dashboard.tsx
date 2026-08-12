@@ -12,6 +12,7 @@ import {
   shareUrl,
   type ProposalRecord,
 } from "@/flow-tool/lib/share";
+import { glassStyle, SilkBackdrop } from "@/flow-tool/components/Glass";
 
 const TYPE_LABEL: Record<string, string> = { standard: "Standard", "brazil-market": "Brazil-market" };
 
@@ -265,14 +266,10 @@ export function Dashboard({ rep, onSwitch }: { rep: TraceRep; onSwitch: () => vo
     "rounded-[7px] border border-hairline-control px-[9px] py-[5px] text-[11px] font-medium text-subtitle transition-colors duration-150 ease-ds hover:border-[#2b3a34] hover:text-title";
 
   return (
-    <main
-      className="min-h-screen w-full overflow-x-hidden text-title"
-      style={{
-        background:
-          "radial-gradient(55% 50% at 50% 0%, rgba(21,57,45,.27) 0%, rgba(7,9,11,0) 70%), #07090b",
-      }}
-    >
-      <div className="tf-rise mx-auto w-full max-w-[1000px] px-5 py-8 md:py-10">
+    <main className="relative min-h-screen w-full overflow-x-hidden text-title">
+      <SilkBackdrop />
+      <div aria-hidden className="pointer-events-none fixed inset-x-0 top-0 z-[60] h-[3px]" style={{ background: "linear-gradient(90deg,#2be8d6,#00f2b1)" }} />
+      <div className="tf-rise relative mx-auto w-full max-w-[1000px] px-5 py-8 md:py-10">
         {/* header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-[9px]">
@@ -325,7 +322,7 @@ export function Dashboard({ rep, onSwitch }: { rep: TraceRep; onSwitch: () => vo
 
         {/* toolbar */}
         <div className="mt-[22px] flex items-center gap-2.5">
-          <div className="flex gap-[3px] rounded-[11px] border border-hairline-card bg-[#101613] p-[3px]">
+          <div className="flex gap-[3px] rounded-[11px] border border-white/10 bg-[rgba(14,20,16,.7)] p-[3px] backdrop-blur">
             {FILTER_TABS.map((t) => (
               <button
                 key={t.id}
@@ -346,7 +343,7 @@ export function Dashboard({ rep, onSwitch }: { rep: TraceRep; onSwitch: () => vo
         </div>
 
         {/* pipeline list */}
-        <div className="mt-4 overflow-hidden rounded-[14px] border border-hairline-row bg-white/[0.015]">
+        <div className="mt-4 overflow-hidden" style={{ ...glassStyle, borderRadius: 18 }}>
           {records === null ? (
             <div className="px-[18px] py-8 text-center text-sm text-muted">Loading…</div>
           ) : rows.length === 0 ? (

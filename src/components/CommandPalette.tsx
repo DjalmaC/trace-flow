@@ -114,7 +114,15 @@ export function CommandPalette({
   return (
     <div className="fixed inset-0 z-[90]" onKeyDown={onKeyDown} role="dialog" aria-modal="true" aria-label="Command palette">
       <div className="absolute inset-0 bg-[rgba(6,10,8,.55)]" onClick={onClose} />
-      <div className="absolute left-1/2 top-[112px] w-[540px] max-w-[calc(100vw-2rem)] -translate-x-1/2 overflow-hidden rounded-2xl border border-hairline-control bg-surface-card2 shadow-[0_30px_80px_rgba(0,0,0,.6)]">
+      <div
+        className="absolute left-1/2 top-[112px] w-[540px] max-w-[calc(100vw-2rem)] -translate-x-1/2 overflow-hidden rounded-2xl border border-white/[.16]"
+        style={{
+          background: "linear-gradient(160deg, rgba(9,13,11,.9), rgba(9,13,11,.84) 45%, rgba(9,13,11,.88))",
+          backdropFilter: "blur(28px) saturate(1.4)",
+          WebkitBackdropFilter: "blur(28px) saturate(1.4)",
+          boxShadow: "0 30px 80px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.18)",
+        }}
+      >
         {/* search row */}
         <div className="flex items-center gap-2.5 border-b border-hairline-row px-[18px] py-[15px]">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6f8a7f" strokeWidth="2" strokeLinecap="round">

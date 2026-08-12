@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { ProposalSetup, ProposalType, TraceRep } from "@/flow-tool/data/schema";
 import { dominantColor, normalizeLogo } from "@/flow-tool/lib/logo";
 import { LogoDrop } from "@/components/LogoDrop";
+import { GlassPanel, SilkBackdrop } from "@/flow-tool/components/Glass";
 
 // Logo treatment for the dark canvas: Auto (decide), White/Mint (force recolor
 // of a one-colour mark), Card (keep brand colours on a white chip).
@@ -91,11 +92,10 @@ export default function NewProposalPage() {
   const ready = company.trim().length > 0;
 
   return (
-    <main
-      className="min-h-screen w-full overflow-x-hidden text-title"
-      style={{ background: "radial-gradient(60% 55% at 50% 0%, #15392d55 0%, rgba(7,9,11,0) 70%), #07090b" }}
-    >
-      <div className="mx-auto w-full max-w-2xl px-5 py-14 md:py-20">
+    <main className="relative min-h-screen w-full overflow-x-hidden text-title">
+      <SilkBackdrop />
+      <div aria-hidden className="pointer-events-none fixed inset-x-0 top-0 z-[60] h-[3px]" style={{ background: "linear-gradient(90deg,#2be8d6,#00f2b1)" }} />
+      <div className="relative mx-auto w-full max-w-2xl px-5 py-14 md:py-20">
         <div className="mb-10 flex items-center justify-between">
           <a href="/" className="flex items-center gap-2.5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -110,7 +110,8 @@ export default function NewProposalPage() {
           Set this up before the call. You&apos;ll build the flow live with the client next.
         </p>
 
-        <div className="mt-10 space-y-7">
+        <GlassPanel className="mt-10 px-7 py-8">
+        <div className="space-y-7">
           {/* Company */}
           <div className="grid gap-5 sm:grid-cols-2">
             <Field label="Company">
@@ -201,6 +202,7 @@ export default function NewProposalPage() {
             />
           </Field>
         </div>
+        </GlassPanel>
 
         <button
           onClick={start}

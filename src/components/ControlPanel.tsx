@@ -457,15 +457,16 @@ export function ControlPanel({
   return (
     <>
       {palette}
-      {/* The rail as liquid glass — same family as the client link's panels,
-          tinted more opaque so the dense controls stay legible. */}
+      {/* The rail as a FLOATING liquid-glass panel — same family as the client
+          link's panels (rounded, specular edge, deep shadow), tinted more
+          opaque so the dense controls stay legible over the silk. */}
       <div
-        className="fixed inset-y-0 left-0 z-50 flex w-[344px] max-w-[calc(100vw-2rem)] flex-col border-r border-white/[.14]"
+        className="fixed bottom-3 left-3 top-3 z-50 flex w-[344px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-[22px] border border-white/[.16]"
         style={{
           background: "linear-gradient(160deg, rgba(9,13,11,.88), rgba(9,13,11,.8) 45%, rgba(9,13,11,.86))",
           backdropFilter: "blur(28px) saturate(1.4)",
           WebkitBackdropFilter: "blur(28px) saturate(1.4)",
-          boxShadow: "inset -1px 0 0 rgba(255,255,255,.06)",
+          boxShadow: "0 30px 80px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.18)",
         }}
       >
         {/* header */}

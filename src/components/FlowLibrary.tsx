@@ -5,6 +5,7 @@ import { FLOWS } from "@/flow-tool/data";
 import { QUESTIONS, type IntakeAnswers } from "@/flow-tool/intake/questions";
 import { NO_MATCH_MESSAGE, type resolve } from "@/flow-tool/intake/resolver";
 import type { Flow } from "@/flow-tool/data/schema";
+import { SilkBackdrop } from "@/flow-tool/components/Glass";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The Flow Studio — the dedicated space for choosing the client's flows,
@@ -193,9 +194,10 @@ export function FlowLibrary({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, transition: { duration: D(0.16), ease: EASE } }}
       transition={{ duration: D(0.22), ease: EASE }}
-      className="fixed inset-0 z-[70] flex flex-col bg-[#07090b]"
+      className="fixed inset-0 z-[70] flex flex-col"
     >
-      <div className="h-[3px] w-full shrink-0" style={{ background: "linear-gradient(90deg,#2be8d6,#00f2b1)" }} />
+      <SilkBackdrop />
+      <div className="relative h-[3px] w-full shrink-0" style={{ background: "linear-gradient(90deg,#2be8d6,#00f2b1)" }} />
 
       {/* content settles in with a slight rise, just behind the backdrop fade */}
       <motion.div

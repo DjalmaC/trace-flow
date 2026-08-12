@@ -54,7 +54,7 @@ export function NotesDrawer({
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-label={open ? "Hide notes" : "Show notes"}
-        className="absolute -left-8 top-1/2 flex h-[104px] w-8 -translate-y-1/2 items-center justify-center rounded-l-xl border border-r-0 border-mint/40 bg-[#0c1210]/95 text-mint backdrop-blur transition hover:bg-[#11201a]"
+        className="absolute -left-8 top-1/2 flex h-[104px] w-8 -translate-y-1/2 items-center justify-center rounded-l-xl border border-r-0 border-mint/40 bg-[rgba(12,18,16,.72)] text-mint backdrop-blur-xl transition hover:bg-[#11201a]"
       >
         <span className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}>
           Notes
@@ -62,7 +62,15 @@ export function NotesDrawer({
       </button>
 
       {/* panel */}
-      <div className="flex max-h-[80vh] w-full flex-col rounded-l-2xl border border-r-0 border-white/10 bg-[#0f1411] shadow-2xl">
+      <div
+        className="flex max-h-[80vh] w-full flex-col rounded-l-2xl border border-r-0 border-white/[.16]"
+        style={{
+          background: "linear-gradient(160deg, rgba(10,15,19,.88), rgba(10,15,19,.8) 45%, rgba(10,15,19,.86))",
+          backdropFilter: "blur(28px) saturate(1.4)",
+          WebkitBackdropFilter: "blur(28px) saturate(1.4)",
+          boxShadow: "0 30px 80px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.18)",
+        }}
+      >
         <div className="flex items-center justify-between border-b border-white/8 px-4 py-3">
           <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.24em] text-mint-muted">Notes</span>
           <button onClick={() => setOpen(false)} aria-label="Close notes" className="text-muted transition hover:text-title">
