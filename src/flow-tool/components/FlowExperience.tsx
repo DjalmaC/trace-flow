@@ -76,9 +76,11 @@ export function FlowExperience({
    *  animations and every interaction render exactly as everywhere else. */
   architecture?: "panels";
   /** Panel-architecture slots, provided by the shared view: the top controls
-   *  row (variant tabs + direction pills), the pricing rail beside the canvas,
-   *  and the closing rep-contact row at the bottom of the machinery panel. */
-  panelSlots?: { controls?: React.ReactNode; rail?: React.ReactNode; closing?: React.ReactNode };
+   *  row (variant tabs + direction pills), the pricing rail, and the closing
+   *  rep-contact row at the bottom of the machinery panel. `railPosition`
+   *  "below" moves dense pricing under the canvas into its own section —
+   *  reserved for pricing tall enough to crowd or scroll the side rail. */
+  panelSlots?: { controls?: React.ReactNode; rail?: React.ReactNode; railPosition?: "beside" | "below"; closing?: React.ReactNode };
 }) {
   const glass = skin === "glass";
   const baseFlow = getFlow(config.flowId);
@@ -412,14 +414,16 @@ export function FlowExperience({
     const goHow = () => howRef.current?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
     const eyebrow = `${clientFlowName(flow.title)} · ${directionLabel(config.direction, config, config.flowId)}`;
     const rail = panelSlots?.rail;
+    const railBelow = panelSlots?.railPosition === "below";
     return (
       <div className="w-full px-4 md:px-11">
-        {/* Panel 1 — the desired transaction, pricing riding beside it */}
+        {/* Panel 1 — the desired transaction; pricing rides beside it, or
+            takes its own section below when it's too tall for the rail */}
         <div
-          className="tf-panel tf-rise relative grid overflow-hidden"
+          className={`tf-panel tf-rise relative grid overflow-hidden ${railBelow ? "tf-below" : ""}`}
           style={{
             ...glassStyle,
-            gridTemplateColumns: rail ? "minmax(0,1fr) minmax(300px,380px)" : "minmax(0,1fr)",
+            gridTemplateColumns: rail && !railBelow ? "minmax(0,1fr) minmax(300px,380px)" : "minmax(0,1fr)",
             minHeight: "calc(100vh - 190px)",
           }}
         >

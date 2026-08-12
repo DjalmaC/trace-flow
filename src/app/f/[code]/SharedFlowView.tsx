@@ -322,6 +322,14 @@ export function SharedFlowView({ code }: { code: string }) {
   const hasPricing = !!config?.pricing;
   const effView: "flow" | "pricing" = hasPricing ? view : "flow";
   const showDirectionToggle = !!config && !config.hideDirectionToggle && (config.clientDirections ?? "both") === "both";
+  // Rail density: the side rail comfortably fits ~12 "rows" beside the canvas
+  // (a card's header weighs about two). Anything denser — many tiers, many
+  // products — takes its own full-width section below the canvas instead of
+  // crowding or scrolling the rail. Side placement stays the default UX.
+  const railRows = legacyPricing
+    ? legacyPricing.cards.reduce((n, c) => n + c.rows.length + 2, 0)
+    : proposalPricing.cards.reduce((n, c) => n + cardRows(c).length + 2, 0);
+  const railBelow = railRows > 12;
 
   return (
     <LayoutGroup>
@@ -468,6 +476,7 @@ export function SharedFlowView({ code }: { code: string }) {
                   rail: hasPricing ? (
                     <PricingRail pricing={proposalPricing} legacy={legacyPricing} clientName={config.clientName} />
                   ) : undefined,
+                  railPosition: railBelow ? "below" : "beside",
                   closing: config.salesperson ? <RepRow sp={config.salesperson} company={config.clientName} /> : undefined,
                 }}
               />
