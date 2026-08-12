@@ -255,8 +255,12 @@ function NodeCard({ node, primary, config, laneOverrides }: { node: NodeLayout; 
     <div
       className="flex items-center gap-3 rounded-2xl border px-4 py-2.5"
       style={{
-        background: "rgba(11,15,13,0.72)",
+        backgroundColor: "rgba(11,15,13,0.55)",
+        backgroundImage: "linear-gradient(160deg, rgba(255,255,255,.07), rgba(255,255,255,.02) 45%, rgba(255,255,255,.05))",
         borderColor: "rgba(255,255,255,0.10)",
+        boxShadow: "0 10px 22px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.22)",
+        backdropFilter: "blur(14px) saturate(1.3)",
+        WebkitBackdropFilter: "blur(14px) saturate(1.3)",
       }}
     >
       {hasLogo ? (
@@ -320,7 +324,7 @@ const Connector = forwardRef<
       <div className="relative z-10 flex flex-col items-center py-2">
         <VArrow direction={config.direction} accent={accent} />
         {isConv ? (
-          <div className="mt-1 flex items-center gap-2 rounded-xl px-3 py-1.5" style={{ background: "rgba(11,15,13,0.72)", border: "1px solid rgba(255,255,255,0.10)" }}>
+          <div className="mt-1 flex items-center gap-2 rounded-xl px-3 py-1.5" style={{ backgroundColor: "rgba(11,15,13,0.55)", backgroundImage: "linear-gradient(160deg, rgba(255,255,255,.07), rgba(255,255,255,.02) 45%, rgba(255,255,255,.05))", border: "1px solid rgba(255,255,255,0.10)", boxShadow: "inset 0 1px 0 rgba(255,255,255,.22)", backdropFilter: "blur(14px) saturate(1.3)", WebkitBackdropFilter: "blur(14px) saturate(1.3)" }}>
             {reduced || !hubRotation ? (
               <span ref={hubRef} className="flex h-6 w-6 items-center justify-center rounded-full" style={{ background: "#0b110d", border: `1px solid ${accent}55` }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}

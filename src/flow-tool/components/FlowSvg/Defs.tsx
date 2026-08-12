@@ -17,6 +17,23 @@ export function Defs() {
       <filter id="tf-mono">
         <feColorMatrix type="saturate" values="0.1" />
       </filter>
+      {/* ── liquid-glass box material (SVG can't backdrop-blur, so the recipe
+          is faked in three parts): the lit gradient fill, the specular top
+          edge, and a soft float shadow. Mirrors the GlassPanel look. ── */}
+      <linearGradient id="tf-glass-fill" x1="0" y1="0" x2="0.35" y2="1">
+        <stop offset="0" stopColor="#ffffff" stopOpacity="0.075" />
+        <stop offset="0.45" stopColor="#ffffff" stopOpacity="0.02" />
+        <stop offset="1" stopColor="#ffffff" stopOpacity="0.05" />
+      </linearGradient>
+      <linearGradient id="tf-glass-edge" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stopColor="#ffffff" stopOpacity="0" />
+        <stop offset="0.2" stopColor="#ffffff" stopOpacity="0.5" />
+        <stop offset="0.8" stopColor="#ffffff" stopOpacity="0.5" />
+        <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
+      </linearGradient>
+      <filter id="tf-glass-shadow" x="-40%" y="-40%" width="180%" height="200%">
+        <feDropShadow dx="0" dy="10" stdDeviation="11" floodColor="#000000" floodOpacity="0.32" />
+      </filter>
       <marker id="tf-leg" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse">
         <path d="M2 1L8 5L2 9" fill="none" stroke={C.leg} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
       </marker>

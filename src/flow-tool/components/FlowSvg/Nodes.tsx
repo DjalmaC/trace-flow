@@ -8,6 +8,24 @@ import { TraceMonogram } from "./TraceArrow";
 //   client                 → gray rect + dashed "client logo" slot (cnode)
 //   trace                  → gray rect + the Trace mark (tnode)
 
+/** The liquid-glass box material — one recipe for every diagram box: a dark
+ *  translucent base (masks tube caps that tuck under boxes) floated on a soft
+ *  shadow, the lit glass gradient, a neutral hairline, and the specular top
+ *  edge. SVG can't backdrop-blur, so this mirrors the GlassPanel look with
+ *  gradients (defs in FlowSvg/Defs.tsx). */
+export function GlassBox({ x, y, w, h, rx }: { x: number; y: number; w: number; h: number; rx: number }) {
+  const inset = Math.min(10, w * 0.06);
+  return (
+    <g>
+      <g filter="url(#tf-glass-shadow)">
+        <rect x={x} y={y} width={w} height={h} rx={rx} fill={GLASS_CARD.base} />
+      </g>
+      <rect x={x} y={y} width={w} height={h} rx={rx} fill="url(#tf-glass-fill)" stroke={GLASS_CARD.hairline} />
+      <rect x={x + inset} y={y} width={Math.max(0, w - inset * 2)} height={1} fill="url(#tf-glass-edge)" opacity={0.65} />
+    </g>
+  );
+}
+
 function NodeLines({ node, dy = 0, fill }: { node: NodeLayout; dy?: number; fill: string }) {
   const { lines, cx, cy } = node;
   const start = cy + dy - ((lines.length - 1) * 7) / 2;
@@ -44,22 +62,14 @@ export function FlowNodeShape({
   // faint white tint + neutral hairline. No mint border, no drop shadow —
   // mint marks meaning, boxes are quiet glass.
   const txt = green ? C.greenText : C.nodeText;
-  const rect = (
-    <g>
-      <rect x={x} y={y} width={w} height={h} rx={12} fill={GLASS_CARD.base} />
-      <rect x={x} y={y} width={w} height={h} rx={12} fill={GLASS_CARD.tint} stroke={GLASS_CARD.hairline} />
-    </g>
-  );
+  const rect = <GlassBox x={x} y={y} w={w} h={h} rx={12} />;
 
   if (node.kind === "engine") {
     // the folded "Trace engine": a wide quiet station; the spinning
     // conversion hub is drawn on top (by MachineryStage) at its center.
     return (
       <g>
-        <g>
-          <rect x={x} y={y} width={w} height={h} rx={14} fill={GLASS_CARD.base} />
-          <rect x={x} y={y} width={w} height={h} rx={14} fill={GLASS_CARD.tint} stroke={GLASS_CARD.hairline} />
-        </g>
+        <GlassBox x={x} y={y} w={w} h={h} rx={14} />
         <text x={cx} y={y + 18} fontSize={11} fontWeight={600} fill={C.green} textAnchor="middle" opacity={0.85}>
           Trace engine
         </text>

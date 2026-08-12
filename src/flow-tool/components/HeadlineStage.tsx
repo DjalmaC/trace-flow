@@ -1,7 +1,8 @@
 "use client";
 import { motion, useTransform, type MotionValue } from "framer-motion";
 import type { FlowConfig } from "../data/schema";
-import { C, GLASS_CARD } from "./tokens";
+import { C } from "./tokens";
+import { GlassBox } from "./FlowSvg/Nodes";
 import type { FlowLayout } from "./layout";
 import { AnimatedToken, CurrencyToken, SwapCapsule, displayCurrency } from "./FlowSvg";
 
@@ -28,9 +29,8 @@ function HeadlineNode({
   const { x, y, w, h, cx } = box;
   return (
     <g data-flow-node={isClient ? undefined : editId} data-headline="1">
-      {/* quiet glass-card recipe — the mint fill/stroke read as decoration */}
-      <rect x={x} y={y} width={w} height={h} rx={9} fill={GLASS_CARD.base} />
-      <rect x={x} y={y} width={w} height={h} rx={9} fill={GLASS_CARD.tint} stroke={GLASS_CARD.hairline} />
+      {/* liquid-glass box material (FlowSvg/Nodes GlassBox) */}
+      <GlassBox x={x} y={y} w={w} h={h} rx={9} />
       {isClient ? (
         <>
           {config.clientLogoUrl ? (

@@ -4,6 +4,7 @@ import { useReducedMotion } from "framer-motion";
 import type { Currency, Flow, FlowConfig } from "../data/schema";
 import { isPlatformFlow, platformSuppressesClient } from "../data/schema";
 import { ASSETS, C, GLASS_CARD, TRACE_LOGO_AR, accentFor, tubeTint } from "./tokens";
+import { GlassBox } from "./FlowSvg/Nodes";
 import { displayCurrency } from "./FlowSvg/Tokens";
 import { TraceArrow } from "./FlowSvg/TraceArrow";
 import { Defs } from "./FlowSvg";
@@ -67,9 +68,8 @@ function ElevatedNode({
   void green;
   return (
     <g>
-      {/* quiet glass-card recipe (tokens.GLASS_CARD) — no mint rim, no shadow */}
-      <rect x={x} y={398} width={w} height={118} rx={16} fill={GLASS_CARD.base} />
-      <rect x={x} y={398} width={w} height={118} rx={16} fill={GLASS_CARD.tint} stroke={GLASS_CARD.hairline} />
+      {/* liquid-glass box material — no mint rim; see FlowSvg/Nodes GlassBox */}
+      <GlassBox x={x} y={398} w={w} h={118} rx={16} />
       {children}
     </g>
   );
