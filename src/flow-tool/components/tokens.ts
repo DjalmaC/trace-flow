@@ -73,6 +73,9 @@ export const C = {
 // asset paths (served from /public)
 export const ASSETS = {
   traceLogo: "/assets/trace_logo.png",
+  // The silk plate behind every deck slide — same texture the templates bake
+  // and the client link's backdrop uses, so PDFs read as one family.
+  deckBg: "/assets/bg/deck-bg.png",
   // Square (1200×1200) lockup mark extracted from the proposal templates, so the
   // bottom-right lockup on generated deck slides matches the template pages.
   traceLockupMark: "/assets/trace_lockup_mark.png",

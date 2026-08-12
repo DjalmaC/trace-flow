@@ -106,8 +106,9 @@ function Frame({ children }: { children: React.ReactNode }) {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox={`0 0 ${DW} ${DH}`} width={DW} height={DH} style={{ fontFamily: "Inter, sans-serif" }}>
       <Defs />
+      {/* the silk plate — the same background the template pages bake */}
       <rect x={0} y={0} width={DW} height={DH} fill={BG} />
-      <rect x={0} y={0} width={DW} height={DH} fill="url(#tf-glow)" />
+      <image href={ASSETS.deckBg} x={0} y={0} width={DW} height={DH} preserveAspectRatio="xMidYMid slice" />
       <rect x={0} y={0} width={DW} height={3.2} fill={RULE} />
       {children}
       <Lockup />
@@ -462,11 +463,12 @@ export async function renderPricingPagePng(
 async function renderDeckPng(node: React.ReactElement, scale = SCALE): Promise<string> {
   const { renderToStaticMarkup } = await import("react-dom/server");
   let markup = renderToStaticMarkup(node);
-  const [trace, lockup, usdc, usdt, style] = await Promise.all([
+  const [trace, lockup, usdc, usdt, deckBg, style] = await Promise.all([
     dataUri(ASSETS.traceLogo),
     dataUri(ASSETS.traceLockupMark),
     dataUri(ASSETS.usdc),
     dataUri(ASSETS.usdt),
+    dataUri(ASSETS.deckBg),
     interStyle(),
   ]);
   markup = markup
@@ -474,6 +476,7 @@ async function renderDeckPng(node: React.ReactElement, scale = SCALE): Promise<s
     .split(ASSETS.traceLogo).join(trace)
     .split(ASSETS.usdc).join(usdc)
     .split(ASSETS.usdt).join(usdt)
+    .split(ASSETS.deckBg).join(deckBg)
     .replace(/(<svg[^>]*>)/, `$1${style}`);
   return rasterize(markup, DW, DH);
 }
