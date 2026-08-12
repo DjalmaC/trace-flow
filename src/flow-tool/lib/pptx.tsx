@@ -141,9 +141,31 @@ function titleSlide(config: FlowConfig) {
       <text x={DW / 2} y={cy + ch + 66} fontSize={30} fontWeight={700} fill={TITLE} textAnchor="middle">
         Cross-border payment architecture
       </text>
-      <text x={DW / 2} y={cy + ch + 98} fontSize={15} fill={SUB} textAnchor="middle">
-        {config.clientRep ? `Prepared for ${config.clientRep}` : `Prepared for ${config.clientName}`}
-      </text>
+      {config.clientRep || config.clientName.trim() || !config.clientLogoUrl ? (
+        <text x={DW / 2} y={cy + ch + 98} fontSize={15} fill={SUB} textAnchor="middle">
+          {config.clientRep
+            ? `Prepared for ${config.clientRep}`
+            : `Prepared for ${config.clientName.trim() || "you"}`}
+        </text>
+      ) : (
+        // no contact and no company name — the logo IS the name, letter-sized
+        <>
+          <text x={DW / 2 - 6} y={cy + ch + 98} fontSize={15} fill={SUB} textAnchor="end">
+            Prepared for
+          </text>
+          {config.clientLogoPlate === "light" && (
+            <rect x={DW / 2 + 4} y={cy + ch + 98 - 15.5} width={72} height={20} rx={4} fill="#ffffff" />
+          )}
+          <image
+            href={config.clientLogoUrl}
+            x={DW / 2 + (config.clientLogoPlate === "light" ? 8 : 6)}
+            y={cy + ch + 98 - (config.clientLogoPlate === "light" ? 12.5 : 14)}
+            width={config.clientLogoPlate === "light" ? 64 : 76}
+            height={config.clientLogoPlate === "light" ? 14 : 17}
+            preserveAspectRatio="xMinYMid meet"
+          />
+        </>
+      )}
     </Frame>
   );
 }

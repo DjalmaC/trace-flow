@@ -245,17 +245,20 @@ function resolveTemplate(tmpl: string, vars: Record<string, string>): string {
   return tmpl.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? "");
 }
 
+type OverlayLogo = { box: [number, number, number, number]; url: string; plate?: "light" | "none" };
+
 /** Build a transparent 960×540 overlay SVG for one page. */
 async function pageOverlaySvg(
   fields: ManifestField[],
   vars: Record<string, string>,
-  logo?: { box: [number, number, number, number]; url: string; plate?: "light" | "none" },
+  logos?: OverlayLogo[],
 ): Promise<string> {
   const style = await interStyle();
   const parts: string[] = [];
 
-  const logoHref = logo ? safeLogoHref(logo.url) : null;
-  if (logo && logoHref) {
+  for (const logo of logos ?? []) {
+    const logoHref = safeLogoHref(logo.url);
+    if (!logoHref) continue;
     const [x0, y0, x1, y1] = logo.box;
     const bw = x1 - x0;
     const bh = y1 - y0;
@@ -288,6 +291,17 @@ async function pageOverlaySvg(
   }
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${DW} ${DH}" width="${DW}" height="${DH}">${style}${parts.join("")}</svg>`;
+}
+
+/** Natural aspect ratio of an image URL; 3 (a typical wordmark) on failure. */
+function imageAspect(url: string): Promise<number> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () =>
+      resolve(img.naturalWidth > 0 && img.naturalHeight > 0 ? img.naturalWidth / img.naturalHeight : 3);
+    img.onerror = () => resolve(3);
+    img.src = url;
+  });
 }
 
 function dataUrlToBytes(u: string): Uint8Array {
@@ -325,9 +339,13 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
 
   // Fill values. repCompany collapses to just the company when no contact given.
   const rep = opts.rep;
+  const companyName = opts.company.trim();
+  // Nothing typed on the Prepared-for line at all, but a logo uploaded → the
+  // logo stands in for the company name (stamped at letter height below).
+  const logoIsName = !opts.companyRep?.trim() && !companyName && !!opts.companyLogoUrl;
   const vars: Record<string, string> = {
-    company: opts.company,
-    rep: opts.companyRep || opts.company,
+    company: companyName,
+    rep: opts.companyRep || companyName,
     date: opts.date,
     repName: rep?.name ?? "",
     repTitle: rep?.proposalTitle ?? rep?.title ?? "",
@@ -419,6 +437,26 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
   // into the empty top-left space for more presence.
   const lb = manifest.logo.box;
   const logoBox: [number, number, number, number] = [lb[0], lb[1], lb[0] + 200, lb[1] + 56];
+
+  // With nothing on the Prepared-for line, the logo takes the company name's
+  // exact slot — measured to its natural aspect ratio and scaled to the text
+  // line's letter height, so "Prepared for: [logo]" reads like typography.
+  let inlineNameLogo: OverlayLogo | undefined;
+  if (logoIsName && repField && opts.companyLogoUrl) {
+    const ar = await imageAspect(opts.companyLogoUrl);
+    if (opts.companyLogoPlate === "light") {
+      // white plate wraps the artwork snugly (inner height ≈ the 13pt caps)
+      const h = 19;
+      const w = Math.min(13 * ar + 7, 176);
+      const y1 = repField.baseline + 3.5;
+      inlineNameLogo = { box: [repField.x, y1 - h, repField.x + w, y1], url: opts.companyLogoUrl, plate: "light" };
+    } else {
+      const h = 15;
+      const w = Math.min(h * ar, 176);
+      const y1 = repField.baseline + 2.2;
+      inlineNameLogo = { box: [repField.x, y1 - h, repField.x + w, y1], url: opts.companyLogoUrl, plate: "none" };
+    }
+  }
 
   // ── customized pricing → the PDF rate page(s) are live-rendered ──
   // Deck-identical pricing keeps the template's hand-designed pages. Anything
@@ -517,12 +555,18 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
         f.key === "repCompany" ? { ...f, template: "{company}" } : f,
       );
     }
-    const logo =
-      pno === manifest.logo.page && opts.companyLogoUrl
-        ? { box: logoBox, url: opts.companyLogoUrl, plate: opts.companyLogoPlate }
-        : undefined;
-    if (!fields.length && !logo) continue;
-    const svg = await pageOverlaySvg(fields, vars, logo);
+    // no company name at all → the footer drops its dangling "prepared for"
+    if (!companyName) {
+      fields = fields.map((f) =>
+        f.key === "footer" ? { ...f, template: "Confidential · {date}" } : f,
+      );
+    }
+    const logos: OverlayLogo[] = [];
+    if (pno === manifest.logo.page && opts.companyLogoUrl)
+      logos.push({ box: logoBox, url: opts.companyLogoUrl, plate: opts.companyLogoPlate });
+    if (inlineNameLogo && pno === repField?.page) logos.push(inlineNameLogo);
+    if (!fields.length && !logos.length) continue;
+    const svg = await pageOverlaySvg(fields, vars, logos);
     const png = await doc.embedPng(await rasterize(svg));
     doc.getPage(pno).drawImage(png, { x: 0, y: 0, width: DW, height: DH });
   }
@@ -619,5 +663,10 @@ function triggerDownload(bytes: Uint8Array, filename: string) {
 /** Build + download the proposal PDF. */
 export async function downloadProposalPdf(opts: ProposalBuildOpts): Promise<void> {
   const bytes = await buildProposalPdf(opts);
-  triggerDownload(bytes, `Trace Finance - ${opts.company} - Proposal.pdf`);
+  triggerDownload(
+    bytes,
+    opts.company.trim()
+      ? `Trace Finance - ${opts.company.trim()} - Proposal.pdf`
+      : "Trace Finance - Proposal.pdf",
+  );
 }

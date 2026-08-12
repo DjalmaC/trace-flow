@@ -302,13 +302,15 @@ export function FlowExperience({
   // situate the viewer. Double-click editable on the build canvas.
   const flowComment = config.comments?.[config.flowId]?.trim();
 
+
+
   const SurfaceHeading = (
     <div className="mx-auto mb-5 text-center" style={{ width: "min(36rem, calc(100vw - 2rem))" }}>
       <div className="mb-2 font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[#6f8a7f] md:text-[12px] md:tracking-[0.34em]">
         The desired transaction
       </div>
       <h1 className="font-display text-3xl font-semibold tracking-[-0.01em] text-[#f2f5f3] md:text-5xl">
-        Built for <span className="text-mint">{config.clientName}</span>
+        Built for <ClientMark config={config} />
       </h1>
       <p className="mt-3 text-sm font-normal text-[#8b948f] md:text-base" data-hero-support>
         {support}
@@ -448,7 +450,7 @@ export function FlowExperience({
             <div className="flex min-h-0 flex-1 flex-col justify-center py-7">
               <div className="font-jbmono text-[11px] font-medium uppercase tracking-[0.34em] text-[#6f8a7f]">{eyebrow}</div>
               <h1 className="mt-3 font-display text-[34px] font-semibold leading-[1.1] tracking-[-0.02em] text-[#eef1ee]">
-                Built for <span className="text-mint">{config.clientName}</span>
+                Built for <ClientMark config={config} />
               </h1>
               <p className="mt-3 max-w-[560px] text-[14.5px] leading-[1.55] text-subtitle" data-hero-support>
                 {support}
@@ -721,4 +723,19 @@ function DirectionToggle({
       ))}
     </div>
   );
+}
+function ClientMark({ config }: { config: FlowConfig }) {
+  const name = config.clientName.trim();
+  if (name) return <span className="text-mint">{name}</span>;
+  const src = config.clientLogoUrl;
+  if (!src) return <span className="text-mint">you</span>;
+  if (config.clientLogoPlate === "light")
+    return (
+      <span className="inline-flex translate-y-[0.1em] items-center rounded-[0.28em] bg-white px-[0.34em] py-[0.16em] align-baseline">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={src} alt="" className="h-[0.62em] w-auto max-w-[7.5em] object-contain" />
+      </span>
+    );
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={src} alt="" className="inline-block h-[0.88em] w-auto max-w-[8.5em] object-contain align-[-0.08em]" />;
 }
