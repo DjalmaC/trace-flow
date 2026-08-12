@@ -76,12 +76,9 @@ export function FlowExperience({
    *  animations and every interaction render exactly as everywhere else. */
   architecture?: "panels";
   /** Panel-architecture slots, provided by the shared view: the top controls
-   *  row (variant tabs + direction pills), the pricing rail, and the closing
-   *  rep-contact row at the bottom of the machinery panel. `railPosition`
-   *  picks the mock's "Beside the flow" (default) or "Below the flow" —
-   *  dense pricing (3+ cards, e.g. Brazil-market's five products) reads far
-   *  better below the canvas in the 2-column grid. */
-  panelSlots?: { controls?: React.ReactNode; rail?: React.ReactNode; railPosition?: "beside" | "below"; closing?: React.ReactNode };
+   *  row (variant tabs + direction pills), the pricing rail beside the canvas,
+   *  and the closing rep-contact row at the bottom of the machinery panel. */
+  panelSlots?: { controls?: React.ReactNode; rail?: React.ReactNode; closing?: React.ReactNode };
 }) {
   const glass = skin === "glass";
   const baseFlow = getFlow(config.flowId);
@@ -415,15 +412,14 @@ export function FlowExperience({
     const goHow = () => howRef.current?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
     const eyebrow = `${clientFlowName(flow.title)} · ${directionLabel(config.direction, config, config.flowId)}`;
     const rail = panelSlots?.rail;
-    const railBelow = panelSlots?.railPosition === "below";
     return (
       <div className="w-full px-4 md:px-11">
-        {/* Panel 1 — the desired transaction, pricing beside (or below) it */}
+        {/* Panel 1 — the desired transaction, pricing riding beside it */}
         <div
-          className={`tf-panel tf-rise relative grid overflow-hidden ${railBelow ? "tf-below" : ""}`}
+          className="tf-panel tf-rise relative grid overflow-hidden"
           style={{
             ...glassStyle,
-            gridTemplateColumns: rail && !railBelow ? "minmax(0,1fr) minmax(300px,380px)" : "minmax(0,1fr)",
+            gridTemplateColumns: rail ? "minmax(0,1fr) minmax(300px,380px)" : "minmax(0,1fr)",
             minHeight: "calc(100vh - 190px)",
           }}
         >
@@ -460,7 +456,9 @@ export function FlowExperience({
         </div>
 
         {/* Panel 2 — beneath the surface: the full machinery */}
-        <div ref={howRef} data-flow-dive className="tf-rise relative mt-8 scroll-mt-7 overflow-hidden px-8 pb-7 pt-9 md:px-10" style={glassStyle}>
+        {/* scroll-mt clears the stuck header banner (~80px) so "How Trace
+            makes it happen" lands fully visible below it */}
+        <div ref={howRef} data-flow-dive className="tf-rise relative mt-8 scroll-mt-[96px] overflow-hidden px-8 pb-7 pt-9 md:px-10" style={glassStyle}>
           <SpecularEdge />
           <div className="font-jbmono text-[11px] font-medium uppercase tracking-[0.34em] text-[#6f8a7f]">Beneath the surface</div>
           <h2 className="mt-3 font-display text-[26px] font-semibold tracking-[-0.01em] text-[#eef1ee]">How Trace makes it happen</h2>

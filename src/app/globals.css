@@ -47,12 +47,6 @@ body {
   .tf-price-list { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 }
 
-/* The mock's "Below the flow" pricing position — dense pricing (3+ cards)
-   drops under the canvas at every width, cards in a responsive grid. */
-.tf-below { grid-template-columns: minmax(0, 1fr) !important; }
-.tf-below .tf-rail { border-left: none !important; border-top: 1px solid rgba(255, 255, 255, 0.14) !important; }
-.tf-below .tf-price-list { display: grid !important; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
-
 /* Chrome settling in as the intro resolves (defaults visible if unanimated). */
 @keyframes tf-fade { from { opacity: 0; } to { opacity: 1; } }
 .tf-fade { animation: tf-fade 0.55s cubic-bezier(.4,0,.2,1); }

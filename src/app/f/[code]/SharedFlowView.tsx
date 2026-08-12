@@ -319,7 +319,6 @@ export function SharedFlowView({ code }: { code: string }) {
   // link falls back to the flow.
   const hasPricing = !!config?.pricing;
   const effView: "flow" | "pricing" = hasPricing ? view : "flow";
-  const pricingCardCount = legacyPricing ? legacyPricing.cards.length : proposalPricing.cards.length;
   const showDirectionToggle = !!config && !config.hideDirectionToggle && (config.clientDirections ?? "both") === "both";
 
   return (
@@ -458,9 +457,6 @@ export function SharedFlowView({ code }: { code: string }) {
                   rail: hasPricing ? (
                     <PricingRail pricing={proposalPricing} legacy={legacyPricing} clientName={config.clientName} />
                   ) : undefined,
-                  // dense pricing (3+ cards — e.g. Brazil-market's five
-                  // products) drops below the canvas in a responsive grid
-                  railPosition: pricingCardCount > 2 ? "below" : "beside",
                   closing: config.salesperson ? <RepRow sp={config.salesperson} company={config.clientName} /> : undefined,
                 }}
               />
@@ -658,11 +654,10 @@ function PricingRail({ pricing, legacy, clientName }: { pricing: ProposalPricing
       }));
   return (
     <>
-      <div className="font-jbmono text-[11px] font-medium uppercase tracking-[0.34em] text-[#6f8a7f]">Transparent pricing</div>
-      <div className="mt-2.5 font-display text-[21px] font-semibold tracking-[-0.01em] text-title">
+      <div className="font-display text-[21px] font-semibold tracking-[-0.01em] text-title">
         What <span className="text-mint">{clientName}</span> pays
       </div>
-      {legacy ? (
+      {legacy && (
         <div className="mt-1.5 flex items-center gap-2 text-[12.5px] text-[#8b948f]">
           {legacy.flag && <span className="text-[15px] leading-none">{legacy.flag}</span>}
           <span>
@@ -670,8 +665,6 @@ function PricingRail({ pricing, legacy, clientName }: { pricing: ProposalPricing
             {legacy.subtitle ? ` · ${legacy.subtitle}` : ""}
           </span>
         </div>
-      ) : (
-        <div className="mt-1.5 text-[12.5px] text-[#8b948f]">Rates that fall as your volume grows.</div>
       )}
       <div className="tf-price-list mt-5 flex flex-col gap-4">
         {cards.map((card) => (
@@ -808,15 +801,9 @@ function PricingView({ pricing, clientName, inline }: { pricing: ProposalPricing
       <div className={`mx-auto flex flex-col ${inline ? "px-4 pb-12 pt-5" : "min-h-full justify-center px-5 pb-20 pt-24 md:px-10"}`} style={{ width: "min(64rem, 100vw)" }}>
         <GlassPanel className={inline ? "px-5 py-7" : "px-8 py-9 md:px-10"}>
         <div className="text-center">
-          <div className="mb-3 font-jbmono text-[12px] font-medium uppercase leading-none tracking-[0.34em] text-[#6f8a7f]">
-            Transparent pricing
-          </div>
           <h1 className="font-display text-[28px] font-semibold leading-[1.05] tracking-[-0.02em] text-title md:text-[37px]">
             What <span className="text-mint">{clientName}</span> pays
           </h1>
-          <p className="mx-auto mt-3 text-[13.5px] leading-normal text-[#8b948f]">
-            Rates that fall as your volume grows.
-          </p>
         </div>
 
         <div className="mt-7 grid gap-5 md:grid-cols-2">
