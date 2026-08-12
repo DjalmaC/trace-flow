@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { FlowExperience } from "@/flow-tool/components/FlowExperience";
+import { SilkBackdrop } from "@/flow-tool/components/Glass";
 import { ControlPanel } from "@/components/ControlPanel";
 import { NotesDrawer } from "@/components/NotesDrawer";
 import { defaultConfig, getFlow } from "@/flow-tool/data";
@@ -666,7 +667,9 @@ export default function BuildPage() {
   if (present) {
     return (
       <main className="relative" onDoubleClick={onCanvasDoubleClick} onPointerDown={onCanvasPointerDown}>
-        <FlowExperience config={config} presentation onDirectionChange={setDirection} editable />
+        <SilkBackdrop />
+        <div aria-hidden className="pointer-events-none fixed inset-x-0 top-0 z-[60] h-[3px]" style={{ background: "linear-gradient(90deg,#2be8d6,#00f2b1)" }} />
+        <FlowExperience config={config} presentation skin="glass" onDirectionChange={setDirection} editable />
         {renameOverlay}
         {editControls}
         {dragChrome}
@@ -697,6 +700,8 @@ export default function BuildPage() {
 
   return (
     <main className="relative" onDoubleClick={onCanvasDoubleClick} onPointerDown={onCanvasPointerDown}>
+      <SilkBackdrop />
+      <div aria-hidden className="pointer-events-none fixed inset-x-0 top-0 z-[60] h-[3px]" style={{ background: "linear-gradient(90deg,#2be8d6,#00f2b1)" }} />
       <ControlPanel
         config={config}
         onConfigChange={setConfig}
@@ -747,7 +752,7 @@ export default function BuildPage() {
       >
         ← Proposals
       </a>
-      <FlowExperience config={config} onDirectionChange={setDirection} editable />
+      <FlowExperience config={config} skin="glass" onDirectionChange={setDirection} editable />
     </main>
   );
 }

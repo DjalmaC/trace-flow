@@ -457,7 +457,17 @@ export function ControlPanel({
   return (
     <>
       {palette}
-      <div className="fixed inset-y-0 left-0 z-50 flex w-[344px] max-w-[calc(100vw-2rem)] flex-col border-r border-hairline-row bg-[#090d0b]/[.96] backdrop-blur">
+      {/* The rail as liquid glass — same family as the client link's panels,
+          tinted more opaque so the dense controls stay legible. */}
+      <div
+        className="fixed inset-y-0 left-0 z-50 flex w-[344px] max-w-[calc(100vw-2rem)] flex-col border-r border-white/[.14]"
+        style={{
+          background: "linear-gradient(160deg, rgba(9,13,11,.88), rgba(9,13,11,.8) 45%, rgba(9,13,11,.86))",
+          backdropFilter: "blur(28px) saturate(1.4)",
+          WebkitBackdropFilter: "blur(28px) saturate(1.4)",
+          boxShadow: "inset -1px 0 0 rgba(255,255,255,.06)",
+        }}
+      >
         {/* header */}
         <div className="flex items-center gap-2 px-5 pb-4 pt-5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -970,7 +980,7 @@ function DealStep({
 
       {tailored.length > 0 && (
         <div className="mt-3 rounded-xl border border-hairline-card bg-node-fill/40 p-3">
-          <span className="font-mono text-[10px] font-medium uppercase tracking-[.1em] text-mint-muted">
+          <span className="font-jbmono text-[10px] font-medium uppercase tracking-[.18em] text-[#6f8a7f]">
             Your tailored flows · {tailored.length}
           </span>
           <div className="mt-2 space-y-1.5">
@@ -1010,9 +1020,9 @@ function DealStep({
       {/* what's on the canvas right now */}
       <div className="mt-4 rounded-xl border border-hairline-card bg-node-fill/40 p-3">
         <div className="mb-1 flex items-center justify-between gap-2">
-          <span className="font-mono text-[10px] font-medium uppercase tracking-[.1em] text-mint-muted">On canvas</span>
+          <span className="font-jbmono text-[10px] font-medium uppercase tracking-[.18em] text-[#6f8a7f]">On canvas</span>
           {resolution.status === "exact" && (
-            <span className="flex items-center gap-1 font-mono text-[9.5px] uppercase tracking-wide text-mint">
+            <span className="flex items-center gap-1 font-jbmono text-[9.5px] uppercase tracking-wide text-mint">
               <CheckIcon size={9} /> resolved
             </span>
           )}
@@ -1051,7 +1061,7 @@ function DealStep({
 
       {/* the deck so far */}
       <div className="mt-3 rounded-xl border border-hairline-card bg-node-fill/40 p-3">
-        <span className="font-mono text-[10px] font-medium uppercase tracking-[.1em] text-mint-muted">
+        <span className="font-jbmono text-[10px] font-medium uppercase tracking-[.18em] text-[#6f8a7f]">
           The deck{flows.length ? ` \u00b7 ${flows.length}` : ""}
         </span>
         {flows.length === 0 ? (
