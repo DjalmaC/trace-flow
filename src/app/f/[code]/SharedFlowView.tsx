@@ -189,6 +189,7 @@ export function SharedFlowView({ code }: { code: string }) {
           partnerLogoUrl: config.partnerLogoUrl,
           partnerLogoPlate: config.partnerLogoPlate,
           nodePartner: config.nodePartner,
+          flowsLabel: config.flowsLabel,
           nodeLabels: config.nodeLabels,
           nodeOrder: config.nodeOrder,
           laneLabels: config.laneLabels,
@@ -381,7 +382,12 @@ export function SharedFlowView({ code }: { code: string }) {
                         <SegToggle value={direction} onChange={setDirection} options={directionOptions(config, flowId)} />
                       )}
                       {effView === "flow" && hasVariants && (
-                        <SegToggle full value={flowId} onChange={switchFlow} options={variants!.map((v) => ({ value: v.flowId, label: clientFlowName(v.name) }))} />
+                        <div className="w-full">
+                          <div className="mb-1 font-jbmono text-[9px] font-medium uppercase tracking-[0.24em] text-[#6f8a7f]">
+                            {config.flowsLabel?.trim() || "Flows"}
+                          </div>
+                          <SegToggle full value={flowId} onChange={switchFlow} options={variants!.map((v) => ({ value: v.flowId, label: clientFlowName(v.name) }))} />
+                        </div>
                       )}
                     </div>
                   </div>
@@ -467,9 +473,14 @@ export function SharedFlowView({ code }: { code: string }) {
                   controls:
                     hasVariants || showDirectionToggle ? (
                       <>
-                        <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-3">
                           {hasVariants && (
-                            <SegToggle value={flowId} onChange={switchFlow} options={variants!.map((v) => ({ value: v.flowId, label: clientFlowName(v.name) }))} />
+                            <>
+                              <span className="font-jbmono text-[10px] font-medium uppercase tracking-[0.24em] text-[#6f8a7f]">
+                                {config.flowsLabel?.trim() || "Flows"}
+                              </span>
+                              <SegToggle value={flowId} onChange={switchFlow} options={variants!.map((v) => ({ value: v.flowId, label: clientFlowName(v.name) }))} />
+                            </>
                           )}
                         </div>
                         <div className="flex items-center gap-2">

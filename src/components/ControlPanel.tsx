@@ -314,10 +314,12 @@ export function ControlPanel({
         collected: config.collected,
         delivered: config.delivered,
         rep: getRep(traceRepId),
-        pricing,
+        // pricing off => the PDF ships no pricing pages, matching the link
+        pricing: includePricing ? pricing : undefined,
         partnerLogoUrl: config.partnerLogoUrl,
         partnerLogoPlate: config.partnerLogoPlate,
         nodePartner: config.nodePartner,
+        flowsLabel: config.flowsLabel,
         nodeLabels: config.nodeLabels,
         nodeOrder: config.nodeOrder,
         laneLabels: config.laneLabels,
@@ -590,7 +592,12 @@ export function ControlPanel({
               flows={flows}
               onAdd={addCurrentFlow}
               onRemove={removeFlow}
+              onRename={(flowId, name) =>
+                onProposalFlowsChange?.(flows.map((f) => (f.flowId === flowId ? { ...f, name } : f)))
+              }
               onSelect={(flowId) => patch({ flowId })}
+              flowsLabel={config.flowsLabel}
+              onFlowsLabel={(v) => patch({ flowsLabel: v.trim() ? v : undefined })}
               onOpenStudio={setStudio}
               tailored={tailored}
               onNewTailored={() => setNewTailored(true)}
@@ -960,7 +967,10 @@ function DealStep({
   flows,
   onAdd,
   onRemove,
+  onRename,
   onSelect,
+  flowsLabel,
+  onFlowsLabel,
   onOpenStudio,
   tailored,
   onNewTailored,
@@ -973,6 +983,11 @@ function DealStep({
   flows: { flowId: string; name: string }[];
   onAdd: () => void;
   onRemove: (id: string) => void;
+  /** Rename how a deck flow displays (variant tab + PDF slide title). */
+  onRename: (id: string, name: string) => void;
+  /** What the variant group is called on the client link ("Flows" default). */
+  flowsLabel?: string;
+  onFlowsLabel: (v: string) => void;
   /** Flip the canvas to a deck flow so it becomes the one being edited. */
   onSelect: (flowId: string) => void;
   onOpenStudio: (mode: StudioMode) => void;
@@ -982,6 +997,8 @@ function DealStep({
   onUseTailored: (f: Flow) => void;
   onDeleteTailored: (f: Flow) => void;
 }) {
+  // inline rename of a deck flow (double-click its chip)
+  const [renamingId, setRenamingId] = useState<string | null>(null);
   const added = flows.some((x) => x.flowId === selectedFlowId);
   const current = getFlow(selectedFlowId);
   return (
@@ -1123,16 +1140,36 @@ function DealStep({
                     }`}
                   >
                     <span className="font-mono text-[10px] text-mint">{i + 1}</span>
-                    <button
-                      onClick={() => resolves && onSelect(f.flowId)}
-                      disabled={!resolves}
-                      title={resolves ? "Edit this flow on the canvas" : "This flow can't be resolved"}
-                      className={`max-w-[140px] truncate text-left transition ${
-                        active ? "font-semibold" : resolves ? "hover:text-mint" : "text-muted line-through"
-                      }`}
-                    >
-                      {f.name}
-                    </button>
+                    {renamingId === f.flowId ? (
+                      <input
+                        autoFocus
+                        defaultValue={f.name}
+                        onFocus={(e) => e.target.select()}
+                        onBlur={(e) => {
+                          const v = e.target.value.trim();
+                          if (v && v !== f.name) onRename(f.flowId, v);
+                          setRenamingId(null);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                          else if (e.key === "Escape") setRenamingId(null);
+                        }}
+                        aria-label={`Rename ${f.name}`}
+                        className="w-[120px] rounded border border-hairline-selected bg-surface-input px-1 py-0 text-[11px] text-title outline-none"
+                      />
+                    ) : (
+                      <button
+                        onClick={() => resolves && onSelect(f.flowId)}
+                        onDoubleClick={() => setRenamingId(f.flowId)}
+                        disabled={!resolves}
+                        title={resolves ? "Click to edit on canvas · double-click to rename" : "This flow can't be resolved"}
+                        className={`max-w-[140px] truncate text-left transition ${
+                          active ? "font-semibold" : resolves ? "hover:text-mint" : "text-muted line-through"
+                        }`}
+                      >
+                        {f.name}
+                      </button>
+                    )}
                     <button onClick={() => onRemove(f.flowId)} aria-label={`Remove ${f.name}`} className="text-muted transition hover:text-title">
                       <XIcon size={9} />
                     </button>
@@ -1140,6 +1177,18 @@ function DealStep({
                 );
               })}
             </div>
+            {flows.length > 1 && (
+              <div className="mt-2.5 flex items-center gap-2">
+                <span className="shrink-0 text-[10.5px] text-muted">Tabs labelled</span>
+                <input
+                  value={flowsLabel ?? ""}
+                  onChange={(e) => onFlowsLabel(e.target.value)}
+                  placeholder="Flows"
+                  aria-label="What the flow tabs are called on the client link"
+                  className="w-full rounded-md border border-hairline-control bg-surface-input px-2 py-1 text-[11px] text-title outline-none placeholder:text-muted focus:border-hairline-selected"
+                />
+              </div>
+            )}
           </>
         )}
       </div>

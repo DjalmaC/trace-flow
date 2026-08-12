@@ -463,6 +463,11 @@ export interface FlowConfig {
   /** Per-proposal partner-branding (double-click a box → "Show counterparty
    *  logo"), keyed "<flowId>:<nodeId>" — the box carries partnerLogoUrl. */
   nodePartner?: Record<string, boolean>;
+  /** What the flow-variant group is CALLED on the client link and the PDF —
+   *  e.g. "Settle in" when the variants differ only by settlement currency.
+   *  Defaults to "Flows". Shown as the eyebrow beside the variant tabs; PDF
+   *  slides read "{flowsLabel} - {variant name}" when customized. */
+  flowsLabel?: string;
   /** Per-proposal box reordering (edit mode: drag a box onto another to swap,
    *  or into a gap to move it). Keyed by flowId; the value is the flow's node
    *  ids in their new display order across the flow's ORIGINAL slots. The

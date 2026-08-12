@@ -158,7 +158,9 @@ function supportFor(config: FlowConfig, flow: Flow, direction = config.direction
 
 // The client-facing flow label is POSITIONAL — "what flow is this to the client":
 // Flow 1, Flow 2, … by order in the proposal, or "The Flow" if there's only one.
-function deckFlowLabel(index: number, total: number): string {
+function deckFlowLabel(index: number, total: number, custom?: string): string {
+  // a per-proposal group label ("Settle in") replaces the positional "Flow N"
+  if (custom?.trim()) return custom.trim();
   return total <= 1 ? "The Flow" : `Flow ${index + 1}`;
 }
 
@@ -492,7 +494,7 @@ export async function renderProposalFlowPngs(
     const it = valid[i];
     const flow = getFlow(it.flowId)!;
     const support = supportFor(config, flow);
-    out.push(await renderDeckPng(flowSlide({ ...config, flowId: it.flowId }, flow, it.name, deckFlowLabel(i, valid.length), support)));
+    out.push(await renderDeckPng(flowSlide({ ...config, flowId: it.flowId }, flow, it.name, deckFlowLabel(i, valid.length, config.flowsLabel), support)));
   }
   return out;
 }
@@ -538,7 +540,7 @@ async function renderDeckSlides(config: FlowConfig, variants?: Variant[]): Promi
     const it = valid[i];
     const flow = getFlow(it.flowId)!;
     const support = supportFor(config, flow);
-    slides.push(await renderDeckPng(flowSlide({ ...config, flowId: it.flowId }, flow, it.name, deckFlowLabel(i, valid.length), support)));
+    slides.push(await renderDeckPng(flowSlide({ ...config, flowId: it.flowId }, flow, it.name, deckFlowLabel(i, valid.length, config.flowsLabel), support)));
   }
   return slides;
 }

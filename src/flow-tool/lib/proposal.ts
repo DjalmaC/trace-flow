@@ -103,6 +103,8 @@ export interface ProposalBuildOpts {
   partnerLogoPlate?: "light" | "none";
   /** Per-proposal partner-branding flags (see FlowConfig.nodePartner). */
   nodePartner?: Record<string, boolean>;
+  /** Group label for the flow slides (see FlowConfig.flowsLabel). */
+  flowsLabel?: string;
   /** Per-proposal node renames (see FlowConfig.nodeLabels). */
   nodeLabels?: Record<string, string>;
   /** Per-proposal box reordering (see FlowConfig.nodeOrder). */
@@ -404,6 +406,9 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
   // from the same ProposalPricing the client's web Pricing view reads, so the
   // download can never disagree with what the client saw on the link.
   const pricing = opts.pricing ? normalizePricing(opts.pricing, opts.proposalType) : undefined;
+  // A proposal without RATES ships no pricing pages at all — an emptied custom
+  // card list or a flow-only link must not produce a bare "Brazil" slide.
+  const hasRates = !!pricing && pricing.cards.length > 0;
   // Compare against what the template PAGES bake, not the live deck defaults:
   // any difference (including the new flat Pix default vs the template's old
   // tiered card) re-renders the page so the PDF always matches the web view.
@@ -443,9 +448,8 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
   // two-card rate page (Pix API + FX spread) is ALWAYS live-rendered onto it,
   // deck-priced or not, so the PDF and the client's web Pricing view share one
   // source of truth. The overlay loop below still stamps its footer field.
-  if (typeof manifest.pricingPage === "number") {
-    const std = pricing ?? normalizePricing(undefined, opts.proposalType);
-    const png = await doc.embedPng(dataUrlToBytes(await renderPricingPagePng(std, pricingSub)));
+  if (typeof manifest.pricingPage === "number" && hasRates) {
+    const png = await doc.embedPng(dataUrlToBytes(await renderPricingPagePng(pricing!, pricingSub)));
     doc.getPage(manifest.pricingPage).drawImage(png, { x: 0, y: 0, width: DW, height: DH });
   }
   // brazil-market: each product has its own hand-designed template page, kept
@@ -455,7 +459,12 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
   // the rep ADDED are handled after the overlay loop, with index bookkeeping.
   const removedPages: number[] = [];
   const addedCards: PriceCard[] = [];
-  if (pricingCustomized && manifest.pricingCardPages) {
+  // no rates -> every pricing page goes (the standard canvas page included)
+  if (!hasRates) {
+    if (typeof manifest.pricingPage === "number") removedPages.push(manifest.pricingPage);
+    if (manifest.pricingCardPages) removedPages.push(...Object.values(manifest.pricingCardPages).filter((v): v is number => typeof v === "number"));
+  }
+  if (hasRates && pricingCustomized && manifest.pricingCardPages) {
     const deck = templatePricing(opts.proposalType);
     const offeredKeys = new Set(pricing!.cards.map((c) => c.key));
     for (const [key, pno] of Object.entries(manifest.pricingCardPages)) {
@@ -512,6 +521,7 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
     partnerLogoUrl: opts.partnerLogoUrl,
     partnerLogoPlate: opts.partnerLogoPlate,
     nodePartner: opts.nodePartner,
+    flowsLabel: opts.flowsLabel,
     nodeLabels: opts.nodeLabels,
     nodeOrder: opts.nodeOrder,
     laneLabels: opts.laneLabels,
