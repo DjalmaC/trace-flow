@@ -240,8 +240,8 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
         <rect x={472} y={441} width={188} height={32} rx={11} />
         <rect x={700} y={441} width={188} height={32} rx={11} />
       </clipPath>
-      <rect x={496} y={441} width={164} height={32} rx={11} fill={tubeTint(dir)} stroke={accent} strokeOpacity={0.42} style={tubeTransition} />
-      <rect x={700} y={441} width={164} height={32} rx={11} fill={tubeTint(dir)} stroke={accent} strokeOpacity={0.42} style={tubeTransition} />
+      <rect x={494} y={441} width={166} height={32} rx={0} fill={tubeTint(dir)} stroke={accent} strokeOpacity={0.42} style={tubeTransition} />
+      <rect x={700} y={441} width={166} height={32} rx={0} fill={tubeTint(dir)} stroke={accent} strokeOpacity={0.42} style={tubeTransition} />
 
       {/* directional indicators — the Trace mark-half on each tube, sat at the END
           the token emerges from (flips with direction) and pointing in flow.

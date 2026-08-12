@@ -286,7 +286,8 @@ export function computeNettingLayout(flow: Flow, config: FlowConfig): FlowLayout
     const left = corner.cx < hubCx;
     const port = { x: left ? hubCx - NETTING_HUB_R : hubCx + NETTING_HUB_R, y: hubCy };
     const edge = { x: left ? corner.x + corner.w - RAIL_IN : corner.x + RAIL_IN, y: corner.cy };
-    const edgeShow = { x: left ? corner.x + corner.w : corner.x, y: corner.cy };
+    // 2px past the edge (under the glass) so the joint reads seamless
+    const edgeShow = { x: left ? corner.x + corner.w - 2 : corner.x + 2, y: corner.cy };
     const s = from.id === desk.id ? port : edge;
     const e = from.id === desk.id ? edge : port;
     const sV = from.id === desk.id ? port : edgeShow;
@@ -711,8 +712,9 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
     // show inside a housing). Rightward curves only; anything else falls back.
     let dShow: string | undefined;
     if (!straight && to.x > from.x + from.w) {
-      const sx = from.x + from.w;
-      const ex = to.x;
+      // 2px past each edge (under the glass) so the joints read seamless
+      const sx = from.x + from.w - 2;
+      const ex = to.x + 2;
       const dxv = Math.max(48, Math.abs(ex - sx) * 0.55);
       dShow = `M${sx} ${y1} C${sx + dxv} ${y1} ${ex - dxv} ${y2} ${ex} ${y2}`;
     }
