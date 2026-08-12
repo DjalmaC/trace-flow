@@ -92,8 +92,14 @@ export function MobileFlow({ flow, config }: { flow: Flow; config: FlowConfig })
         : null;
     };
     measure();
+    // The cards stagger in with a small rise on mount; re-measure once they
+    // settle so the coin's bright windows line up with the FINAL geometry.
+    const settle = setTimeout(measure, 900);
     window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
+    return () => {
+      clearTimeout(settle);
+      window.removeEventListener("resize", measure);
+    };
   }, [config.flowId, config.direction]);
 
   useEffect(() => {
@@ -213,7 +219,13 @@ export function MobileFlow({ flow, config }: { flow: Flow; config: FlowConfig })
         const fromLane = (leg && nodes.find((n) => n.id === leg.from)?.lane) ?? g[0].lane;
         const toLane = (leg && nodes.find((n) => n.id === leg.to)?.lane) ?? next?.[0]?.lane ?? g[0].lane;
         return (
-          <div key={g[0].id} className="relative z-10">
+          <motion.div
+            key={g[0].id}
+            className="relative z-10"
+            initial={reduced ? false : { opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: gi * 0.08, ease: [0.4, 0, 0.2, 1] }}
+          >
             {g.length === 1 ? (
               <NodeCard node={g[0]} primary={g[0].id === layout.primaryClientId} config={cardConfig} laneOverrides={laneOverrides} />
             ) : (
@@ -239,7 +251,7 @@ export function MobileFlow({ flow, config }: { flow: Flow; config: FlowConfig })
                 hubRotation={isConv ? hubRotation : undefined}
               />
             )}
-          </div>
+          </motion.div>
         );
       })}
     </div>
@@ -253,7 +265,7 @@ function NodeCard({ node, primary, config, laneOverrides }: { node: NodeLayout; 
   const hasLogo = (primary || node.brandedClient) && !!config.clientLogoUrl;
   return (
     <div
-      className="flex items-center gap-3 rounded-2xl border px-4 py-2.5"
+      className="flex min-h-[56px] items-center gap-3 rounded-2xl border px-4 py-3"
       style={{
         backgroundColor: "rgba(11,15,13,0.55)",
         backgroundImage: "linear-gradient(160deg, rgba(255,255,255,.07), rgba(255,255,255,.02) 45%, rgba(255,255,255,.05))",
@@ -285,7 +297,7 @@ function NodeCard({ node, primary, config, laneOverrides }: { node: NodeLayout; 
         </span>
       )}
 
-      <div className="min-w-0 flex-1 text-[14.5px] font-semibold leading-snug" style={{ color: C.title }}>
+      <div className="min-w-0 flex-1 text-[15px] font-semibold leading-snug" style={{ color: C.title }}>
         {node.label}
       </div>
 
@@ -320,7 +332,7 @@ const Connector = forwardRef<
   const intoLane = laneOverrides?.[intoLaneKey] ?? (intoLaneKey === "brazil" ? "Brasil 🇧🇷" : "Abroad");
 
   return (
-    <div ref={ref} className="relative flex flex-col items-center justify-center" style={{ minHeight: 58 }}>
+    <div ref={ref} className="relative flex flex-col items-center justify-center" style={{ minHeight: 64 }}>
       <div className="relative z-10 flex flex-col items-center py-2">
         <VArrow direction={config.direction} accent={accent} />
         {isConv ? (
@@ -413,7 +425,7 @@ function CurChip({ currency, config }: { currency: Currency; config: FlowConfig 
   }
   return (
     <span
-      className="whitespace-nowrap rounded-full px-2.5 py-0.5 font-mono text-[12px] font-medium"
+      className="whitespace-nowrap rounded-full px-2.5 py-1 font-mono text-[12.5px] font-medium"
       style={{ background: "#1a221e", border: "1px solid rgba(255,255,255,0.10)", color: "#d6ddd8" }}
     >
       {currency}

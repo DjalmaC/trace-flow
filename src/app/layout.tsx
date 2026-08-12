@@ -26,6 +26,9 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  // Paint edge to edge on notched phones so the sticky chrome can pad itself
+  // with env(safe-area-inset-*) instead of leaving white bands.
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

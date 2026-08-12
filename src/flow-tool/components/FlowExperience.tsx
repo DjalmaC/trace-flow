@@ -303,22 +303,24 @@ export function FlowExperience({
   const flowComment = config.comments?.[config.flowId]?.trim();
 
   const SurfaceHeading = (
-    <div className="mx-auto mb-5 text-center" style={{ width: "min(36rem, calc(100vw - 2rem))" }}>
+    // width min(…, 100%): sized by the PARENT, so the heading never overflows
+    // the inset glass panel on phones (100vw ignores the panel's margins).
+    <div className="mx-auto mb-5 w-full text-center" style={{ maxWidth: "36rem" }}>
       <div className="mb-2 font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[#6f8a7f] md:text-[12px] md:tracking-[0.34em]">
         The desired transaction
       </div>
       <h1 className="font-display text-3xl font-semibold tracking-[-0.01em] text-[#f2f5f3] md:text-5xl">
         Built for <span className="text-mint">{config.clientName}</span>
       </h1>
-      <p className="mt-3 text-sm font-normal text-[#8b948f] md:text-base" data-hero-support>
+      <p className="mt-3 text-[15px] font-normal leading-relaxed text-[#8b948f] md:text-base" data-hero-support>
         {support}
       </p>
     </div>
   );
 
   const DepthHeading = (
-    <div className="mx-auto mb-5 flex flex-col items-center text-center" style={{ width: "min(54rem, calc(100vw - 2rem))" }}>
-      <div style={{ width: "min(36rem, calc(100vw - 2rem))" }}>
+    <div className="mx-auto mb-5 flex w-full flex-col items-center text-center" style={{ maxWidth: "54rem" }}>
+      <div className="w-full" style={{ maxWidth: "36rem" }}>
         <div className="mb-2 font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-muted md:text-[11px] md:tracking-[0.32em]">
           Beneath the surface
         </div>
@@ -366,9 +368,10 @@ export function FlowExperience({
   if (isMobile && !forceStatic) {
     return (
       <div
-        className={`w-full overflow-x-hidden px-4 pb-8 pt-2 ${glass ? "relative" : ""}`}
-        style={glassSection ? { ...glassSection, borderRadius: 20, margin: "10px 10px 28px", width: "auto" } : { background: deckGlow }}
+        className={`w-full overflow-x-hidden px-4 pb-7 pt-5 ${glass ? "relative" : ""}`}
+        style={glassSection ? { ...glassSection, borderRadius: 24, margin: "12px 12px 24px", width: "auto" } : { background: deckGlow }}
       >
+        {glass && <SpecularEdge />}
         {/* On /build there's no other Pay-in/Pay-out control on a phone; the
             shared /f/ view supplies its own toggle, so skip it in presentation. */}
         {onDirectionChange && !presentation && (
@@ -376,12 +379,12 @@ export function FlowExperience({
         )}
         {SurfaceHeading}
         {flowComment && (
-          <div className="mx-auto mb-3 max-w-[34rem] text-center text-[13px] leading-relaxed text-subtitle">
+          <div className="mx-auto mb-4 max-w-[34rem] text-center text-[14px] leading-relaxed text-subtitle">
             <NoteBody text={flowComment} />
           </div>
         )}
         {(choices.length > 1 || fundChoices.length > 1) && (
-          <div className="mb-3 flex w-full flex-wrap justify-center gap-2">
+          <div className="mb-4 flex w-full flex-wrap justify-center gap-2">
             {fundToggleEl}
             {settleToggleEl}
           </div>
@@ -395,12 +398,14 @@ export function FlowExperience({
             }}
           >
             <MobileFlow flow={flow} config={config} />
-            <p className="mt-3 text-center text-[11px] leading-normal text-muted">
+            <p className="mt-3 text-center text-[12px] leading-normal text-muted">
               {config.platform?.caption?.trim() || `Native to the ${config.clientName} platform. Trace operates the rails underneath.`}
             </p>
           </div>
         ) : flow.archetype === "hub" || flow.archetype === "netting" ? (
-          MachinerySvg
+          // Hub/netting diagrams are wide by nature; squeezed to phone width
+          // they turn illegible. Render near design size in a swipeable pan.
+          <MobileWidePan>{MachinerySvg}</MobileWidePan>
         ) : (
           <MobileFlow flow={flow} config={config} />
         )}
@@ -607,6 +612,33 @@ export function FlowExperience({
   );
 }
 
+/** Phone shell for the wide hub/netting stages: the diagram keeps a readable
+ *  size and the viewer pans it horizontally. Starts centered on the hub, edge
+ *  fades signal the overflow, and a one-line hint invites the swipe. */
+function MobileWidePan({ children }: { children: React.ReactNode }) {
+  const panRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = panRef.current;
+    if (el) el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2;
+  }, []);
+  return (
+    <div className="relative -mx-4">
+      <div ref={panRef} className="tf-noscrollbar overflow-x-auto px-4" style={{ WebkitOverflowScrolling: "touch" }}>
+        <div style={{ width: 780 }}>{children}</div>
+      </div>
+      <div
+        className="pointer-events-none absolute inset-y-0 left-0 w-7"
+        style={{ background: "linear-gradient(90deg, rgba(8,12,10,.6), rgba(8,12,10,0))" }}
+      />
+      <div
+        className="pointer-events-none absolute inset-y-0 right-0 w-7"
+        style={{ background: "linear-gradient(270deg, rgba(8,12,10,.6), rgba(8,12,10,0))" }}
+      />
+      <div className="mt-2 text-center text-[12px] font-medium tracking-wide text-muted">Swipe sideways to explore the full flow</div>
+    </div>
+  );
+}
+
 function Lockup() {
   return (
     <div className="absolute bottom-5 right-6 z-30 flex items-center gap-2">
@@ -647,7 +679,7 @@ function SettlementToggle({
           key={i}
           onClick={() => onChange(i)}
           aria-pressed={active === i}
-          className={`rounded-lg px-[13px] py-[5px] text-[12px] font-medium tracking-[0.2px] transition ${
+          className={`rounded-lg px-[13px] py-2 text-[13px] font-medium tracking-[0.2px] transition md:py-[5px] md:text-[12px] ${
             active === i ? "bg-[#46d39a24] text-[#bfe8d4]" : "text-[#8b948f] hover:text-[#bfe8d4]"
           }`}
         >
@@ -712,7 +744,7 @@ function DirectionToggle({
           key={o.value}
           onClick={() => onChange(o.value)}
           aria-pressed={direction === o.value}
-          className={`rounded-lg px-[15px] py-[6px] text-[12.5px] font-medium tracking-[0.2px] transition ${
+          className={`rounded-lg tracking-[0.2px] transition ${fixed ? "px-4 py-2 text-[13px]" : "px-[15px] py-[6px] text-[12.5px]"} font-medium ${
             direction === o.value ? "bg-[#46d39a24] text-[#bfe8d4]" : "text-[#8b948f] hover:text-[#bfe8d4]"
           }`}
         >
