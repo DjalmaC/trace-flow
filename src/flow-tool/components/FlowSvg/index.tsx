@@ -3,7 +3,7 @@ import { CONT_H, CONT_Y, type FlowLayout } from "../layout";
 
 export { Defs } from "./Defs";
 export { FlowNodeShape, CornerLockup } from "./Nodes";
-export { CurrencyToken, SwapCapsule, TraceMark, displayCurrency } from "./Tokens";
+export { CurrencyToken, SwapCapsule, TraceMark, displayCurrency, tokenWidth } from "./Tokens";
 export { AnimatedToken } from "./AnimatedToken";
 export { ConversionHub } from "./ConversionHub";
 export { TraceArrow, TraceMonogram } from "./TraceArrow";

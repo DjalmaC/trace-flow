@@ -10,6 +10,7 @@ import {
   MachineryContainer,
   TraceArrow,
   displayCurrency,
+  tokenWidth,
 } from "./FlowSvg";
 
 // Stage 2 — "how Trace makes it happen". The machinery reads as ONE continuous
@@ -324,6 +325,42 @@ export function MachineryStage({
   // into (and out of) each housing before vanishing.
   const railSegs = layout.legs.filter((l) => !l.offTrunk && l.y1 === l.y2);
   const railTransition = reduced ? undefined : `fill .55s ${EASE}, stroke .55s ${EASE}`;
+
+  // Static (PDF / reduced-motion) rail furniture. Each trunk gap — split at
+  // its conversion hub when it has one — shares its visible pipe between the
+  // direction arrow (36px at the source end, kept only when the pill still
+  // fits beside it) and a resting currency pill centered in what remains,
+  // shrunk to fit so nothing hides under the translucent boxes.
+  const resting = useMemo(() => {
+    const pills: { x: number; cur: Currency; k: number }[] = [];
+    const arrowXs: number[] = [];
+    if (run) return { pills, arrowXs };
+    const fromLeft = config.direction === "collection";
+    const ARROW = 36;
+    for (const l of layout.legs) {
+      if (l.offTrunk) continue;
+      const g0 = Math.min(l.x1, l.x2) + RAIL_IN;
+      const g1 = Math.max(l.x1, l.x2) - RAIL_IN;
+      const regions = l.convertsTo
+        ? [
+            { cur: displayCurrency(l.carries, config), a: g0, b: Math.min(l.mid.x - HUB_R - 8, g1), arrow: fromLeft },
+            { cur: displayCurrency(l.convertsTo, config), a: Math.max(l.mid.x + HUB_R + 8, g0), b: g1, arrow: !fromLeft },
+          ]
+        : [{ cur: displayCurrency(l.carries, config), a: g0, b: g1, arrow: true }];
+      for (const r of regions) {
+        let { a, b } = r;
+        if (b - a < 26) continue; // e.g. a hubAtEngine leg has no after-hub gap
+        if (r.arrow && b - a - ARROW >= 30) {
+          arrowXs.push(fromLeft ? a + 22 : b - 22);
+          if (fromLeft) a += ARROW;
+          else b -= ARROW;
+        }
+        const k = Math.min(1, (b - a - 8) / tokenWidth(r.cur, config.stablecoin));
+        pills.push({ x: (a + b) / 2, cur: r.cur, k });
+      }
+    }
+    return { pills, arrowXs };
+  }, [run, layout, config]);
   const markW = HUB_R;
   const markH = markW / TRACE_LOGO_AR;
 
@@ -439,14 +476,26 @@ export function MachineryStage({
         </g>
         </g>
       ) : (
-        // reduced motion: static value resting in each plain gap
-        layout.legs
-          .filter((l) => !l.convertsTo)
-          .map((l) => (
-            <g key={l.index} transform={`translate(${l.mid.x},${l.mid.y})`}>
-              <CurrencyToken currency={displayCurrency(l.carries, config)} coin={config.stablecoin} />
+        // Resting value (PDF / reduced motion): EVERY leg names what it
+        // carries — a converting leg shows its input before the hub and its
+        // output after it, so the swap reads left to right without the
+        // animation. Placement is precomputed (`resting`) so each pill centers
+        // in the visible pipe, shrinks to fit a narrow gap, and shares the gap
+        // with the direction arrow instead of colliding with it.
+        <>
+          {resting.pills.map((sp, i) => (
+            <g key={`rest-${i}`} transform={`translate(${sp.x},${railY}) scale(${sp.k.toFixed(3)})`}>
+              <CurrencyToken currency={sp.cur} coin={config.stablecoin} />
             </g>
-          ))
+          ))}
+          {layout.legs
+            .filter((l) => l.offTrunk && !l.convertsTo)
+            .map((l) => (
+              <g key={`rest-trib-${l.index}`} transform={`translate(${l.mid.x},${l.mid.y})`}>
+                <CurrencyToken currency={displayCurrency(l.carries, config)} coin={config.stablecoin} />
+              </g>
+            ))}
+        </>
       )}
 
       {/* tributary value at rest — the relay travels the trunk, so each merging
@@ -511,18 +560,23 @@ export function MachineryStage({
 
       {/* directional indicators — one per rail segment, sat just ahead of where
           the token emerges (the source end, which flips with direction). The
-          resting tributary token already tells that conduit's story. */}
-      {layout.legs
-        .filter((l) => !l.offTrunk)
-        .map((l) => (
-          <TraceArrow
-            key={l.index}
-            cx={config.direction === "collection" ? Math.min(l.x1, l.x2) + RAIL_IN + 22 : Math.max(l.x1, l.x2) - RAIL_IN - 22}
-            cy={railY}
-            size={22}
-            direction={config.direction}
-          />
-        ))}
+          resting tributary token already tells that conduit's story. Static
+          mode draws only the arrows the resting pills left room for. */}
+      {run
+        ? layout.legs
+            .filter((l) => !l.offTrunk)
+            .map((l) => (
+              <TraceArrow
+                key={l.index}
+                cx={config.direction === "collection" ? Math.min(l.x1, l.x2) + RAIL_IN + 22 : Math.max(l.x1, l.x2) - RAIL_IN - 22}
+                cy={railY}
+                size={22}
+                direction={config.direction}
+              />
+            ))
+        : resting.arrowXs.map((x, i) => (
+            <TraceArrow key={`ra-${i}`} cx={x} cy={railY} size={22} direction={config.direction} />
+          ))}
       {/* branch lanes get the same arrows on their straight segments, so a
           branch reads with an explicit direction too */}
       {layout.legs
