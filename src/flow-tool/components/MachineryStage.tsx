@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useReducedMotion } from "framer-motion";
 import type { Currency, FlowConfig } from "../data/schema";
-import { ASSETS, C, TRACE_LOGO_AR, accentFor, tubeTint } from "./tokens";
+import { ASSETS, C, TRACE_LOGO_AR, accentFor, tubeTint, GLASS_CARD } from "./tokens";
 import type { FlowLayout, NodeLayout } from "./layout";
 import {
   CurrencyToken,
@@ -481,7 +481,7 @@ export function MachineryStage({
           drawn over the boxes */}
       {hubs.map((hb) => (
         <g key={hb.key}>
-          <circle cx={hb.x} cy={hb.y} r={HUB_R} fill="#0b110d" stroke={C.green} strokeOpacity={0.3} />
+          <circle cx={hb.x} cy={hb.y} r={HUB_R} fill="#0b110d" stroke={GLASS_CARD.hairline} strokeWidth={1.2} />
           <circle ref={(el) => { pulseRefs.current[hb.key] = el; }} cx={hb.x} cy={hb.y} r={HUB_R} fill="none" stroke={C.green} strokeWidth={2} opacity={0} />
           <g transform={`translate(${hb.x},${hb.y})`}>
             <g ref={(el) => { hubMarkRefs.current[hb.key] = el; }} style={{ willChange: "transform" }}>

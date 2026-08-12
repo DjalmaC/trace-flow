@@ -26,6 +26,14 @@ body {
   @page { margin: 12mm; }
 }
 
+/* The quiet glass-card recipe — pricing cards and (via tokens.ts GLASS_CARD,
+   which mirrors these values) the flow diagram boxes. Faint translucent lift,
+   neutral hairline, no glow. */
+.glass-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
 /* Welcome screen entrance (private client link) — the BRLT deck rise. */
 @keyframes tf-rise {
   from { opacity: 0; transform: translateY(26px); }

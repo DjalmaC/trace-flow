@@ -1,5 +1,5 @@
 import type { NodeLayout } from "../layout";
-import { ASSETS, C } from "../tokens";
+import { ASSETS, C, GLASS_CARD } from "../tokens";
 import { TraceMark } from "./Tokens";
 import { TraceMonogram } from "./TraceArrow";
 
@@ -39,24 +39,26 @@ export function FlowNodeShape({
   clientLogoPlate?: "light" | "none";
 }) {
   const { x, y, w, h, cx } = node;
-  // Elevated material: flat surface fill + hairline border + top rim-light +
-  // soft drop shadow. Foreground (client / headline) gets a restrained green
-  // border; operational/trace get a neutral hairline.
-  const isFg = green || node.kind === "client";
+  // The quiet glass-card recipe (tokens.GLASS_CARD, shared with the pricing
+  // cards): dark translucent base (masks tube caps that tuck under the box) +
+  // faint white tint + neutral hairline. No mint border, no drop shadow —
+  // mint marks meaning, boxes are quiet glass.
   const txt = green ? C.greenText : C.nodeText;
   const rect = (
-    <g filter="url(#tf-shadow)">
-      <rect x={x} y={y} width={w} height={h} rx={12} fill={C.surface} stroke={isFg ? C.green : "#ffffff"} strokeOpacity={isFg ? 0.22 : 0.1} />
+    <g>
+      <rect x={x} y={y} width={w} height={h} rx={12} fill={GLASS_CARD.base} />
+      <rect x={x} y={y} width={w} height={h} rx={12} fill={GLASS_CARD.tint} stroke={GLASS_CARD.hairline} />
     </g>
   );
 
   if (node.kind === "engine") {
-    // the folded "Trace engine": a wide green-rimmed station; the spinning
+    // the folded "Trace engine": a wide quiet station; the spinning
     // conversion hub is drawn on top (by MachineryStage) at its center.
     return (
       <g>
-        <g filter="url(#tf-shadow)">
-          <rect x={x} y={y} width={w} height={h} rx={14} fill={C.surface} stroke={C.green} strokeOpacity={0.34} />
+        <g>
+          <rect x={x} y={y} width={w} height={h} rx={14} fill={GLASS_CARD.base} />
+          <rect x={x} y={y} width={w} height={h} rx={14} fill={GLASS_CARD.tint} stroke={GLASS_CARD.hairline} />
         </g>
         <text x={cx} y={y + 18} fontSize={11} fontWeight={600} fill={C.green} textAnchor="middle" opacity={0.85}>
           Trace engine

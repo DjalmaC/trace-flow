@@ -255,8 +255,8 @@ function NodeCard({ node, primary, config, laneOverrides }: { node: NodeLayout; 
     <div
       className="flex items-center gap-3 rounded-2xl border px-4 py-2.5"
       style={{
-        background: primary ? "#0f1814" : C.surface,
-        borderColor: primary ? "rgba(70,211,154,0.40)" : "rgba(255,255,255,0.10)",
+        background: "rgba(11,15,13,0.72)",
+        borderColor: "rgba(255,255,255,0.10)",
       }}
     >
       {hasLogo ? (
@@ -320,7 +320,7 @@ const Connector = forwardRef<
       <div className="relative z-10 flex flex-col items-center py-2">
         <VArrow direction={config.direction} accent={accent} />
         {isConv ? (
-          <div className="mt-1 flex items-center gap-2 rounded-xl px-3 py-1.5" style={{ background: "#0e1410", border: "1px solid rgba(70,211,154,0.30)" }}>
+          <div className="mt-1 flex items-center gap-2 rounded-xl px-3 py-1.5" style={{ background: "rgba(11,15,13,0.72)", border: "1px solid rgba(255,255,255,0.10)" }}>
             {reduced || !hubRotation ? (
               <span ref={hubRef} className="flex h-6 w-6 items-center justify-center rounded-full" style={{ background: "#0b110d", border: `1px solid ${accent}55` }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}

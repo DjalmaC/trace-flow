@@ -3,7 +3,7 @@ import { useEffect, useRef } from "react";
 import { useReducedMotion } from "framer-motion";
 import type { Currency, FlowConfig } from "../data/schema";
 import type { FlowLayout, NodeLayout } from "./layout";
-import { ASSETS, C, TRACE_LOGO_AR, accentFor, tubeTint } from "./tokens";
+import { ASSETS, C, TRACE_LOGO_AR, accentFor, tubeTint, GLASS_CARD } from "./tokens";
 import { CurrencyToken, displayCurrency } from "./FlowSvg/Tokens";
 import { FlowNodeShape } from "./FlowSvg/Nodes";
 
@@ -191,8 +191,8 @@ export function HubStage({ layout, config, animate = true }: { layout: FlowLayou
       {/* the Trace desk — the spinning-mark hub, drawn over the rail */}
       {hub && (
         <g data-flow-node={hub.srcId ?? hub.id}>
-          <circle cx={hx} cy={hy} r={HUB_R + 8} fill="none" stroke={C.green} strokeOpacity={0.4} className={reduced ? undefined : "hub-halo"} />
-          <circle cx={hx} cy={hy} r={HUB_R} fill="#0b110d" stroke={C.green} strokeOpacity={0.46} />
+          {/* quiet desk ring — no mint halo; the spinning mark carries identity */}
+          <circle cx={hx} cy={hy} r={HUB_R} fill="#0b110d" stroke={GLASS_CARD.hairline} strokeWidth={1.2} />
           <g transform={`translate(${hx},${hy})`}>
             <g ref={markRef}>
               <image href={ASSETS.traceLogo} x={-markW / 2} y={-markH / 2} width={markW} height={markH} />
@@ -203,7 +203,6 @@ export function HubStage({ layout, config, animate = true }: { layout: FlowLayou
           </text>
         </g>
       )}
-      {!reduced && <style>{`.hub-halo{transform-origin:${hx}px ${hy}px;animation:hubHalo 3.4s ease-in-out infinite}@keyframes hubHalo{0%,100%{opacity:.28}50%{opacity:.6}}`}</style>}
     </>
   );
 }

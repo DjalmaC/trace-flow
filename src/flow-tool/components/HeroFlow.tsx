@@ -3,7 +3,7 @@ import { useEffect, useRef } from "react";
 import { useReducedMotion } from "framer-motion";
 import type { Currency, Flow, FlowConfig } from "../data/schema";
 import { isPlatformFlow, platformSuppressesClient } from "../data/schema";
-import { ASSETS, C, TRACE_LOGO_AR, accentFor, tubeTint } from "./tokens";
+import { ASSETS, C, GLASS_CARD, TRACE_LOGO_AR, accentFor, tubeTint } from "./tokens";
 import { displayCurrency } from "./FlowSvg/Tokens";
 import { TraceArrow } from "./FlowSvg/TraceArrow";
 import { Defs } from "./FlowSvg";
@@ -64,9 +64,12 @@ function ElevatedNode({
   green?: boolean;
   children: React.ReactNode;
 }) {
+  void green;
   return (
-    <g filter="url(#tf-shadow)">
-      <rect x={x} y={398} width={w} height={118} rx={16} fill={C.surface} stroke={green ? C.green : "#ffffff"} strokeOpacity={green ? 0.22 : 0.1} />
+    <g>
+      {/* quiet glass-card recipe (tokens.GLASS_CARD) — no mint rim, no shadow */}
+      <rect x={x} y={398} width={w} height={118} rx={16} fill={GLASS_CARD.base} />
+      <rect x={x} y={398} width={w} height={118} rx={16} fill={GLASS_CARD.tint} stroke={GLASS_CARD.hairline} />
       {children}
     </g>
   );
@@ -274,7 +277,7 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
           </text>
         ) : (
           <>
-            <circle cx={346} cy={436} r={19} fill="#0f1814" stroke={C.green} strokeOpacity={0.35} />
+            <circle cx={346} cy={436} r={19} fill="#0f1814" stroke={GLASS_CARD.hairline} />
             <text x={346} y={442} textAnchor="middle" fontSize={15} fontWeight={600} fill="#9cc4b3">
               {heroClientName.charAt(0).toUpperCase()}
             </text>
@@ -325,8 +328,9 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
       )}
       </g>
 
-      {/* the Trace-mark conversion hub */}
-      <circle cx={HUB.cx} cy={HUB.cy} r={HUB.r} fill="#0b110d" stroke={C.green} strokeOpacity={0.3} />
+      {/* the Trace-mark conversion hub — quiet ring; the mint PULSE on convert
+          stays (it narrates the conversion event, meaning not decoration) */}
+      <circle cx={HUB.cx} cy={HUB.cy} r={HUB.r} fill="#0b110d" stroke={GLASS_CARD.hairline} strokeWidth={1.2} />
       <circle ref={pulseRef} cx={HUB.cx} cy={HUB.cy} r={HUB.r} fill="none" stroke={C.green} strokeWidth={2} opacity={0} />
       <g transform={`translate(${HUB.cx},${HUB.cy})`}>
         <g ref={hubRef}>

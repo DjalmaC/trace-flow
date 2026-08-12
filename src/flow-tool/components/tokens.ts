@@ -82,6 +82,19 @@ export const ASSETS = {
 
 export const TRACE_LOGO_AR = 1.576; // width / height of the extracted mark
 
+// ── the quiet glass-card recipe ──────────────────────────────────────────────
+// ONE surface treatment for every "card" on the shared link: the pricing cards
+// (globals.css `.glass-card` mirrors these values for HTML) and the flow
+// diagram boxes. A faint translucent lift + neutral hairline, no glow, no mint
+// border — mint marks meaning (currency, accents, the net path), boxes are
+// quiet glass. SVG boxes layer `base` beneath `tint`: tube caps tuck under the
+// boxes, and the dark base masks them the way the old opaque fill did.
+export const GLASS_CARD = {
+  tint: "rgba(255,255,255,0.02)",
+  hairline: "rgba(255,255,255,0.10)",
+  base: "rgba(11,15,13,0.72)",
+} as const;
+
 // Direction drives the brand color (echoing the logo's two arrows): pay-in is
 // Trace green + right-facing; pay-out is Trace cyan + left-facing.
 export function accentFor(direction: "collection" | "disbursement"): string {

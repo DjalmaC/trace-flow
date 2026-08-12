@@ -4,7 +4,7 @@ import { useReducedMotion } from "framer-motion";
 import type { Currency, FlowConfig } from "../data/schema";
 import type { FlowLayout, NodeLayout } from "./layout";
 import { NETTING_HUB_R } from "./layout";
-import { ASSETS, C, TRACE_LOGO_AR, accentFor, tubeTint } from "./tokens";
+import { ASSETS, C, TRACE_LOGO_AR, accentFor, tubeTint, GLASS_CARD } from "./tokens";
 import { CurrencyToken, displayCurrency } from "./FlowSvg/Tokens";
 import { FlowNodeShape } from "./FlowSvg/Nodes";
 import { MachineryContainer } from "./FlowSvg";
@@ -185,8 +185,8 @@ export function NettingStage({
       {/* the treasury desk — the offsetting mark, sat ON the border */}
       {desk && (
         <g data-flow-node={desk.srcId ?? desk.id} fontFamily="var(--font-inter), system-ui, sans-serif">
-          <circle cx={hx} cy={hy} r={R + 8} fill="none" stroke={C.green} strokeOpacity={0.4} className={reduced ? undefined : "netting-halo"} />
-          <circle cx={hx} cy={hy} r={R} fill="#0b110d" stroke={C.green} strokeOpacity={0.46} />
+          {/* quiet desk ring — no mint halo; the spinning mark carries identity */}
+          <circle cx={hx} cy={hy} r={R} fill="#0b110d" stroke={GLASS_CARD.hairline} strokeWidth={1.2} />
           <g transform={`translate(${hx},${hy})`}>
             <g ref={markRef}>
               <image href={ASSETS.traceLogo} x={-(R * 1.05 * TRACE_LOGO_AR) / 2} y={-(R * 1.05) / 2} width={R * 1.05 * TRACE_LOGO_AR} height={R * 1.05} />
@@ -207,7 +207,6 @@ export function NettingStage({
           </text>
         </g>
       )}
-      {!reduced && <style>{`.netting-halo{transform-origin:${hx}px ${hy}px;animation:nettingHalo 3.6s ease-in-out infinite}@keyframes nettingHalo{0%,100%{opacity:.28}50%{opacity:.6}}`}</style>}
     </>
   );
 }

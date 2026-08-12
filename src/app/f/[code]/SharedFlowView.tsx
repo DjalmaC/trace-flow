@@ -685,7 +685,7 @@ function PricingRail({ pricing, legacy, clientName }: { pricing: ProposalPricing
       )}
       <div className="tf-price-list mt-5 flex flex-col gap-4">
         {cards.map((card) => (
-          <div key={card.key} className="min-w-0 rounded-2xl border border-[#1c2621] bg-white/[0.02] px-5 py-[18px]">
+          <div key={card.key} className="glass-card min-w-0 rounded-2xl px-5 py-[18px]">
             <div className="flex items-center gap-[11px] pb-3">
               <span
                 className="flex h-[34px] w-[34px] flex-none items-center justify-center rounded-full font-display text-[15px] font-bold text-mint-on"
@@ -825,7 +825,7 @@ function PricingView({ pricing, clientName, inline }: { pricing: ProposalPricing
 
         <div className="mt-7 grid gap-5 md:grid-cols-2">
           {cards.map((card) => (
-            <div key={card.title} className="tf-rise min-w-0 rounded-2xl border border-hairline-card bg-white/[0.02] px-[22px] py-5" style={{ maxWidth: "calc(100vw - 2rem)" }}>
+            <div key={card.title} className="glass-card tf-rise min-w-0 rounded-2xl px-[22px] py-5" style={{ maxWidth: "calc(100vw - 2rem)" }}>
               <div className="mb-3.5 flex items-center gap-[11px]">
                 <span
                   className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full font-display text-[15px] font-bold text-mint-on"
@@ -871,7 +871,7 @@ function LegacyPricingView({ pricing, inline }: { pricing: LegacyPricing; inline
 
         <div className="space-y-5 md:grid md:grid-cols-2 md:gap-5 md:space-y-0">
           {pricing.cards.map((card, i) => (
-            <div key={i} className="tf-rise min-w-0 rounded-2xl border border-white/10 bg-white/[0.02] p-5 shadow-xl md:p-6" style={{ maxWidth: "calc(100vw - 2.5rem)" }}>
+            <div key={i} className="glass-card tf-rise min-w-0 rounded-2xl p-5 md:p-6" style={{ maxWidth: "calc(100vw - 2.5rem)" }}>
               <div className="flex items-center gap-3">
                 <div
                   className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-lg font-bold text-[#06120c]"
