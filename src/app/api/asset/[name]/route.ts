@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { admin, TABLE } from "@/flow-tool/lib/supabase-server";
+import { admin, findShareRow } from "@/flow-tool/lib/supabase-server";
 import { hasRepKey } from "@/flow-tool/lib/api-auth";
 
 // Gated delivery of the internal PDFs (the team contact deck + curated client
@@ -21,10 +21,8 @@ async function codeExists(code: string): Promise<boolean> {
   // passes back whichever form the viewer opened
   const sb = admin();
   if (!sb || !code) return false;
-  const { data } = await sb.from(TABLE).select("code").eq("code", code).maybeSingle();
-  if (data) return true;
-  const { data: bySlug } = await sb.from(TABLE).select("code").eq("config->>slug", code).maybeSingle();
-  return !!bySlug;
+  const { data } = await findShareRow(sb, "code", code);
+  return !!data;
 }
 
 export async function GET(req: Request, ctx: { params: Promise<{ name: string }> }) {

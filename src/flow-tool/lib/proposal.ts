@@ -414,10 +414,20 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
   // TRANSPARENT overlay drawn onto a copy of it, so re-rendered pages keep the
   // exact template look. Tracked as a live index through the page surgery
   // below and removed before the PDF ships.
+  //
+  // Every copy is taken NOW, from the pristine document: pdf-lib's copyPages
+  // resolves indices against a page cache that removePage does not refresh,
+  // so copying after any page surgery grabs the wrong template page. The pool
+  // is an upper bound (one canvas per priced card) — leftovers are just never
+  // inserted.
   let blankIdx = typeof manifest.blankPage === "number" ? manifest.blankPage : -1;
-  const canvasPageAt = async (idx: number) => {
-    if (blankIdx >= 0) {
-      const [canvas] = await doc.copyPages(doc, [blankIdx]);
+  let canvasPool: Awaited<ReturnType<typeof doc.copyPages>> = [];
+  if (blankIdx >= 0 && pricingCustomized && manifest.pricingCardPages && pricing?.cards.length) {
+    canvasPool = await doc.copyPages(doc, Array(pricing.cards.length).fill(blankIdx));
+  }
+  const canvasPageAt = (idx: number) => {
+    const canvas = canvasPool.shift();
+    if (canvas) {
       doc.insertPage(idx, canvas);
       return doc.getPage(idx);
     }
@@ -455,7 +465,7 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
       if (cardEqualsDeck(card, deck.cards.find((c) => c.key === card.key))) continue;
       const png = await doc.embedPng(dataUrlToBytes(await renderBrazilCardPagePng(card)));
       doc.removePage(pno);
-      const page = await canvasPageAt(pno);
+      const page = canvasPageAt(pno);
       page.drawImage(png, { x: 0, y: 0, width: DW, height: DH });
     }
   }
@@ -521,7 +531,7 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
     const footerText = footerField ? resolveTemplate(footerField.template, vars).trim() : undefined;
     for (const card of addedCards) {
       const png = await doc.embedPng(dataUrlToBytes(await renderBrazilCardPagePng(card, footerText)));
-      const page = await canvasPageAt(flowsInsertAt);
+      const page = canvasPageAt(flowsInsertAt);
       page.drawImage(png, { x: 0, y: 0, width: DW, height: DH });
       flowsInsertAt++;
       closingPage++;

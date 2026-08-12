@@ -430,7 +430,7 @@ export function FlowExperience({
           <SpecularEdge />
           <div className="relative flex min-w-0 flex-col px-8 pb-0 pt-6" onDoubleClick={goHow}>
             {panelSlots?.controls && (
-              <div className="flex flex-none flex-wrap items-center justify-between gap-4">{panelSlots.controls}</div>
+              <div className="no-print flex flex-none flex-wrap items-center justify-between gap-4">{panelSlots.controls}</div>
             )}
             <div className="flex min-h-0 flex-1 flex-col justify-center py-7">
               <div className="font-jbmono text-[11px] font-medium uppercase tracking-[0.34em] text-[#6f8a7f]">{eyebrow}</div>
@@ -444,7 +444,7 @@ export function FlowExperience({
             </div>
             <button
               onClick={goHow}
-              className="-mx-8 flex flex-none items-center justify-between gap-5 border-t border-white/[.12] bg-[rgba(10,17,13,.35)] px-8 py-3.5 text-left transition duration-200 ease-ds hover:bg-[rgba(19,32,26,.5)]"
+              className="no-print -mx-8 flex flex-none items-center justify-between gap-5 border-t border-white/[.12] bg-[rgba(10,17,13,.35)] px-8 py-3.5 text-left transition duration-200 ease-ds hover:bg-[rgba(19,32,26,.5)]"
             >
               <span className="font-jbmono text-[11px] font-medium uppercase tracking-[0.34em] text-[#bfe8d4]">
                 Beneath the surface · how Trace makes it happen
@@ -453,7 +453,7 @@ export function FlowExperience({
             </button>
           </div>
           {rail && (
-            <div className="tf-rail relative box-border flex flex-col border-l border-white/[.14] bg-[rgba(7,11,9,.4)] px-7 pb-6 pt-7">
+            <div className="tf-rail relative box-border flex scroll-mt-[96px] flex-col border-l border-white/[.14] bg-[rgba(7,11,9,.4)] px-7 pb-6 pt-7">
               {rail}
             </div>
           )}

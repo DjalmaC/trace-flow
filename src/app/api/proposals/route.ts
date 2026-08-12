@@ -112,10 +112,14 @@ function makeSlug(clientName: unknown): string | null {
     .replace(/^-+|-+$/g, "")
     .slice(0, 40);
   if (!base) return null;
+  // 6 base-36 chars ≈ 2.2B combinations: with the gate retired this tail is
+  // the only privacy control on the named link, so it must resist targeted
+  // enumeration of a known company name (4 chars ≈ 1.7M was brute-forceable),
+  // while staying short enough that the link still reads as the client's.
   const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789";
-  const bytes = randomBytes(4);
+  const bytes = randomBytes(6);
   let tail = "";
-  for (let i = 0; i < 4; i++) tail += alphabet[bytes[i] % alphabet.length];
+  for (let i = 0; i < 6; i++) tail += alphabet[bytes[i] % alphabet.length];
   return `${base}-${tail}`;
 }
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createHash } from "node:crypto";
-import { admin, TABLE } from "@/flow-tool/lib/supabase-server";
+import { admin, findShareRow } from "@/flow-tool/lib/supabase-server";
 import { hasRepKey } from "@/flow-tool/lib/api-auth";
 
 // Public read-by-code — the only anonymous data path. Returns exactly one flow's
@@ -24,20 +24,10 @@ export async function GET(req: Request, ctx: { params: Promise<{ code: string }>
 
   // Resolve by code first, then by the client-named slug alias (/nuvera-k4x2).
   // Analytics and expiry always use the ROW's code, whichever form matched.
-  let { data, error } = await sb
-    .from(TABLE)
-    .select("code, config, created_at")
-    .eq("code", code)
-    .maybeSingle();
-  if (!error && !data) {
-    ({ data, error } = await sb
-      .from(TABLE)
-      .select("code, config, created_at")
-      .eq("config->>slug", code)
-      .maybeSingle());
-  }
+  const { data: rawRow, error } = await findShareRow(sb, "code, config, created_at", code);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  if (!data) return NextResponse.json({ error: "notfound" }, { status: 404 });
+  if (!rawRow) return NextResponse.json({ error: "notfound" }, { status: 404 });
+  const data = rawRow as { code: string; config: Record<string, unknown> | null; created_at: string | null };
 
   const isRep = hasRepKey(req);
   const config = (data.config ?? {}) as Record<string, unknown>;

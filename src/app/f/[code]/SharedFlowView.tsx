@@ -272,8 +272,10 @@ export function SharedFlowView({ code }: { code: string }) {
   }, []);
   useEffect(() => {
     if (intro !== "done" || window.matchMedia("(max-width: 767px)").matches) return;
-    if (new URLSearchParams(window.location.search).get("view") === "pricing")
-      document.querySelector(".tf-rail")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (new URLSearchParams(window.location.search).get("view") === "pricing") {
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      document.querySelector(".tf-rail")?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+    }
   }, [intro]);
 
   // once loaded, run the welcome → fadeout → done sequence
@@ -411,7 +413,7 @@ export function SharedFlowView({ code }: { code: string }) {
                   sticks under the brand strip and compresses into a frosted
                   glass band. */}
               <div
-                className={`sticky top-0 z-40 flex flex-wrap justify-between gap-x-6 px-4 transition-all duration-300 ease-ds md:px-11 ${
+                className={`no-print sticky top-0 z-40 flex flex-wrap justify-between gap-x-6 px-4 transition-all duration-300 ease-ds md:px-11 ${
                   stuck
                     ? "items-center border-b border-white/10 bg-[#07090b]/70 pb-3 pt-[15px] backdrop-blur-xl"
                     : "items-end border-b border-transparent pb-5 pt-12"
