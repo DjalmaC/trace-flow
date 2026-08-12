@@ -105,6 +105,11 @@ export interface ProposalBuildOpts {
   nodePartner?: Record<string, boolean>;
   /** Group label for the flow slides (see FlowConfig.flowsLabel). */
   flowsLabel?: string;
+  /** Per-flow explanatory notes (see FlowConfig.comments) — the rep's written
+   *  text, printed under the flow slide heading. */
+  comments?: Record<string, string>;
+  /** Per-box entity annotations (see FlowConfig.nodeEntities). */
+  nodeEntities?: Record<string, string>;
   /** Per-proposal node renames (see FlowConfig.nodeLabels). */
   nodeLabels?: Record<string, string>;
   /** Per-proposal box reordering (see FlowConfig.nodeOrder). */
@@ -378,6 +383,18 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
       }
     }
   }
+  // No assigned representative: the closing swaps to the dedicated full-width
+  // brand slide (headline + stats in three columns), designed for exactly
+  // this case — the contact-column layout would waste half the page.
+  if (!rep && !repSlideDoc) {
+    const norepBytes = await fetch("/proposals/templates/closing-norep.pdf")
+      .then((r) => (r.ok ? r.arrayBuffer() : null))
+      .catch(() => null);
+    if (norepBytes) {
+      repSlideDoc = await PDFDocument.load(norepBytes);
+      repSlideIndex = 0;
+    }
+  }
   const willReplace = repSlideIndex >= 0;
 
   // The template's static "Prepared for" label sits just above the rep line but
@@ -525,6 +542,8 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
     partnerLogoPlate: opts.partnerLogoPlate,
     nodePartner: opts.nodePartner,
     flowsLabel: opts.flowsLabel,
+    comments: opts.comments,
+    nodeEntities: opts.nodeEntities,
     nodeLabels: opts.nodeLabels,
     nodeOrder: opts.nodeOrder,
     laneLabels: opts.laneLabels,

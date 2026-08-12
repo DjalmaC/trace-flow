@@ -324,6 +324,8 @@ export function ControlPanel({
         partnerLogoPlate: config.partnerLogoPlate,
         nodePartner: config.nodePartner,
         flowsLabel: config.flowsLabel,
+        comments: config.comments,
+        nodeEntities: config.nodeEntities,
         nodeLabels: config.nodeLabels,
         nodeOrder: config.nodeOrder,
         laneLabels: config.laneLabels,
