@@ -122,11 +122,12 @@ export function SharedFlowView({ code }: { code: string }) {
   const flowId = activeFlowId ?? config?.flowId ?? "";
   const repName = config?.clientRep?.split(",")[0]?.trim();
 
-  // Switching flows re-renders the dive, and some engines (Safari) clamp the
-  // scroll position while the section's height settles — leaving the viewer
-  // stranded past the flow on a blank stretch of page. Picking a flow now
-  // restores the viewer INTO the dive: same relative depth when they were
-  // inside it, the machinery moment when they weren't.
+  // Switching flows re-renders the machinery panel, and some engines (Safari)
+  // clamp the scroll position while its height settles. Picking a flow keeps
+  // the viewer where they are when they're ABOVE the machinery (the canvas
+  // updates in place), and preserves their relative depth when they're inside
+  // it — offset by the panel's scroll margin so the sticky banner never cuts
+  // the heading.
   function switchFlow(id: string) {
     const sec = document.querySelector("[data-flow-dive]");
     const before = sec
@@ -136,11 +137,12 @@ export function SharedFlowView({ code }: { code: string }) {
     requestAnimationFrame(() =>
       requestAnimationFrame(() => {
         const s = document.querySelector("[data-flow-dive]");
-        if (!s) return;
-        const top = s.getBoundingClientRect().top + window.scrollY;
-        const h = (s as HTMLElement).offsetHeight;
-        const frac = before == null || before < 0 ? 0 : before >= 0.98 ? 0.62 : before;
-        window.scrollTo({ top: top + frac * h, behavior: "auto" });
+        if (!s || before == null || before < 0) return; // above the panel — stay put
+        const el = s as HTMLElement;
+        const top = el.getBoundingClientRect().top + window.scrollY;
+        const margin = parseFloat(getComputedStyle(el).scrollMarginTop) || 0;
+        const frac = before >= 0.98 ? 0.62 : before;
+        window.scrollTo({ top: Math.max(0, top - margin + frac * el.offsetHeight), behavior: "auto" });
       }),
     );
   }
@@ -426,8 +428,17 @@ export function SharedFlowView({ code }: { code: string }) {
                   )}
                 </div>
                 {showChrome && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src="/assets/trace-logo-white.svg" alt="Trace Finance" className="tf-fade h-[22px] w-auto self-center opacity-90" />
+                  <div className="tf-fade flex items-center gap-5 self-center">
+                    <button
+                      onClick={onProposal}
+                      disabled={pdf === "working"}
+                      className="flex items-center gap-2 rounded-[10px] border border-green-accent/40 bg-[#0e1410]/85 px-4 py-2 text-[12.5px] font-semibold text-[#bfe8d4] transition duration-200 ease-ds hover:border-green-accent hover:bg-[#13201a] disabled:opacity-60"
+                    >
+                      {pdf === "working" ? "Building deck…" : pdf === "error" ? "Try again" : "Download Proposal ↓"}
+                    </button>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/assets/trace-logo-white.svg" alt="Trace Finance" className="h-[22px] w-auto opacity-90" />
+                  </div>
                 )}
               </div>
 
@@ -467,17 +478,6 @@ export function SharedFlowView({ code }: { code: string }) {
                 <img src="/assets/trace-logo-white.svg" alt="Trace Finance" className="h-[18px] w-auto opacity-85" />
               </div>
 
-              {showChrome && (
-                <div className="tf-fade tf-dlbtn fixed bottom-6 left-6 z-40 flex items-center gap-2">
-                  <button
-                    onClick={onProposal}
-                    disabled={pdf === "working"}
-                    className="flex items-center gap-2 rounded-xl border border-green-accent/40 bg-[#0e1410]/85 px-5 py-3 text-sm font-semibold text-[#bfe8d4] shadow-xl backdrop-blur transition duration-200 ease-ds hover:border-green-accent hover:bg-[#13201a] disabled:opacity-60"
-                  >
-                    {pdf === "working" ? "Building deck…" : pdf === "error" ? "Try again" : "Download Proposal ↓"}
-                  </button>
-                </div>
-              )}
             </>
           )
         )}

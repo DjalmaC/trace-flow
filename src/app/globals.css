@@ -33,11 +33,6 @@ body {
 }
 .tf-rise { animation: tf-rise 0.7s cubic-bezier(.4,0,.2,1) both; }
 
-/* Short viewports: the fixed download button would crowd the flow (mock rule). */
-@media (max-height: 620px) {
-  .tf-dlbtn { display: none !important; }
-}
-
 /* BRLT panel architecture (/f/): below 1000px the pricing rail drops under the
    canvas and the price cards reflow to two columns. !important beats the
    panel's inline grid-template-columns, exactly as the mock does it. */
