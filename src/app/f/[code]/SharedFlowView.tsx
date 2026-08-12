@@ -107,6 +107,15 @@ export function SharedFlowView({ code }: { code: string }) {
   const [activeFlowId, setActiveFlowId] = useState<string | null>(null);
   const [pdf, setPdf] = useState<"idle" | "working" | "error">("idle");
   const [view, setView] = useState<"flow" | "pricing">("flow"); // Flow | Pricing tab
+  // Desktop header banner: rides in-flow at the top, then sticks and
+  // compresses into a frosted strip once the page scrolls.
+  const [stuck, setStuck] = useState(false);
+  useEffect(() => {
+    const on = () => setStuck(window.scrollY > 8);
+    on();
+    window.addEventListener("scroll", on, { passive: true });
+    return () => window.removeEventListener("scroll", on);
+  }, []);
 
   const config = state.status === "ready" ? state.config : null;
   const variants = config?.variants;
@@ -388,8 +397,17 @@ export function SharedFlowView({ code }: { code: string }) {
                   row, footer logo. The flow diagrams and every interaction
                   render exactly as before; only the shell changed. ── */
             <>
-              {/* header row — eyebrow + client identity left, Trace right */}
-              <div className="relative z-10 flex flex-wrap items-end justify-between gap-6 px-4 pb-5 pt-12 md:px-11">
+              {/* header banner — eyebrow + client identity left, Trace right.
+                  In-flow at the top of the page; once the page scrolls it
+                  sticks under the brand strip and compresses into a frosted
+                  glass band. */}
+              <div
+                className={`sticky top-0 z-40 flex flex-wrap justify-between gap-x-6 px-4 transition-all duration-300 ease-ds md:px-11 ${
+                  stuck
+                    ? "items-center border-b border-white/10 bg-[#07090b]/70 pb-3 pt-[15px] backdrop-blur-xl"
+                    : "items-end border-b border-transparent pb-5 pt-12"
+                }`}
+              >
                 <div>
                   {showChrome && (
                     <>
@@ -410,7 +428,7 @@ export function SharedFlowView({ code }: { code: string }) {
                 </div>
                 {showChrome && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src="/assets/trace-logo-white.svg" alt="Trace Finance" className="tf-fade h-[22px] w-auto opacity-90" />
+                  <img src="/assets/trace-logo-white.svg" alt="Trace Finance" className="tf-fade h-[22px] w-auto self-center opacity-90" />
                 )}
               </div>
 
