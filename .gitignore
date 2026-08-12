@@ -21,3 +21,4 @@ next-env.d.ts
 # local design references (not shipped)
 design-ref/
 .tf-*.mjs
+.claude/worktrees/
