@@ -230,7 +230,9 @@ export function FlowExperience({
     <svg
       viewBox={machineryVB}
       preserveAspectRatio="xMidYMid meet"
-      style={{ ...svgStyle, maxHeight: "64vh" }}
+      // glass dive: the stage lives INSIDE the inset panel, so its height
+      // budget is the panel's, not the viewport's
+      style={{ ...svgStyle, maxHeight: glass && !architecture ? "min(58vh, calc(100vh - 400px))" : "64vh" }}
       role="img"
       aria-label={`How Trace makes it happen — ${flow.title}`}
     >
@@ -530,7 +532,7 @@ export function FlowExperience({
         {/* DEPTH — behind */}
         <motion.div
           style={{ opacity: depthOpacity, y: depthY, scale: depthScale, filter: depthBlur }}
-          className={`absolute inset-0 z-10 flex flex-col items-center justify-center ${glass ? "px-14" : "px-6"}`}
+          className={`absolute z-10 flex flex-col items-center justify-center ${glass ? "inset-x-0 bottom-14 top-[76px] px-14" : "inset-0 px-6"}`}
         >
           <motion.div style={{ opacity: depthHeadingOpacity }}>{DepthHeading}</motion.div>
           {settlementToggle}
@@ -550,7 +552,7 @@ export function FlowExperience({
         {/* SURFACE — front */}
         <motion.div
           style={{ opacity: surfaceOpacity, y: surfaceY, scale: surfaceScale }}
-          className={`pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center ${glass ? "px-14" : "px-6"}`}
+          className={`pointer-events-none absolute z-20 flex flex-col items-center justify-center ${glass ? "inset-x-0 bottom-14 top-[76px] px-14" : "inset-0 px-6"}`}
         >
           <div className="pointer-events-auto">{SurfaceHeading}</div>
           <div className="w-full max-w-[1200px]">{SurfaceSvg}</div>

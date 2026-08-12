@@ -49,6 +49,9 @@ export default function BuildPage() {
   // into a rail gap to move it. Stored as config.nodeOrder, so the client
   // link, mobile and the PDF all inherit the new order.
   const [editMode, setEditMode] = useState(false);
+  // Rail open state (reported by ControlPanel): while open, the canvas sits
+  // fully to its right so the floating glass rail reads straight onto the silk.
+  const [railOpen, setRailOpen] = useState(true);
   const [dragLabel, setDragLabel] = useState<string | null>(null);
   const ghostRef = useRef<HTMLDivElement>(null);
   const caretRef = useRef<HTMLDivElement>(null);
@@ -703,6 +706,7 @@ export default function BuildPage() {
       <SilkBackdrop />
       <div aria-hidden className="pointer-events-none fixed inset-x-0 top-0 z-[60] h-[3px]" style={{ background: "linear-gradient(90deg,#2be8d6,#00f2b1)" }} />
       <ControlPanel
+        onOpenChange={setRailOpen}
         config={config}
         onConfigChange={setConfig}
         onPresent={() => setPresent(true)}
@@ -752,7 +756,9 @@ export default function BuildPage() {
       >
         ← Proposals
       </a>
-      <FlowExperience config={config} skin="glass" onDirectionChange={setDirection} editable />
+      <div className={`transition-[padding] duration-300 ease-ds ${railOpen ? "md:pl-[356px]" : ""}`}>
+        <FlowExperience config={config} skin="glass" onDirectionChange={setDirection} editable />
+      </div>
     </main>
   );
 }

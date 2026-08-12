@@ -117,6 +117,7 @@ export function ControlPanel({
   onSandboxChange,
   editingCode = null,
   onSaved,
+  onOpenChange,
 }: {
   config: FlowConfig;
   onConfigChange: (next: FlowConfig) => void;
@@ -139,8 +140,15 @@ export function ControlPanel({
   /** Called after a successful save with the link code + the shipped config, so
    *  the builder can lock onto that link and persist the edits for re-editing. */
   onSaved?: (code: string, config: FlowConfig) => void;
+  /** Reports the rail's open/collapsed state so the page can keep the canvas
+   *  clear of the floating panel (the rail sits on the silk, not the canvas). */
+  onOpenChange?: (open: boolean) => void;
 }) {
   const [open, setOpen] = useState(true);
+  useEffect(() => {
+    onOpenChange?.(open);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
   const [step, setStep] = useState(0);
   // Editing an existing proposal: open on Present, where Update-in-place lives.
   useEffect(() => {
