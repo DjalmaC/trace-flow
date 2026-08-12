@@ -475,6 +475,8 @@ export function MachineryStage({
               clientName={clientSuppressed ? undefined : config.clientName}
               clientLogoUrl={clientSuppressed ? undefined : config.clientLogoUrl}
               clientLogoPlate={config.clientLogoPlate}
+              partnerLogoUrl={config.partnerLogoUrl}
+              partnerLogoPlate={config.partnerLogoPlate}
             />
             {entity && (
               <text x={node.x + node.w / 2} y={node.y + node.h + 14} textAnchor="middle" fontSize={11} fill={C.subtitle}>

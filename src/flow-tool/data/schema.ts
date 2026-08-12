@@ -451,6 +451,18 @@ export interface FlowConfig {
    *  the client's own entities (e.g. a Brazilian and a Mexican VASP), each
    *  logo-filled and told apart by its entity annotation. Opt-in per box. */
   nodeBranded?: Record<string, boolean>;
+  /** Counterparty (merchant/partner) logo — a SECOND company's mark, for
+   *  proposals whose story is "Client ⇄ Trace ⇄ Merchant" with both logos.
+   *  When set, the hero's beneficiary station carries it by default (unless
+   *  that station is client-branded), and any machinery box opted in via
+   *  nodePartner renders it exactly like a branded client box. */
+  partnerLogoUrl?: string;
+  /** Backing plate for the partner logo on the dark deck (same semantics as
+   *  clientLogoPlate). */
+  partnerLogoPlate?: "light" | "none";
+  /** Per-proposal partner-branding (double-click a box → "Show counterparty
+   *  logo"), keyed "<flowId>:<nodeId>" — the box carries partnerLogoUrl. */
+  nodePartner?: Record<string, boolean>;
   /** Per-proposal box reordering (edit mode: drag a box onto another to swap,
    *  or into a gap to move it). Keyed by flowId; the value is the flow's node
    *  ids in their new display order across the flow's ORIGINAL slots. The

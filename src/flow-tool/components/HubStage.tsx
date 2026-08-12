@@ -174,7 +174,7 @@ export function HubStage({ layout, config, animate = true }: { layout: FlowLayou
         const entity = config.nodeEntities?.[`${config.flowId}:${node.srcId ?? node.id}`]?.trim();
         return (
           <g key={node.id} data-flow-node={node.srcId ?? node.id}>
-            <FlowNodeShape node={node} isPrimaryClient={node.id === layout.primaryClientId} clientName={config.clientName} clientLogoUrl={config.clientLogoUrl} clientLogoPlate={config.clientLogoPlate} />
+            <FlowNodeShape node={node} isPrimaryClient={node.id === layout.primaryClientId} clientName={config.clientName} clientLogoUrl={config.clientLogoUrl} clientLogoPlate={config.clientLogoPlate} partnerLogoUrl={config.partnerLogoUrl} partnerLogoPlate={config.partnerLogoPlate} />
             {entity && (
               <text x={node.cx} y={node.y + node.h + 14} textAnchor="middle" fontSize={11} fill={C.subtitle} fontFamily="var(--font-inter), system-ui, sans-serif">
                 ({entity})

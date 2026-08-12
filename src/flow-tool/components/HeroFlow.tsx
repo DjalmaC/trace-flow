@@ -113,6 +113,10 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
   // The beneficiary box can be branded as a client entity too (a second logo) —
   // e.g. a "Client -> Client" desired transaction with the logo both ends.
   const brandedB = !suppressClient && !!ovb(config.nodeBranded, flow.headline.partyB) && !!config.clientLogoUrl;
+  // ...or carry the COUNTERPARTY's logo ("Client ⇄ Trace ⇄ Merchant", both
+  // logos). A partner logo shows here by default the moment it's uploaded;
+  // an explicit client branding of this box wins.
+  const partnerB = !brandedB && !!config.partnerLogoUrl;
   const merchantName = sentenceCase(labelB);
   // the beneficiary isn't always abroad (the Foreigner-to-BR flow settles in Brazil)
   const merchantWhere = partyB?.lane === "brazil" ? "in Brazil" : "abroad";
@@ -311,6 +315,23 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
             </>
           ) : (
             <image href={heroClientLogo} x={904} y={429} width={220} height={56} preserveAspectRatio="xMidYMid meet" />
+          )
+        ) : partnerB ? (
+          config.partnerLogoPlate === "light" ? (
+            <>
+              <rect x={874} y={407} width={280} height={100} rx={16} fill="#ffffff" />
+              <image href={config.partnerLogoUrl} x={904} y={429} width={220} height={44} preserveAspectRatio="xMidYMid meet" />
+              <text x={1014} y={498} textAnchor="middle" fontSize={11} fontWeight={400} fill="#5c6b65">
+                {merchantName} · {merchantWhere}
+              </text>
+            </>
+          ) : (
+            <>
+              <image href={config.partnerLogoUrl} x={904} y={421} width={220} height={52} preserveAspectRatio="xMidYMid meet" />
+              <text x={1014} y={498} textAnchor="middle" fontSize={11} fontWeight={400} fill="#6f857b">
+                {merchantName} · {merchantWhere}
+              </text>
+            </>
           )
         ) : (
           <>

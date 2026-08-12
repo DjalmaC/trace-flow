@@ -176,6 +176,8 @@ export function FlowExperience({
     config.platform ?? null,
     config.brandColor ?? null,
     config.nodeBranded ?? null,
+    config.nodePartner ?? null,
+    config.partnerLogoUrl ?? null,
   ]);
   const layout = useMemo(
     () => (flow ? computeLayout(flow, config) : null),

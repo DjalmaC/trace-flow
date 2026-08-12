@@ -47,6 +47,8 @@ export function FlowNodeShape({
   clientName,
   clientLogoUrl,
   clientLogoPlate,
+  partnerLogoUrl,
+  partnerLogoPlate,
 }: {
   node: NodeLayout;
   green?: boolean;
@@ -55,6 +57,9 @@ export function FlowNodeShape({
   clientName?: string;
   clientLogoUrl?: string;
   clientLogoPlate?: "light" | "none";
+  /** The counterparty (merchant/partner) logo for nodePartner-flagged boxes. */
+  partnerLogoUrl?: string;
+  partnerLogoPlate?: "light" | "none";
 }) {
   const { x, y, w, h, cx } = node;
   // The quiet glass-card recipe (tokens.GLASS_CARD, shared with the pricing
@@ -79,6 +84,21 @@ export function FlowNodeShape({
         <text x={cx} y={y + h - 7} fontSize={9} fill={C.muted} textAnchor="middle">
           {node.engineCount ? `+${node.engineCount} steps · tap to expand` : "tap to expand"}
         </text>
+      </g>
+    );
+  }
+
+  // A partner-branded node carries the COUNTERPARTY's logo (the merchant in a
+  // "Client ⇄ Trace ⇄ Merchant" story). Checked before client branding — the
+  // flag is the more specific instruction.
+  if (node.partnerLogo && partnerLogoUrl) {
+    const lightPlate = partnerLogoPlate === "light";
+    const pad = lightPlate ? 12 : 6;
+    return (
+      <g>
+        {rect}
+        {lightPlate && <rect x={x + 6} y={y + 6} width={w - 12} height={h - 12} rx={7} fill="#ffffff" />}
+        <image href={partnerLogoUrl} x={x + pad} y={y + pad} width={w - pad * 2} height={h - pad * 2} preserveAspectRatio="xMidYMid meet" />
       </g>
     );
   }

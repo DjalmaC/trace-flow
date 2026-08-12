@@ -315,6 +315,9 @@ export function ControlPanel({
         delivered: config.delivered,
         rep: getRep(traceRepId),
         pricing,
+        partnerLogoUrl: config.partnerLogoUrl,
+        partnerLogoPlate: config.partnerLogoPlate,
+        nodePartner: config.nodePartner,
         nodeLabels: config.nodeLabels,
         nodeOrder: config.nodeOrder,
         laneLabels: config.laneLabels,
@@ -369,6 +372,14 @@ export function ControlPanel({
     const brand = await dominantColor(raw).catch(() => null);
     if (brand) pendingBrandColor.current = brand;
     await applyTreatment("auto", raw); // cut bg + auto-decide on insert
+  }
+
+  // Counterparty (merchant/partner) logo — the second mark for
+  // "Client ⇄ Trace ⇄ Merchant" stories. Same normalize pipeline, no
+  // treatment ladder: auto-decide plate and ship.
+  async function onPartnerLogoData(raw: string) {
+    const r = await normalizeLogo(raw);
+    patch({ partnerLogoUrl: r.url, partnerLogoPlate: r.plate });
   }
 
   async function copyLink() {
@@ -622,6 +633,24 @@ export function ControlPanel({
 
                 <Field label="Logo">
                   <LogoDrop compact hasLogo={!!config.clientLogoUrl} onImage={onLogoData} />
+                </Field>
+
+                <Field label="Counterparty logo · optional, the merchant/partner they settle with">
+                  <LogoDrop compact hasLogo={!!config.partnerLogoUrl} onImage={onPartnerLogoData} />
+                  {config.partnerLogoUrl && (
+                    <div className="mt-2 flex items-center justify-between rounded-[9px] border border-hairline-control bg-surface-input px-3 py-2">
+                      <span className={`flex h-9 items-center rounded-md px-2 ${config.partnerLogoPlate === "light" ? "bg-white" : ""}`}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={config.partnerLogoUrl} alt="counterparty logo" className="h-6 w-auto max-w-[140px] object-contain" />
+                      </span>
+                      <button
+                        onClick={() => patch({ partnerLogoUrl: undefined, partnerLogoPlate: undefined, nodePartner: undefined })}
+                        className="text-[11px] font-medium text-muted transition-colors duration-150 ease-ds hover:text-title"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )}
                 </Field>
 
                 <Field label="Role in the flow">

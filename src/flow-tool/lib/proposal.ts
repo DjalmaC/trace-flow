@@ -98,6 +98,11 @@ export interface ProposalBuildOpts {
    *  client's Pricing view (standard: the combined rate page; brazil-market:
    *  each edited product's own page). */
   pricing?: ProposalPricing;
+  /** Counterparty (merchant/partner) logo + plate (see FlowConfig). */
+  partnerLogoUrl?: string;
+  partnerLogoPlate?: "light" | "none";
+  /** Per-proposal partner-branding flags (see FlowConfig.nodePartner). */
+  nodePartner?: Record<string, boolean>;
   /** Per-proposal node renames (see FlowConfig.nodeLabels). */
   nodeLabels?: Record<string, string>;
   /** Per-proposal box reordering (see FlowConfig.nodeOrder). */
@@ -504,6 +509,9 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
     delivered: opts.delivered ?? "USD/EUR",
     direction: opts.direction ?? "collection",
     stablecoin: opts.stablecoin ?? "both",
+    partnerLogoUrl: opts.partnerLogoUrl,
+    partnerLogoPlate: opts.partnerLogoPlate,
+    nodePartner: opts.nodePartner,
     nodeLabels: opts.nodeLabels,
     nodeOrder: opts.nodeOrder,
     laneLabels: opts.laneLabels,

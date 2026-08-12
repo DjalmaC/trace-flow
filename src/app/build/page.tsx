@@ -43,7 +43,7 @@ export default function BuildPage() {
   const [editingCode, setEditingCode] = useState<string | null>(null);
   // Double-click rename overlay for the flow boxes / lane names / hero
   // subtitle on the canvas.
-  const [rename, setRename] = useState<{ key: string; lane?: "brazil" | "abroad"; hero?: boolean; platformCaption?: boolean; comment?: boolean; node?: boolean; entity?: string; entityOn?: boolean; branded?: boolean; original: string; value: string; left: number; top: number; width: number } | null>(null);
+  const [rename, setRename] = useState<{ key: string; lane?: "brazil" | "abroad"; hero?: boolean; platformCaption?: boolean; comment?: boolean; node?: boolean; entity?: string; entityOn?: boolean; branded?: boolean; partner?: boolean; original: string; value: string; left: number; top: number; width: number } | null>(null);
   const renameRef = useRef<HTMLInputElement>(null);
   // Edit mode ("Arrange boxes"): drag a box onto another to swap places, or
   // into a rail gap to move it. Stored as config.nodeOrder, so the client
@@ -261,6 +261,7 @@ export default function BuildPage() {
         entity: hentity ?? "",
         entityOn: !!hentity,
         branded: !!(config.nodeBranded?.[hkey] ?? config.nodeBranded?.[mkey]),
+        partner: !!(config.nodePartner?.[hkey] ?? config.nodePartner?.[mkey]),
         original: flowLabel,
         value: config.nodeLabels?.[hkey] ?? config.nodeLabels?.[mkey] ?? flowLabel,
         left: r.left + r.width / 2 - w / 2,
@@ -282,6 +283,7 @@ export default function BuildPage() {
       entity: entity ?? "",
       entityOn: !!entity,
       branded: !!config.nodeBranded?.[key],
+      partner: !!config.nodePartner?.[key],
       original,
       value: config.nodeLabels?.[key] ?? original,
       left: r.left,
@@ -347,11 +349,16 @@ export default function BuildPage() {
       const branded = { ...(c.nodeBranded ?? {}) };
       if (rename.branded) branded[rename.key] = true;
       else delete branded[rename.key];
+      // ...or the counterparty's logo (the merchant in Client ⇄ Trace ⇄ Merchant).
+      const partner = { ...(c.nodePartner ?? {}) };
+      if (rename.partner) partner[rename.key] = true;
+      else delete partner[rename.key];
       return {
         ...c,
         nodeLabels: Object.keys(labels).length ? labels : undefined,
         nodeEntities: Object.keys(ents).length ? ents : undefined,
         nodeBranded: Object.keys(branded).length ? branded : undefined,
+        nodePartner: Object.keys(partner).length ? partner : undefined,
       };
     });
     setRename(null);
@@ -623,6 +630,20 @@ export default function BuildPage() {
             className="h-3 w-3 accent-mint"
           />
           Show client logo{!config.clientLogoUrl && " · upload a logo first"}
+        </label>
+        <label
+          className={`flex items-center gap-2 px-0.5 text-[11px] font-medium ${
+            config.partnerLogoUrl ? "cursor-pointer text-subtitle" : "cursor-not-allowed text-muted"
+          }`}
+        >
+          <input
+            type="checkbox"
+            disabled={!config.partnerLogoUrl}
+            checked={!!rename.partner}
+            onChange={(e) => setRename({ ...rename, partner: e.target.checked })}
+            className="h-3 w-3 accent-mint"
+          />
+          Show counterparty logo{!config.partnerLogoUrl && " · upload one in the Client step"}
         </label>
         <label className="flex cursor-pointer items-center gap-2 px-0.5 text-[11px] font-medium text-subtitle">
           <input

@@ -57,6 +57,8 @@ export interface NodeLayout extends Box {
   engineCount?: number;
   /** Render with the client's logo instead of the kind's default badge. */
   brandedClient?: boolean;
+  /** Render with the counterparty (merchant/partner) logo instead. */
+  partnerLogo?: boolean;
 }
 
 export interface LegLayout {
@@ -166,6 +168,7 @@ export function computeHubLayout(flow: Flow, config: FlowConfig): FlowLayout {
   const key = (n: { id: string; srcId?: string }) => `${flow.id}:${n.srcId ?? n.id}`;
   const labelOf = (n: FlowNodeT) => config.nodeLabels?.[key(n)] ?? n.label;
   const brandedOf = (n: FlowNodeT) => !!n.brandedClient || !!config.nodeBranded?.[key(n)];
+  const partnerOf = (n: FlowNodeT) => !!config.nodePartner?.[key(n)];
 
   const pool = flow.nodes.filter((n) => n.pool);
   const journey = flow.nodes.filter((n) => !n.pool);
@@ -188,9 +191,9 @@ export function computeHubLayout(flow: Flow, config: FlowConfig): FlowLayout {
   // the hub itself — a trace node the renderer draws as the spinning mark
   nodes.push({ ...box(hubCx, railY, HUB_R * 2, HUB_R * 2), id: hubNode.id, srcId: hubNode.srcId, label: labelOf(hubNode), kind: "trace", lane: hubNode.lane, lines: [labelOf(hubNode)], depth: 1, onTrunk: true });
   if (leftEnd)
-    nodes.push({ ...box(hubCx - SPAN, railY, NODE_W, NODE_H), id: leftEnd.id, srcId: leftEnd.srcId, label: labelOf(leftEnd), kind: leftEnd.kind, lane: leftEnd.lane, lines: wrapLabel(labelOf(leftEnd)), depth: 0, onTrunk: true, brandedClient: brandedOf(leftEnd) });
+    nodes.push({ ...box(hubCx - SPAN, railY, NODE_W, NODE_H), id: leftEnd.id, srcId: leftEnd.srcId, label: labelOf(leftEnd), kind: leftEnd.kind, lane: leftEnd.lane, lines: wrapLabel(labelOf(leftEnd)), depth: 0, onTrunk: true, brandedClient: brandedOf(leftEnd), partnerLogo: partnerOf(leftEnd) });
   if (rightEnd)
-    nodes.push({ ...box(hubCx + SPAN, railY, NODE_W, NODE_H), id: rightEnd.id, srcId: rightEnd.srcId, label: labelOf(rightEnd), kind: rightEnd.kind, lane: rightEnd.lane, lines: wrapLabel(labelOf(rightEnd)), depth: 2, onTrunk: true, brandedClient: brandedOf(rightEnd) });
+    nodes.push({ ...box(hubCx + SPAN, railY, NODE_W, NODE_H), id: rightEnd.id, srcId: rightEnd.srcId, label: labelOf(rightEnd), kind: rightEnd.kind, lane: rightEnd.lane, lines: wrapLabel(labelOf(rightEnd)), depth: 2, onTrunk: true, brandedClient: brandedOf(rightEnd), partnerLogo: partnerOf(rightEnd) });
 
   // pool row, centred under the hub
   const POOL_W = 152, POOL_H = 56, GAP = 26;
@@ -198,7 +201,7 @@ export function computeHubLayout(flow: Flow, config: FlowConfig): FlowLayout {
   const startX = hubCx - totalW / 2;
   pool.forEach((p, i) => {
     const cx = startX + i * (POOL_W + GAP) + POOL_W / 2;
-    nodes.push({ ...box(cx, poolY, POOL_W, POOL_H), id: p.id, srcId: p.srcId, label: labelOf(p), kind: p.kind, lane: p.lane, lines: wrapLabel(labelOf(p)), depth: 3, onTrunk: false, brandedClient: brandedOf(p) });
+    nodes.push({ ...box(cx, poolY, POOL_W, POOL_H), id: p.id, srcId: p.srcId, label: labelOf(p), kind: p.kind, lane: p.lane, lines: wrapLabel(labelOf(p)), depth: 3, onTrunk: false, brandedClient: brandedOf(p), partnerLogo: partnerOf(p) });
   });
 
   const byId = new Map(nodes.map((nd) => [nd.id, nd] as const));
@@ -244,6 +247,7 @@ export function computeNettingLayout(flow: Flow, config: FlowConfig): FlowLayout
   const key = (n: { id: string; srcId?: string }) => `${flow.id}:${n.srcId ?? n.id}`;
   const labelOf = (n: FlowNodeT) => config.nodeLabels?.[key(n)] ?? n.label;
   const brandedOf = (n: FlowNodeT) => !!n.brandedClient || !!config.nodeBranded?.[key(n)];
+  const partnerOf = (n: FlowNodeT) => !!config.nodePartner?.[key(n)];
 
   const desk = flow.nodes.find((n) => n.kind === "trace") ?? flow.nodes[0];
   const paysTo = new Set(flow.legs.filter((l) => l.to === desk.id).map((l) => l.from));
@@ -266,7 +270,7 @@ export function computeNettingLayout(flow: Flow, config: FlowConfig): FlowLayout
     return {
       ...box(cx, cy, NODE_W, NODE_H),
       id: n.id, srcId: n.srcId, label: labelOf(n), kind: n.kind, lane: n.lane,
-      lines: wrapLabel(labelOf(n)), depth: pays ? 0 : 2, onTrunk: true, brandedClient: brandedOf(n),
+      lines: wrapLabel(labelOf(n)), depth: pays ? 0 : 2, onTrunk: true, brandedClient: brandedOf(n), partnerLogo: partnerOf(n),
     };
   };
   const nodes: NodeLayout[] = [
@@ -360,7 +364,7 @@ function wrapLabel(label: string): string[] {
   return l2 ? [l1, l2] : [l1];
 }
 
-type SrcNode = { id: string; srcId?: string; label: string; kind: NodeKindOrEngine; lane: Flow["nodes"][number]["lane"]; w: number; engineCount?: number; brandedClient?: boolean };
+type SrcNode = { id: string; srcId?: string; label: string; kind: NodeKindOrEngine; lane: Flow["nodes"][number]["lane"]; w: number; engineCount?: number; brandedClient?: boolean; partnerLogo?: boolean };
 type SrcLeg = { from: string; to: string; carries: Currency; convertsTo?: Currency; hubAtEngine?: boolean };
 
 const ENGINE_W = 212;
@@ -450,6 +454,8 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
   // flow can show a second client entity), OR the flow's own brandedClient flag
   const brandedOf = (n: { id: string; srcId?: string; brandedClient?: boolean }) =>
     n.brandedClient || !!config.nodeBranded?.[`${flow.id}:${n.srcId ?? n.id}`];
+  const partnerOf = (n: { id: string; srcId?: string }) =>
+    !!config.nodePartner?.[`${flow.id}:${n.srcId ?? n.id}`];
 
   // ── build the effective node/leg lists (full, or with the engine folded) ──
   let srcNodes: SrcNode[];
@@ -472,7 +478,7 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
     srcNodes = [];
     flow.nodes.forEach((n) => {
       if (n.id === first) srcNodes.push(engineNode);
-      if (!idSet.has(n.id)) srcNodes.push({ id: n.id, srcId: n.srcId, label: labelOf(n), kind: n.kind, lane: n.lane, w: NODE_W, brandedClient: brandedOf(n) });
+      if (!idSet.has(n.id)) srcNodes.push({ id: n.id, srcId: n.srcId, label: labelOf(n), kind: n.kind, lane: n.lane, w: NODE_W, brandedClient: brandedOf(n), partnerLogo: partnerOf(n) });
     });
     srcLegs = [];
     flow.legs.forEach((l) => {
@@ -484,7 +490,7 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
       else srcLegs.push({ from: l.from, to: l.to, carries: D(l.carries), convertsTo: l.convertsTo });
     });
   } else {
-    srcNodes = flow.nodes.map((n) => ({ id: n.id, srcId: n.srcId, label: labelOf(n), kind: n.kind, lane: n.lane, w: NODE_W, brandedClient: brandedOf(n) }));
+    srcNodes = flow.nodes.map((n) => ({ id: n.id, srcId: n.srcId, label: labelOf(n), kind: n.kind, lane: n.lane, w: NODE_W, brandedClient: brandedOf(n), partnerLogo: partnerOf(n) }));
     srcLegs = flow.legs.map((l) => ({ from: l.from, to: l.to, carries: l.carries, convertsTo: l.convertsTo }));
   }
 
@@ -631,6 +637,7 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
       onTrunk: trunkNodeIdx.has(i),
       engineCount: node.engineCount,
       brandedClient: node.brandedClient,
+      partnerLogo: node.partnerLogo,
       x,
       y: cy - h / 2,
       w: node.w,
