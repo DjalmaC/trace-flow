@@ -655,14 +655,20 @@ function PricingRail({ pricing, legacy, clientName }: { pricing: ProposalPricing
         sub: c.sub,
         rows: c.rows,
       }))
-    : pricing.cards.map((card) => ({
-        key: card.key,
-        badge: CARD_BADGE[card.badge] ?? "$",
-        bg: card.accent === "blue" ? "#2be8d6" : "#00f2b1",
-        title: card.title,
-        sub: card.sub,
-        rows: cardRows(card),
-      }));
+    : pricing.cards
+        .map((card) => ({
+          key: card.key,
+          badge: CARD_BADGE[card.badge] ?? "$",
+          bg: card.accent === "blue" ? "#2be8d6" : "#00f2b1",
+          title: card.title,
+          sub: card.sub,
+          rows: cardRows(card),
+        }))
+        // shortest cards lead (flat single-row products like Pix first): the
+        // grid packs neatly instead of a lone short card dangling at the end.
+        // Stable, display-only — stored pricing and the PDF keep deck order.
+        // Legacy links keep their hand-authored order untouched.
+        .sort((a, b) => a.rows.length - b.rows.length);
   return (
     <>
       <div className="font-display text-[21px] font-semibold tracking-[-0.01em] text-title">

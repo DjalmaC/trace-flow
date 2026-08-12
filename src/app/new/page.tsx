@@ -113,7 +113,8 @@ export default function NewProposalPage() {
         <GlassPanel className="mt-10 px-7 py-8">
         <div className="space-y-7">
           {/* Company */}
-          <div className="grid gap-5 sm:grid-cols-2">
+          {/* items-end levels the two INPUTS even when one label wraps */}
+          <div className="grid gap-5 sm:grid-cols-2 sm:items-end">
             <Field label="Company">
               <input
                 value={company}
