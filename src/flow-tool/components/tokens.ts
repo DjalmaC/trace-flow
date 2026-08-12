@@ -92,7 +92,10 @@ export const TRACE_LOGO_AR = 1.576; // width / height of the extracted mark
 export const GLASS_CARD = {
   tint: "rgba(255,255,255,0.02)",
   hairline: "rgba(255,255,255,0.10)",
-  base: "rgba(11,15,13,0.72)",
+  // Light enough that the silk backdrop reads THROUGH the box — true liquid
+  // glass. Rails dock into the housings (layout RAIL_IN) instead of running
+  // beneath them, so nothing unintended shows through.
+  base: "rgba(11,15,13,0.30)",
 } as const;
 
 // Direction drives the brand color (echoing the logo's two arrows): pay-in is

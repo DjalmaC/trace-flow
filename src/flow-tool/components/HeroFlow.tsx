@@ -123,10 +123,12 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
 
     // collection: A (carries) client→hub, convert, B (delivered) hub→merchant
     // disbursement: B (delivered) merchant→hub, convert, A (carries) hub→client
+    // Travel ends INSIDE the glass stations (the tubes dock 24px deep), so the
+    // token visibly slides all the way in and out through the housing wall.
     const legs =
       dir === "collection"
-        ? [{ x0: 490, x1: 658, which: a }, { x0: 702, x1: 870, which: b }]
-        : [{ x0: 870, x1: 702, which: b }, { x0: 658, x1: 490, which: a }];
+        ? [{ x0: 474, x1: 658, which: a }, { x0: 702, x1: 886, which: b }]
+        : [{ x0: 886, x1: 702, which: b }, { x0: 658, x1: 474, which: a }];
 
     const LEG = 1650, GAP = 700, CYC = 2 * (LEG + GAP);
 
@@ -232,14 +234,14 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
           })()}
         </g>
       )}
-      {/* tubes / conduits — flat channels tinted by direction, running BEHIND the
-          station boxes (boxes are drawn after, covering the tube ends flush) */}
+      {/* tubes / conduits — flat channels tinted by direction, docking 24px
+          INTO the translucent glass stations (visible through the housing) */}
       <clipPath id="tf-tube">
-        <rect x={488} y={441} width={172} height={32} rx={11} />
-        <rect x={700} y={441} width={172} height={32} rx={11} />
+        <rect x={472} y={441} width={188} height={32} rx={11} />
+        <rect x={700} y={441} width={188} height={32} rx={11} />
       </clipPath>
-      <rect x={488} y={441} width={172} height={32} rx={11} fill={tubeTint(dir)} stroke={accent} strokeOpacity={0.42} style={tubeTransition} />
-      <rect x={700} y={441} width={172} height={32} rx={11} fill={tubeTint(dir)} stroke={accent} strokeOpacity={0.42} style={tubeTransition} />
+      <rect x={472} y={441} width={188} height={32} rx={11} fill={tubeTint(dir)} stroke={accent} strokeOpacity={0.42} style={tubeTransition} />
+      <rect x={700} y={441} width={188} height={32} rx={11} fill={tubeTint(dir)} stroke={accent} strokeOpacity={0.42} style={tubeTransition} />
 
       {/* directional indicators — the Trace mark-half on each tube, sat at the END
           the token emerges from (flips with direction) and pointing in flow.

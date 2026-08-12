@@ -316,9 +316,13 @@ export function MachineryStage({
     return () => cancelAnimationFrame(raf);
   }, [run, timeline, railY, config.direction, currencies, hubs, railHubs, landings, nodes, freezeMs]);
 
-  const trunkNodes = nodes.filter((n) => n.onTrunk !== false);
-  const x0 = trunkNodes[0]?.cx ?? nodes[0]?.cx ?? 0;
-  const xN = trunkNodes[trunkNodes.length - 1]?.cx ?? nodes[nodes.length - 1]?.cx ?? 0;
+  // The rail is drawn as one pipe SEGMENT per trunk gap, each end docking
+  // RAIL_IN inside its glass housing (leg x1/x2 already carry the inset from
+  // the layout). The boxes are translucent, so a continuous rail underneath
+  // would show through — segments make the docking intentional. The moving
+  // token is clipped to these segments so value visibly slides all the way
+  // into (and out of) each housing before vanishing.
+  const railSegs = layout.legs.filter((l) => !l.offTrunk && l.y1 === l.y2);
   const railTransition = reduced ? undefined : `fill .55s ${EASE}, stroke .55s ${EASE}`;
   const markW = HUB_R;
   const markH = markW / TRACE_LOGO_AR;
@@ -399,28 +403,38 @@ export function MachineryStage({
           </g>
         ))}
 
-      {/* ONE continuous rail behind all boxes — interrupted only by the hub.
-          Ends are tucked under the first/last box centers so it never protrudes. */}
-      <rect
-        x={x0}
-        y={railY - 15}
-        width={Math.max(0, xN - x0)}
-        height={30}
-        rx={15}
-        fill={tubeTint(config.direction)}
-        stroke={accent}
-        strokeOpacity={0.42}
-        style={{ transition: railTransition }}
-      />
+      {/* rail pipe segments — one per trunk gap, docking into the housings */}
+      {railSegs.map((l) => (
+        <rect
+          key={`rail-${l.index}`}
+          x={Math.min(l.x1, l.x2)}
+          y={railY - 15}
+          width={Math.abs(l.x2 - l.x1)}
+          height={30}
+          rx={15}
+          fill={tubeTint(config.direction)}
+          stroke={accent}
+          strokeOpacity={0.42}
+          style={{ transition: railTransition }}
+        />
+      ))}
 
-      {/* the relay token (behind the boxes → visible only in the gaps) */}
+      {/* the relay token, clipped to the pipes: it slides fully into a glass
+          housing and vanishes at the pipe's end, then re-emerges from the next */}
+      <clipPath id="tf-rail-clip">
+        {railSegs.map((l) => (
+          <rect key={`rc-${l.index}`} x={Math.min(l.x1, l.x2)} y={railY - 17} width={Math.abs(l.x2 - l.x1)} height={34} rx={15} />
+        ))}
+      </clipPath>
       {run ? (
+        <g clipPath="url(#tf-rail-clip)">
         <g ref={tokenRef} transform={`translate(${timeline.startX},${railY})`} style={{ willChange: "transform, opacity" }}>
           {currencies.map((c) => (
             <g key={c} ref={(el) => { curRefs.current[c] = el; }} style={{ opacity: 0 }}>
               <CurrencyToken currency={c} coin={config.stablecoin} accent={accent} />
             </g>
           ))}
+        </g>
         </g>
       ) : (
         // reduced motion: static value resting in each plain gap

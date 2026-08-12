@@ -2,7 +2,7 @@
 import { useEffect, useRef } from "react";
 import { useReducedMotion } from "framer-motion";
 import type { Currency, FlowConfig } from "../data/schema";
-import type { FlowLayout, NodeLayout } from "./layout";
+import { RAIL_IN, type FlowLayout, type NodeLayout } from "./layout";
 import { ASSETS, C, TRACE_LOGO_AR, accentFor, tubeTint, GLASS_CARD } from "./tokens";
 import { CurrencyToken, displayCurrency } from "./FlowSvg/Tokens";
 import { FlowNodeShape } from "./FlowSvg/Nodes";
@@ -32,13 +32,14 @@ export function HubStage({ layout, config, animate = true }: { layout: FlowLayou
   const hx = hub?.cx ?? 470, hy = hub?.cy ?? 224;
   const railTransition = reduced ? undefined : `fill .55s ${EASE}, stroke .55s ${EASE}`;
 
-  const railX0 = Math.min(...rail.map((n) => n.cx), hx);
-  const railX1 = Math.max(...rail.map((n) => n.cx), hx);
+  // pipes dock RAIL_IN inside the translucent glass boxes (not under them)
+  const railX0 = Math.min(...rail.map((n) => n.x + n.w - RAIL_IN), hx);
+  const railX1 = Math.max(...rail.map((n) => n.x + RAIL_IN), hx);
   const poolMinX = Math.min(...pool.map((p) => p.x), hx - 40);
   const poolMaxX = Math.max(...pool.map((p) => p.x + p.w), hx + 40);
   const poolBottom = Math.max(...pool.map((p) => p.y + p.h), hy);
 
-  const poolPathD = (p: { cx: number; y: number }) => `M${hx} ${hy + HUB_R} C ${hx} ${hy + HUB_R + 54}, ${p.cx} ${p.y - 54}, ${p.cx} ${p.y}`;
+  const poolPathD = (p: { cx: number; y: number }) => `M${hx} ${hy + HUB_R} C ${hx} ${hy + HUB_R + 54}, ${p.cx} ${p.y - 54}, ${p.cx} ${p.y + 14}`;
 
   // One conduit per leg: the counterparty sends `carries` toward the desk and
   // receives the other currency back.
@@ -67,7 +68,8 @@ export function HubStage({ layout, config, animate = true }: { layout: FlowLayou
         return { c, at: (s: number) => (path ? path.getPointAtLength((1 - s) * len) : { x: hx, y: hy }) };
       }
       const left = c.cp.cx < hx;
-      const e0 = { x: left ? c.cp.x + c.cp.w : c.cp.x, y: hy };
+      // travel starts INSIDE the glass housing (the pipe docks RAIL_IN deep)
+      const e0 = { x: left ? c.cp.x + c.cp.w - RAIL_IN : c.cp.x + RAIL_IN, y: hy };
       const e1 = { x: left ? hx - HUB_R : hx + HUB_R, y: hy };
       return { c, at: (s: number) => ({ x: e0.x + (e1.x - e0.x) * s, y: hy }) };
     });

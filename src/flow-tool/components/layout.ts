@@ -18,6 +18,11 @@ const PAD_X = 56;
 const GAP_PLAIN = 92;
 const GAP_CONVERT = 200; // wide enough that the converted token clears the hub plinth (R_SHOW) before the next box, while keeping dense flows on one screen
 
+/** How far a rail/tube docks INTO a station box. The boxes are translucent
+ *  glass — pipes visibly enter the housing and value slides all the way in
+ *  and out, instead of rails running beneath the whole box. */
+export const RAIL_IN = 20;
+
 const BAND_Y = 412; // machinery node vertical center
 const HEAD_Y = 64; // headline node top
 const HEAD_H = 46;
@@ -268,14 +273,15 @@ export function computeNettingLayout(flow: Flow, config: FlowConfig): FlowLayout
   const byId = new Map(nodes.map((n) => [n.id, n] as const));
 
   // conduits: smooth S-curves with horizontal tangents both ends, so each
-  // side's in/out pair meets the desk at one shared port and reads as a loop
+  // side's in/out pair meets the desk at one shared port and reads as a loop.
+  // The corner end docks RAIL_IN inside the translucent glass housing.
   const legs: LegLayout[] = flow.legs.map((l, index) => {
     const from = byId.get(l.from)!;
     const to = byId.get(l.to)!;
     const corner = from.id === desk.id ? to : from;
     const left = corner.cx < hubCx;
     const port = { x: left ? hubCx - NETTING_HUB_R : hubCx + NETTING_HUB_R, y: hubCy };
-    const edge = { x: left ? corner.x + corner.w : corner.x, y: corner.cy };
+    const edge = { x: left ? corner.x + corner.w - RAIL_IN : corner.x + RAIL_IN, y: corner.cy };
     const s = from.id === desk.id ? port : edge;
     const e = from.id === desk.id ? edge : port;
     const mx = (s.x + e.x) / 2;
@@ -680,12 +686,14 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
     const y1 = from.cy;
     const y2 = to.cy;
     const straight = y1 === y2;
-    // Straight rail legs span box edge to box edge. A curved tributary anchors
-    // at the box CENTERS instead — its round caps hide under the boxes exactly
-    // the way the rail tucks its own ends — and approaches with a flat tangent,
-    // so it merges into the rail parallel, like a tributary joining a river.
-    const x1 = straight ? from.x + from.w : from.cx;
-    const x2 = straight ? to.x : to.cx;
+    // Straight rail legs dock RAIL_IN inside each box — the boxes are
+    // translucent glass, so the pipe visibly enters the housing (the segment
+    // midpoint is unchanged: both ends extend symmetrically). A curved
+    // tributary anchors at the box CENTERS and approaches with a flat
+    // tangent, so it merges into the rail parallel, like a tributary
+    // joining a river.
+    const x1 = straight ? from.x + from.w - RAIL_IN : from.cx;
+    const x2 = straight ? to.x + RAIL_IN : to.cx;
     // the folded engine's conversion hub sits AT the engine center
     const midX = leg.hubAtEngine ? to.cx : (x1 + x2) / 2;
     const dx = Math.max(64, Math.abs(x2 - x1) * 0.55);
