@@ -38,6 +38,15 @@ body {
   .tf-dlbtn { display: none !important; }
 }
 
+/* BRLT panel architecture (/f/): below 1000px the pricing rail drops under the
+   canvas and the price cards reflow to two columns. !important beats the
+   panel's inline grid-template-columns, exactly as the mock does it. */
+@media (max-width: 1000px) {
+  .tf-panel { grid-template-columns: minmax(0, 1fr) !important; }
+  .tf-rail { border-left: none !important; border-top: 1px solid rgba(255, 255, 255, 0.14) !important; }
+  .tf-price-list { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+}
+
 /* Chrome settling in as the intro resolves (defaults visible if unanimated). */
 @keyframes tf-fade { from { opacity: 0; } to { opacity: 1; } }
 .tf-fade { animation: tf-fade 0.55s cubic-bezier(.4,0,.2,1); }

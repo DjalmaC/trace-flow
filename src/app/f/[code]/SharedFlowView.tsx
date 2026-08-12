@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, type FormEvent } from "react";
-import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
+import { motion, LayoutGroup } from "framer-motion";
 import { FlowExperience, useIsMobile } from "@/flow-tool/components/FlowExperience";
 import { GlassPanel, SilkBackdrop } from "@/flow-tool/components/Glass";
 import { NotesDrawer } from "@/components/NotesDrawer";
@@ -254,10 +254,16 @@ export function SharedFlowView({ code }: { code: string }) {
     }
   }
 
-  // deep-link straight to the pricing tab with ?view=pricing
+  // deep-link straight to pricing with ?view=pricing: the mobile tab switches;
+  // the desktop panel layout scrolls the rail into view once the intro settles.
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("view") === "pricing") setView("pricing");
   }, []);
+  useEffect(() => {
+    if (intro !== "done" || window.matchMedia("(max-width: 767px)").matches) return;
+    if (new URLSearchParams(window.location.search).get("view") === "pricing")
+      document.querySelector(".tf-rail")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [intro]);
 
   // once loaded, run the welcome → fadeout → done sequence
   useEffect(() => {
@@ -375,79 +381,69 @@ export function SharedFlowView({ code }: { code: string }) {
               )}
             </>
           ) : (
-            /* ── desktop: fixed-corner chrome + scroll-dive (unchanged) ── */
+            /* ── desktop: the BRLT deck panel architecture — in-flow header,
+                  canvas + pricing rail panel, machinery panel with the rep
+                  row, footer logo. The flow diagrams and every interaction
+                  render exactly as before; only the shell changed. ── */
             <>
-              {/* top-left: proposal identity */}
-              <div className="no-print fixed left-6 top-4 z-[55] flex flex-col items-start gap-3">
-                {showChrome && (
-                  <>
-                    <div className="tf-fade font-jbmono text-[10.5px] font-medium uppercase tracking-[0.34em] text-[#6f8a7f]">
-                      A Trace Finance Proposal
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <ClientLogo config={config} size="header" />
-                      <div className="tf-fade leading-tight">
-                        <div className="text-sm font-semibold text-title">{config.clientName}</div>
-                        {config.clientRep && <div className="text-[11px] text-muted">Prepared for {config.clientRep}</div>}
+              {/* header row — eyebrow + client identity left, Trace right */}
+              <div className="relative z-10 flex flex-wrap items-end justify-between gap-6 px-4 pb-5 pt-12 md:px-11">
+                <div>
+                  {showChrome && (
+                    <>
+                      <div className="tf-fade font-jbmono text-[10.5px] font-medium uppercase tracking-[0.34em] text-[#6f8a7f]">
+                        A Trace Finance Proposal
                       </div>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* top-right: toggle cluster (1c) — direction hides on Pricing (2a) */}
-              <div className="no-print fixed right-5 top-4 z-[55] flex flex-col items-end gap-1.5">
+                      <div className="mt-2.5 flex items-center gap-3">
+                        <ClientLogo config={config} size="header" />
+                        <div className="tf-fade leading-tight">
+                          <div className="text-[15px] font-semibold text-title">{config.clientName}</div>
+                          <div className="text-[12px] text-muted">
+                            {config.clientRep ? `Prepared for ${config.clientRep}` : "Prepared by Trace Finance"}
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
                 {showChrome && (
-                  <>
-                    <div className="tf-fade flex items-center gap-2">
-                      <AnimatePresence initial={false}>
-                        {effView === "flow" && (
-                          <motion.div
-                            key="direction"
-                            initial={{ opacity: 0, x: 6 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: 6 }}
-                            transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
-                          >
-                            {!config.hideDirectionToggle && (config.clientDirections ?? "both") === "both" && (
-                              <SegToggle
-                                value={direction}
-                                onChange={setDirection}
-                                options={directionOptions(config, flowId)}
-                              />
-                            )}
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                      {hasPricing && <ViewSwitch view={view} onChange={setView} />}
-                    </div>
-                    <AnimatePresence initial={false}>
-                      {effView === "flow" && hasVariants && (
-                        <motion.div
-                          key="variants"
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
-                          className="flex flex-col items-end gap-1.5 overflow-hidden"
-                        >
-                          <span className="pr-1 pt-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-muted">Flows</span>
-                          <FlowSwitch variants={variants!} activeId={flowId} onChange={switchFlow} />
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </>
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src="/assets/trace-logo-white.svg" alt="Trace Finance" className="tf-fade h-[22px] w-auto opacity-90" />
                 )}
               </div>
 
-              {effView === "pricing" ? (
-                pricingEl
-              ) : (
-                <>
-                  <FlowExperience config={fxConfig} presentation skin="glass" />
-                  {config.salesperson && <SalespersonClosing sp={config.salesperson} company={config.clientName} />}
-                </>
-              )}
+              <FlowExperience
+                config={fxConfig}
+                presentation
+                skin="glass"
+                architecture="panels"
+                panelSlots={{
+                  controls: (
+                    <>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {hasVariants && (
+                          <SegToggle value={flowId} onChange={switchFlow} options={variants!.map((v) => ({ value: v.flowId, label: clientFlowName(v.name) }))} />
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {!config.hideDirectionToggle && (config.clientDirections ?? "both") === "both" && (
+                          <SegToggle value={direction} onChange={setDirection} options={directionOptions(config, flowId)} />
+                        )}
+                      </div>
+                    </>
+                  ),
+                  rail: hasPricing ? (
+                    <PricingRail pricing={proposalPricing} legacy={legacyPricing} clientName={config.clientName} />
+                  ) : undefined,
+                  closing: config.salesperson ? <RepRow sp={config.salesperson} company={config.clientName} /> : undefined,
+                }}
+              />
+
+              {/* footer — the quiet centered wordmark */}
+              <div className="relative z-10 flex items-center justify-center pb-9 pt-7">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/assets/trace-logo-white.svg" alt="Trace Finance" className="h-[18px] w-auto opacity-85" />
+              </div>
 
               {showChrome && (
                 <div className="tf-fade tf-dlbtn fixed bottom-6 left-6 z-40 flex items-center gap-2">
@@ -611,23 +607,110 @@ function ClientLogo({ config, size }: { config: SharedConfig; size: "header" | "
   );
 }
 
-// Horizontal Flow | Pricing tab. Selecting Pricing swaps the main view to the
-// rate cards and hides the direction toggle (rates are direction-independent).
-function ViewSwitch({ view, onChange }: { view: "flow" | "pricing"; onChange: (v: "flow" | "pricing") => void }) {
+// ── the pricing rail (panel architecture) ────────────────────────────────────
+// "What {Client} pays" beside the flow canvas — the link's tailored rates
+// (ProposalPricing) or a legacy link's hand-built cards, in the mock's compact
+// card style. Reflows to a 2-column grid when the rail drops below the canvas
+// (globals.css .tf-price-list).
+function PricingRail({ pricing, legacy, clientName }: { pricing: ProposalPricing; legacy: LegacyPricing | null; clientName: string }) {
+  const cards = legacy
+    ? legacy.cards.map((c) => ({
+        key: c.title,
+        badge: c.badge,
+        bg: c.tone === "cyan" ? "#2be8d6" : "#00f2b1",
+        title: c.title,
+        sub: c.sub,
+        rows: c.rows,
+      }))
+    : pricing.cards.map((card) => ({
+        key: card.key,
+        badge: CARD_BADGE[card.badge] ?? "$",
+        bg: card.accent === "blue" ? "#2be8d6" : "#00f2b1",
+        title: card.title,
+        sub: card.sub,
+        rows: cardRows(card),
+      }));
   return (
-    <div className="flex gap-0.5 rounded-[11px] border border-white/10 bg-[#0e1410]/70 p-[3px] backdrop-blur">
-      {(["flow", "pricing"] as const).map((v) => (
-        <button
-          key={v}
-          onClick={() => onChange(v)}
-          aria-pressed={view === v}
-          className={`rounded-lg px-[15px] py-[6px] text-[12.5px] capitalize tracking-[0.2px] transition duration-200 ease-ds ${
-            view === v ? "bg-mint font-semibold text-mint-on" : "font-medium text-[#8b948f] hover:text-[#bfe8d4]"
-          }`}
-        >
-          {v}
-        </button>
-      ))}
+    <>
+      <div className="font-jbmono text-[11px] font-medium uppercase tracking-[0.34em] text-[#6f8a7f]">Transparent pricing</div>
+      <div className="mt-2.5 font-display text-[21px] font-semibold tracking-[-0.01em] text-title">
+        What <span className="text-mint">{clientName}</span> pays
+      </div>
+      <div className="mt-1.5 text-[12.5px] text-[#8b948f]">Rates that fall as your volume grows.</div>
+      <div className="tf-price-list mt-5 flex flex-col gap-4">
+        {cards.map((card) => (
+          <div key={card.key} className="min-w-0 rounded-2xl border border-[#1c2621] bg-white/[0.02] px-5 py-[18px]">
+            <div className="flex items-center gap-[11px] pb-3">
+              <span
+                className="flex h-[34px] w-[34px] flex-none items-center justify-center rounded-full font-display text-[15px] font-bold text-mint-on"
+                style={{ background: card.bg }}
+              >
+                {card.badge}
+              </span>
+              <div className="min-w-0">
+                <div className="font-display text-[14.5px] font-semibold text-title">{card.title}</div>
+                {card.sub && <div className="text-[11px] text-muted">{card.sub}</div>}
+              </div>
+            </div>
+            {card.rows.map((r) => (
+              <div key={r.label} className="flex items-center justify-between gap-3 border-t border-[#17201c] py-[7px]">
+                <span className="min-w-0 truncate text-[12.5px] text-node-text">{r.label}</span>
+                <span className="flex-none font-jbmono text-[12.5px] font-medium text-mint">{r.value}</span>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+      {legacy?.footer && <div className="mt-auto pt-4 text-[11px] leading-[1.6] text-[#4a5651]">{legacy.footer}</div>}
+    </>
+  );
+}
+
+// ── the rep contact row (panel architecture) ─────────────────────────────────
+// Bottom of the machinery panel: photo + identity left, contact CTAs right.
+function RepRow({ sp, company }: { sp: Salesperson; company?: string }) {
+  const initials = sp.name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+  const photo = safeSrc(sp.photo);
+  const bookingUrl = safeLink(sp.bookingUrl);
+  const subject = company?.trim() ? `Trace Finance proposal for ${company.trim()}` : "Our Trace Finance proposal";
+  const emailHref = sp.email ? `mailto:${sp.email}?subject=${encodeURIComponent(subject)}` : undefined;
+  return (
+    <div>
+      <div className="flex flex-wrap items-center justify-between gap-7">
+        <div className="flex min-w-0 items-center gap-5">
+          {photo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={photo} alt={sp.name} className="h-24 w-24 flex-none rounded-full border border-white/10 object-cover" />
+          ) : (
+            <div className="flex h-24 w-24 flex-none items-center justify-center rounded-full border border-green-accent/30 bg-[#0f1814] text-2xl font-semibold text-[#9cc4b3]">
+              {initials}
+            </div>
+          )}
+          <div className="min-w-0">
+            <div className="font-jbmono text-[10px] font-medium uppercase tracking-[0.34em] text-[#6f8a7f]">Your Trace Finance contact</div>
+            <div className="mt-2 font-display text-[19px] font-semibold tracking-[-0.01em] text-title">{sp.name}</div>
+            {sp.title && <div className="mt-0.5 text-[13px] text-subtitle">{sp.title}</div>}
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2.5">
+          {bookingUrl && (
+            <a href={bookingUrl} target="_blank" rel="noreferrer" className="rounded-xl bg-green-accent px-5 py-2.5 text-sm font-semibold text-[#06120c] transition duration-200 ease-ds hover:brightness-110">
+              Book a call →
+            </a>
+          )}
+          {sp.email && emailHref && (
+            <a href={emailHref} className="rounded-xl border border-green-accent/40 px-4 py-2.5 text-sm font-medium text-[#bfe8d4] transition duration-200 ease-ds hover:bg-[#13201a]">
+              {sp.email}
+            </a>
+          )}
+          {sp.phone && (
+            <a href={`tel:${sp.phone.replace(/[^+\d]/g, "")}`} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-medium text-subtitle transition duration-200 ease-ds hover:text-title">
+              {sp.phone}
+            </a>
+          )}
+        </div>
+      </div>
+      {sp.bio && <p className="mt-5 max-w-[640px] text-sm leading-relaxed text-subtitle">{sp.bio}</p>}
     </div>
   );
 }
@@ -839,27 +922,6 @@ function SalespersonClosing({ sp, company }: { sp: Salesperson; company?: string
         <img src="/assets/trace-logo-white.svg" alt="Trace Finance" className="h-[18px] w-auto opacity-85" />
       </div>
     </section>
-  );
-}
-
-// Right-side flow switch — same segmented-pill styling as the Pay-in / Pay-out
-// toggle, but it swaps the whole flow between the prepared variants.
-function FlowSwitch({ variants, activeId, onChange }: { variants: Variant[]; activeId: string; onChange: (id: string) => void }) {
-  return (
-    <div className="flex flex-col gap-0.5 rounded-[11px] border border-white/10 bg-[#0e1410]/70 p-[3px] backdrop-blur">
-      {variants.map((v) => (
-        <button
-          key={v.flowId}
-          onClick={() => onChange(v.flowId)}
-          aria-pressed={activeId === v.flowId}
-          className={`w-full rounded-lg px-[15px] py-[6px] text-left text-[12.5px] tracking-[0.2px] transition duration-200 ease-ds ${
-            activeId === v.flowId ? "bg-mint font-semibold text-mint-on" : "font-medium text-[#8b948f] hover:text-[#bfe8d4]"
-          }`}
-        >
-          {clientFlowName(v.name)}
-        </button>
-      ))}
-    </div>
   );
 }
 

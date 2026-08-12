@@ -23,7 +23,7 @@ export function useIsMobile() {
   return mobile;
 }
 import type { FlowConfig, SettlementOption } from "../data/schema";
-import { applySettlement, clientFlowName, directionOptions, fundingChoices, isPlatformFlow, settlementChoices } from "../data/schema";
+import { applySettlement, clientFlowName, directionLabel, directionOptions, fundingChoices, isPlatformFlow, settlementChoices } from "../data/schema";
 import { getFlow } from "../data";
 import { computeLayout, CONT_Y, CONT_H } from "./layout";
 import { Defs, displayCurrency } from "./FlowSvg";
@@ -52,6 +52,8 @@ export function FlowExperience({
   forceStatic = false,
   editable = false,
   skin,
+  architecture,
+  panelSlots,
 }: {
   config: FlowConfig;
   presentation?: boolean;
@@ -68,6 +70,15 @@ export function FlowExperience({
    *  backdrop and the flow floats on a liquid-glass panel. Purely
    *  presentational — the dive, layers and interactions are untouched. */
   skin?: "glass";
+  /** "panels" (the shared /f/ link, desktop): the BRLT deck architecture —
+   *  the surface story and the machinery live in two stacked liquid-glass
+   *  panels in one natural page scroll (no dive). The flow diagrams, their
+   *  animations and every interaction render exactly as everywhere else. */
+  architecture?: "panels";
+  /** Panel-architecture slots, provided by the shared view: the top controls
+   *  row (variant tabs + direction pills), the pricing side rail, and the
+   *  closing rep-contact row at the bottom of the machinery panel. */
+  panelSlots?: { controls?: React.ReactNode; rail?: React.ReactNode; closing?: React.ReactNode };
 }) {
   const glass = skin === "glass";
   const baseFlow = getFlow(config.flowId);
@@ -171,6 +182,8 @@ export function FlowExperience({
   );
 
   const sectionRef = useRef<HTMLDivElement>(null);
+  // "panels" architecture: the machinery panel the surface strip scrolls to.
+  const howRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress: p } = useScroll({
     target: sectionRef,
     offset: ["start start", "end end"],
@@ -385,6 +398,80 @@ export function FlowExperience({
         ) : (
           <MobileFlow flow={flow} config={config} />
         )}
+      </div>
+    );
+  }
+
+  // ── "panels" architecture (shared /f/ link, desktop): the BRLT deck shell.
+  // Two stacked liquid-glass panels in one natural scroll — the surface story
+  // with the pricing rail beside it, then the machinery panel. The diagrams
+  // and their animations are the same SVGs the dive renders; only the shell
+  // around them changed. Below 1000px the rail drops under the canvas
+  // (globals.css .tf-panel/.tf-rail rules, mirroring the mock).
+  if (architecture === "panels") {
+    const goHow = () => howRef.current?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
+    const eyebrow = `${clientFlowName(flow.title)} · ${directionLabel(config.direction, config, config.flowId)}`;
+    const rail = panelSlots?.rail;
+    return (
+      <div className="w-full px-4 md:px-11">
+        {/* Panel 1 — the desired transaction, pricing riding beside it */}
+        <div
+          className="tf-panel tf-rise relative grid overflow-hidden"
+          style={{
+            ...glassStyle,
+            gridTemplateColumns: rail ? "minmax(0,1fr) minmax(300px,380px)" : "minmax(0,1fr)",
+            minHeight: "calc(100vh - 190px)",
+          }}
+        >
+          <SpecularEdge />
+          <div className="relative flex min-w-0 flex-col px-8 pb-0 pt-6" onDoubleClick={goHow}>
+            {panelSlots?.controls && (
+              <div className="flex flex-none flex-wrap items-center justify-between gap-4">{panelSlots.controls}</div>
+            )}
+            <div className="flex min-h-0 flex-1 flex-col justify-center py-7">
+              <div className="font-jbmono text-[11px] font-medium uppercase tracking-[0.34em] text-[#6f8a7f]">{eyebrow}</div>
+              <h1 className="mt-3 font-display text-[34px] font-semibold leading-[1.1] tracking-[-0.02em] text-[#eef1ee]">
+                Built for <span className="text-mint">{config.clientName}</span>
+              </h1>
+              <p className="mt-3 max-w-[560px] text-[14.5px] leading-[1.55] text-subtitle" data-hero-support>
+                {support}
+              </p>
+              <div className="mt-2.5">{SurfaceSvg}</div>
+            </div>
+            <button
+              onClick={goHow}
+              className="-mx-8 flex flex-none items-center justify-between gap-5 border-t border-white/[.12] bg-[rgba(10,17,13,.35)] px-8 py-3.5 text-left transition duration-200 ease-ds hover:bg-[rgba(19,32,26,.5)]"
+            >
+              <span className="font-jbmono text-[11px] font-medium uppercase tracking-[0.34em] text-[#bfe8d4]">
+                Beneath the surface · how Trace makes it happen
+              </span>
+              <span className="text-[14px] text-mint">↓</span>
+            </button>
+          </div>
+          {rail && (
+            <div className="tf-rail relative box-border flex flex-col border-l border-white/[.14] bg-[rgba(7,11,9,.4)] px-7 pb-6 pt-7">
+              {rail}
+            </div>
+          )}
+        </div>
+
+        {/* Panel 2 — beneath the surface: the full machinery */}
+        <div ref={howRef} data-flow-dive className="tf-rise relative mt-8 scroll-mt-7 overflow-hidden px-8 pb-7 pt-9 md:px-10" style={glassStyle}>
+          <SpecularEdge />
+          <div className="font-jbmono text-[11px] font-medium uppercase tracking-[0.34em] text-[#6f8a7f]">Beneath the surface</div>
+          <h2 className="mt-3 font-display text-[26px] font-semibold tracking-[-0.01em] text-[#eef1ee]">How Trace makes it happen</h2>
+          <p className="mt-2 text-sm font-medium text-mint">{clientFlowName(flow.title)}</p>
+          {flowComment && (
+            <div data-flow-comment className="mt-2.5 max-w-[640px] text-[13.5px] leading-relaxed text-subtitle">
+              <NoteBody text={flowComment} />
+            </div>
+          )}
+          <div className="mt-2 flex flex-col items-center">
+            {settlementToggle}
+            <div className="w-full">{MachinerySvg}</div>
+          </div>
+          {panelSlots?.closing && <div className="mt-6 border-t border-white/[.12] pt-6">{panelSlots.closing}</div>}
+        </div>
       </div>
     );
   }
