@@ -305,11 +305,13 @@ export function SharedFlowView({ code }: { code: string }) {
       : <PricingView pricing={proposalPricing} clientName={config.clientName} inline={isMobile} />
     : null;
 
-  // Only offer the Pricing tab when the link actually carries pricing. A link
-  // saved without any rates is flow-only — no toggle, and a ?view=pricing deep
+  // Only offer pricing when the link actually carries it. A link saved
+  // without any rates is flow-only — no rail/tab, and a ?view=pricing deep
   // link falls back to the flow.
   const hasPricing = !!config?.pricing;
   const effView: "flow" | "pricing" = hasPricing ? view : "flow";
+  const pricingCardCount = legacyPricing ? legacyPricing.cards.length : proposalPricing.cards.length;
+  const showDirectionToggle = !!config && !config.hideDirectionToggle && (config.clientDirections ?? "both") === "both";
 
   return (
     <LayoutGroup>
@@ -418,23 +420,29 @@ export function SharedFlowView({ code }: { code: string }) {
                 skin="glass"
                 architecture="panels"
                 panelSlots={{
-                  controls: (
-                    <>
-                      <div className="flex flex-wrap items-center gap-2">
-                        {hasVariants && (
-                          <SegToggle value={flowId} onChange={switchFlow} options={variants!.map((v) => ({ value: v.flowId, label: clientFlowName(v.name) }))} />
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {!config.hideDirectionToggle && (config.clientDirections ?? "both") === "both" && (
-                          <SegToggle value={direction} onChange={setDirection} options={directionOptions(config, flowId)} />
-                        )}
-                      </div>
-                    </>
-                  ),
+                  // only render the controls row when it has something in it —
+                  // a single-flow link with a locked direction shows no chrome
+                  controls:
+                    hasVariants || showDirectionToggle ? (
+                      <>
+                        <div className="flex flex-wrap items-center gap-2">
+                          {hasVariants && (
+                            <SegToggle value={flowId} onChange={switchFlow} options={variants!.map((v) => ({ value: v.flowId, label: clientFlowName(v.name) }))} />
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {showDirectionToggle && (
+                            <SegToggle value={direction} onChange={setDirection} options={directionOptions(config, flowId)} />
+                          )}
+                        </div>
+                      </>
+                    ) : undefined,
                   rail: hasPricing ? (
                     <PricingRail pricing={proposalPricing} legacy={legacyPricing} clientName={config.clientName} />
                   ) : undefined,
+                  // dense pricing (3+ cards — e.g. Brazil-market's five
+                  // products) drops below the canvas in a responsive grid
+                  railPosition: pricingCardCount > 2 ? "below" : "beside",
                   closing: config.salesperson ? <RepRow sp={config.salesperson} company={config.clientName} /> : undefined,
                 }}
               />
@@ -636,7 +644,17 @@ function PricingRail({ pricing, legacy, clientName }: { pricing: ProposalPricing
       <div className="mt-2.5 font-display text-[21px] font-semibold tracking-[-0.01em] text-title">
         What <span className="text-mint">{clientName}</span> pays
       </div>
-      <div className="mt-1.5 text-[12.5px] text-[#8b948f]">Rates that fall as your volume grows.</div>
+      {legacy ? (
+        <div className="mt-1.5 flex items-center gap-2 text-[12.5px] text-[#8b948f]">
+          {legacy.flag && <span className="text-[15px] leading-none">{legacy.flag}</span>}
+          <span>
+            {legacy.region}
+            {legacy.subtitle ? ` · ${legacy.subtitle}` : ""}
+          </span>
+        </div>
+      ) : (
+        <div className="mt-1.5 text-[12.5px] text-[#8b948f]">Rates that fall as your volume grows.</div>
+      )}
       <div className="tf-price-list mt-5 flex flex-col gap-4">
         {cards.map((card) => (
           <div key={card.key} className="min-w-0 rounded-2xl border border-[#1c2621] bg-white/[0.02] px-5 py-[18px]">
