@@ -228,12 +228,12 @@ export function MobileFlow({ flow, config }: { flow: Flow; config: FlowConfig })
             transition={{ duration: 0.5, delay: gi * 0.08, ease: [0.4, 0, 0.2, 1] }}
           >
             {g.length === 1 ? (
-              <NodeCard node={g[0]} primary={g[0].id === layout.primaryClientId} config={cardConfig} laneOverrides={laneOverrides} />
+              <BankedCard node={g[0]} primary={g[0].id === layout.primaryClientId} config={cardConfig} laneOverrides={laneOverrides} />
             ) : (
               // parallel origins: side-by-side, both feeding the row below
               <div className="grid grid-cols-2 gap-2">
                 {g.map((n) => (
-                  <NodeCard key={n.id} node={n} primary={n.id === layout.primaryClientId} config={cardConfig} laneOverrides={laneOverrides} />
+                  <BankedCard key={n.id} node={n} primary={n.id === layout.primaryClientId} config={cardConfig} laneOverrides={laneOverrides} />
                 ))}
               </div>
             )}
@@ -255,6 +255,45 @@ export function MobileFlow({ flow, config }: { flow: Flow; config: FlowConfig })
           </motion.div>
         );
       })}
+    </div>
+  );
+}
+
+// "Account held within a bank" enclosure (FlowConfig.nodeBank) — the mobile
+// counterpart of the canvas's dotted perimeter. The card keeps its own label
+// (the account holder) while the enclosure carries the bank's name and
+// optional logo above it, reading top-down as "[Bank] ( account holder )".
+function BankedCard({ node, primary, config, laneOverrides }: { node: NodeLayout; primary: boolean; config: FlowConfig; laneOverrides?: Record<string, string | undefined> }) {
+  const card = <NodeCard node={node} primary={primary} config={config} laneOverrides={laneOverrides} />;
+  const bank = node.kind === "engine" ? undefined : config.nodeBank?.[`${config.flowId}:${node.srcId ?? node.id}`];
+  if (!bank || (!bank.label?.trim() && !bank.logoUrl)) return card;
+  const label = bank.label?.trim() ?? "";
+  const bold = bank.labelBold !== false; // default bold; false = quiet skim text
+  return (
+    <div className="rounded-[22px] p-2" style={{ border: "2px dotted rgba(255,255,255,0.34)" }}>
+      <div className="mb-2 flex flex-col items-center gap-1.5 px-2 pt-1">
+        {label && (
+          <div
+            className="max-w-full truncate text-[12.5px] leading-snug"
+            style={{ fontWeight: bold ? 700 : 400, color: bold ? "#eef1ee" : "#93a09a", letterSpacing: bold ? 0.2 : 0.3 }}
+          >
+            {label}
+          </div>
+        )}
+        {bank.logoUrl &&
+          (bank.logoPlate === "light" ? (
+            // a dark logo we couldn't cut to a light mark → white backing plate
+            <span className="flex items-center rounded-lg bg-white px-2 py-1">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={bank.logoUrl} alt="" className="h-4 w-auto max-w-[140px] object-contain" />
+            </span>
+          ) : (
+            // background already cut → sits straight on the deck, no plate
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={bank.logoUrl} alt="" className="h-5 w-auto max-w-[160px] object-contain" />
+          ))}
+      </div>
+      {card}
     </div>
   );
 }
