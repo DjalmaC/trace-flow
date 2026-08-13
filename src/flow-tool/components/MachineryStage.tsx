@@ -570,6 +570,8 @@ export function MachineryStage({
               clientLogoPlate={config.clientLogoPlate}
               partnerLogoUrl={config.partnerLogoUrl}
               partnerLogoPlate={config.partnerLogoPlate}
+              bankLogoUrl={config.bankLogoUrl}
+              bankLogoPlate={config.bankLogoPlate}
             />
             {entity && (
               <text x={node.x + node.w / 2} y={entityY} textAnchor="middle" fontSize={11} fill={C.subtitle}>
@@ -702,13 +704,25 @@ function BankEnclosure({
       )}
       {hasLogo &&
         (light ? (
+          // A dark logo would vanish on the deck, so instead of a white backing
+          // plate we paint the mark white (keeping its alpha) — a clean white
+          // silhouette on the deck, no box behind it.
           <>
-            {/* a dark logo we couldn't cut to a light mark → white backing plate */}
-            <rect x={cx - logoW / 2} y={logoTop - 4} width={logoW} height={BANK_LOGO_H + 8} rx={8} fill="#ffffff" />
-            <image href={bank.logoUrl} x={cx - logoW / 2 + 8} y={logoTop} width={logoW - 16} height={BANK_LOGO_H} preserveAspectRatio="xMidYMid meet" />
+            <filter id={`tf-bankwhite-${node.id}`} x="-5%" y="-5%" width="110%" height="110%">
+              <feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1 0" />
+            </filter>
+            <image
+              href={bank.logoUrl}
+              x={cx - logoW / 2}
+              y={logoTop}
+              width={logoW}
+              height={BANK_LOGO_H}
+              preserveAspectRatio="xMidYMid meet"
+              filter={`url(#tf-bankwhite-${node.id})`}
+            />
           </>
         ) : (
-          // background already cut → sits straight on the deck, no plate
+          // light/colour mark on a cut background → sits straight on the deck
           <image href={bank.logoUrl} x={cx - logoW / 2} y={logoTop} width={logoW} height={BANK_LOGO_H} preserveAspectRatio="xMidYMid meet" />
         ))}
     </g>

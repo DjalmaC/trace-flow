@@ -45,7 +45,7 @@ export default function BuildPage() {
   const [editingCode, setEditingCode] = useState<string | null>(null);
   // Double-click rename overlay for the flow boxes / lane names / hero
   // subtitle on the canvas.
-  const [rename, setRename] = useState<{ key: string; lane?: "brazil" | "abroad"; hero?: boolean; platformCaption?: boolean; comment?: boolean; node?: boolean; entity?: string; entityOn?: boolean; branded?: boolean; partner?: boolean; bankOn?: boolean; bankLabel?: string; bankBold?: boolean; bankLogoUrl?: string; bankLogoPlate?: "light" | "none"; original: string; value: string; left: number; top: number; width: number } | null>(null);
+  const [rename, setRename] = useState<{ key: string; lane?: "brazil" | "abroad"; hero?: boolean; platformCaption?: boolean; comment?: boolean; node?: boolean; entity?: string; entityOn?: boolean; branded?: boolean; partner?: boolean; bankBrand?: boolean; bankOn?: boolean; bankLabel?: string; bankBold?: boolean; bankLogoUrl?: string; bankLogoPlate?: "light" | "none"; original: string; value: string; left: number; top: number; width: number } | null>(null);
   const renameRef = useRef<HTMLInputElement>(null);
   // Set while the bank-logo file picker is open: its focus theft would
   // otherwise blur (and commit/close) the node card before a file is chosen.
@@ -276,6 +276,7 @@ export default function BuildPage() {
         entityOn: !!hentity,
         branded: !!(config.nodeBranded?.[hkey] ?? config.nodeBranded?.[mkey]),
         partner: !!(config.nodePartner?.[hkey] ?? config.nodePartner?.[mkey]),
+        bankBrand: !!(config.nodeBankLogo?.[hkey] ?? config.nodeBankLogo?.[mkey]),
         original: flowLabel,
         value: config.nodeLabels?.[hkey] ?? config.nodeLabels?.[mkey] ?? flowLabel,
         left: r.left + r.width / 2 - w / 2,
@@ -299,6 +300,7 @@ export default function BuildPage() {
       entityOn: !!entity,
       branded: !!config.nodeBranded?.[key],
       partner: !!config.nodePartner?.[key],
+      bankBrand: !!config.nodeBankLogo?.[key],
       bankOn: !!bank,
       bankLabel: bank?.label ?? "",
       bankBold: bank?.labelBold !== false,
@@ -386,6 +388,10 @@ export default function BuildPage() {
       const partner = { ...(c.nodePartner ?? {}) };
       if (rename.partner) partner[rename.key] = true;
       else delete partner[rename.key];
+      // ...or the (in-box) bank logo — a third brand mark.
+      const bankBrand = { ...(c.nodeBankLogo ?? {}) };
+      if (rename.bankBrand) bankBrand[rename.key] = true;
+      else delete bankBrand[rename.key];
       // "Held in a bank": a dotted enclosure with the bank's name + logo. Kept
       // only when it carries something (a name or a logo).
       const banks = { ...(c.nodeBank ?? {}) };
@@ -399,6 +405,7 @@ export default function BuildPage() {
         nodeEntities: Object.keys(ents).length ? ents : undefined,
         nodeBranded: Object.keys(branded).length ? branded : undefined,
         nodePartner: Object.keys(partner).length ? partner : undefined,
+        nodeBankLogo: Object.keys(bankBrand).length ? bankBrand : undefined,
         nodeBank: Object.keys(banks).length ? banks : undefined,
       };
     });
@@ -686,6 +693,20 @@ export default function BuildPage() {
             className="h-3 w-3 accent-mint"
           />
           Show counterparty logo{!config.partnerLogoUrl && " · upload one in the Client step"}
+        </label>
+        <label
+          className={`flex items-center gap-2 px-0.5 text-[11px] font-medium ${
+            config.bankLogoUrl ? "cursor-pointer text-subtitle" : "cursor-not-allowed text-muted"
+          }`}
+        >
+          <input
+            type="checkbox"
+            disabled={!config.bankLogoUrl}
+            checked={!!rename.bankBrand}
+            onChange={(e) => setRename({ ...rename, bankBrand: e.target.checked })}
+            className="h-3 w-3 accent-mint"
+          />
+          Show bank logo{!config.bankLogoUrl && " · upload one in the Client step"}
         </label>
         <label className="flex cursor-pointer items-center gap-2 px-0.5 text-[11px] font-medium text-subtitle">
           <input

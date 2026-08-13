@@ -20,7 +20,7 @@ import type { IntakeAnswers } from "@/flow-tool/intake/questions";
 import { resolve } from "@/flow-tool/intake/resolver";
 import { createShareLink, isShareConfigured, shareUrl, updateShareLink } from "@/flow-tool/lib/share";
 import { loadRep, loadRepKey } from "@/flow-tool/lib/rep-session";
-import { dominantColor, normalizeLogo } from "@/flow-tool/lib/logo";
+import { dominantColor, normalizeLogo, removeBackground } from "@/flow-tool/lib/logo";
 import { downloadProposalPdf } from "@/flow-tool/lib/proposal";
 import { defaultProposalDate, saveSetup } from "@/flow-tool/lib/setup";
 import { CommandPalette, type PaletteAction } from "@/components/CommandPalette";
@@ -325,6 +325,9 @@ export function ControlPanel({
         nodePartner: config.nodePartner,
         nodeBank: config.nodeBank,
         nodeBranded: config.nodeBranded,
+        bankLogoUrl: config.bankLogoUrl,
+        bankLogoPlate: config.bankLogoPlate,
+        nodeBankLogo: config.nodeBankLogo,
         proposalNotes: config.proposalNotes,
         flowsLabel: config.flowsLabel,
         comments: config.comments,
@@ -386,11 +389,22 @@ export function ControlPanel({
   }
 
   // Counterparty (merchant/partner) logo — the second mark for
-  // "Client ⇄ Trace ⇄ Merchant" stories. Same normalize pipeline, no
-  // treatment ladder: auto-decide plate and ship.
+  // "Client ⇄ Trace ⇄ Merchant" stories. Cut the background then normalize, so
+  // the mark sits clean in the box (same as the bank logo below).
   async function onPartnerLogoData(raw: string) {
-    const r = await normalizeLogo(raw);
+    const cut = await removeBackground(raw).catch(() => null);
+    const r = await normalizeLogo(cut ?? raw);
     patch({ partnerLogoUrl: r.url, partnerLogoPlate: r.plate });
+  }
+
+  // A THIRD in-box brand mark (a bank), so a flow can show the company, the
+  // counterparty AND a bank logo across its boxes. Cut the background (the
+  // keying pass handles busy backgrounds, then normalize trims + plates) so the
+  // mark sits clean in the box.
+  async function onBankLogoData(raw: string) {
+    const cut = await removeBackground(raw).catch(() => null);
+    const r = await normalizeLogo(cut ?? raw);
+    patch({ bankLogoUrl: r.url, bankLogoPlate: r.plate });
   }
 
   async function copyLink() {
@@ -661,6 +675,24 @@ export function ControlPanel({
                       </span>
                       <button
                         onClick={() => patch({ partnerLogoUrl: undefined, partnerLogoPlate: undefined, nodePartner: undefined })}
+                        className="text-[11px] font-medium text-muted transition-colors duration-150 ease-ds hover:text-title"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )}
+                </Field>
+
+                <Field label="Bank logo · optional, a third in-box mark for any box">
+                  <LogoDrop compact hasLogo={!!config.bankLogoUrl} onImage={onBankLogoData} />
+                  {config.bankLogoUrl && (
+                    <div className="mt-2 flex items-center justify-between rounded-[9px] border border-hairline-control bg-surface-input px-3 py-2">
+                      <span className={`flex h-9 items-center rounded-md px-2 ${config.bankLogoPlate === "light" ? "bg-white" : ""}`}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={config.bankLogoUrl} alt="bank logo" className="h-6 w-auto max-w-[140px] object-contain" />
+                      </span>
+                      <button
+                        onClick={() => patch({ bankLogoUrl: undefined, bankLogoPlate: undefined, nodeBankLogo: undefined })}
                         className="text-[11px] font-medium text-muted transition-colors duration-150 ease-ds hover:text-title"
                       >
                         Remove

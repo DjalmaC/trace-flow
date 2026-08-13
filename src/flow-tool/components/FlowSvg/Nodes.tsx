@@ -49,6 +49,8 @@ export function FlowNodeShape({
   clientLogoPlate,
   partnerLogoUrl,
   partnerLogoPlate,
+  bankLogoUrl,
+  bankLogoPlate,
 }: {
   node: NodeLayout;
   green?: boolean;
@@ -60,6 +62,9 @@ export function FlowNodeShape({
   /** The counterparty (merchant/partner) logo for nodePartner-flagged boxes. */
   partnerLogoUrl?: string;
   partnerLogoPlate?: "light" | "none";
+  /** The (in-box) bank logo for nodeBankLogo-flagged boxes. */
+  bankLogoUrl?: string;
+  bankLogoPlate?: "light" | "none";
 }) {
   const { x, y, w, h, cx } = node;
   // The quiet glass-card recipe (tokens.GLASS_CARD, shared with the pricing
@@ -99,6 +104,20 @@ export function FlowNodeShape({
         {rect}
         {lightPlate && <rect x={x + 6} y={y + 6} width={w - 12} height={h - 12} rx={7} fill="#ffffff" />}
         <image href={partnerLogoUrl} x={x + pad} y={y + pad} width={w - pad * 2} height={h - pad * 2} preserveAspectRatio="xMidYMid meet" />
+      </g>
+    );
+  }
+
+  // A bank-branded node carries the (in-box) bank logo — a third brand mark
+  // alongside client + counterparty, so a flow isn't limited to two logos.
+  if (node.bankLogo && bankLogoUrl) {
+    const lightPlate = bankLogoPlate === "light";
+    const pad = lightPlate ? 12 : 6;
+    return (
+      <g>
+        {rect}
+        {lightPlate && <rect x={x + 6} y={y + 6} width={w - 12} height={h - 12} rx={7} fill="#ffffff" />}
+        <image href={bankLogoUrl} x={x + pad} y={y + pad} width={w - pad * 2} height={h - pad * 2} preserveAspectRatio="xMidYMid meet" />
       </g>
     );
   }

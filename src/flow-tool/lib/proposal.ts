@@ -107,6 +107,10 @@ export interface ProposalBuildOpts {
   nodeBank?: Record<string, { label?: string; logoUrl?: string; logoPlate?: "light" | "none"; labelBold?: boolean }>;
   /** Per-proposal second-client branding flags (see FlowConfig.nodeBranded). */
   nodeBranded?: Record<string, boolean>;
+  /** In-box bank logo + which boxes carry it (see FlowConfig.bankLogoUrl). */
+  bankLogoUrl?: string;
+  bankLogoPlate?: "light" | "none";
+  nodeBankLogo?: Record<string, boolean>;
   /** Per-flow proposal notes (see FlowConfig.proposalNotes) — the drawer prose,
    *  printed as a notes slide after each flow's slide. */
   proposalNotes?: Record<string, string>;
@@ -594,6 +598,9 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
     nodePartner: opts.nodePartner,
     nodeBank: opts.nodeBank,
     nodeBranded: opts.nodeBranded,
+    bankLogoUrl: opts.bankLogoUrl,
+    bankLogoPlate: opts.bankLogoPlate,
+    nodeBankLogo: opts.nodeBankLogo,
     proposalNotes: opts.proposalNotes,
     flowsLabel: opts.flowsLabel,
     comments: opts.comments,
