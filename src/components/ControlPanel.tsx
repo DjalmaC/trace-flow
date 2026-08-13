@@ -20,7 +20,7 @@ import type { IntakeAnswers } from "@/flow-tool/intake/questions";
 import { resolve } from "@/flow-tool/intake/resolver";
 import { createShareLink, isShareConfigured, shareUrl, updateShareLink } from "@/flow-tool/lib/share";
 import { loadRep, loadRepKey } from "@/flow-tool/lib/rep-session";
-import { dominantColor, normalizeLogo } from "@/flow-tool/lib/logo";
+import { dominantColor, normalizeLogo, removeBackground } from "@/flow-tool/lib/logo";
 import { downloadProposalPdf } from "@/flow-tool/lib/proposal";
 import { defaultProposalDate, saveSetup } from "@/flow-tool/lib/setup";
 import { CommandPalette, type PaletteAction } from "@/components/CommandPalette";
@@ -389,17 +389,21 @@ export function ControlPanel({
   }
 
   // Counterparty (merchant/partner) logo — the second mark for
-  // "Client ⇄ Trace ⇄ Merchant" stories. Same normalize pipeline, no
-  // treatment ladder: auto-decide plate and ship.
+  // "Client ⇄ Trace ⇄ Merchant" stories. Cut the background then normalize, so
+  // the mark sits clean in the box (same as the bank logo below).
   async function onPartnerLogoData(raw: string) {
-    const r = await normalizeLogo(raw);
+    const cut = await removeBackground(raw).catch(() => null);
+    const r = await normalizeLogo(cut ?? raw);
     patch({ partnerLogoUrl: r.url, partnerLogoPlate: r.plate });
   }
 
   // A THIRD in-box brand mark (a bank), so a flow can show the company, the
-  // counterparty AND a bank logo across its boxes. Same pipeline as partner.
+  // counterparty AND a bank logo across its boxes. Cut the background (the
+  // keying pass handles busy backgrounds, then normalize trims + plates) so the
+  // mark sits clean in the box.
   async function onBankLogoData(raw: string) {
-    const r = await normalizeLogo(raw);
+    const cut = await removeBackground(raw).catch(() => null);
+    const r = await normalizeLogo(cut ?? raw);
     patch({ bankLogoUrl: r.url, bankLogoPlate: r.plate });
   }
 
