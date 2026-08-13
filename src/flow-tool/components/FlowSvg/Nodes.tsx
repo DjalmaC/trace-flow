@@ -110,14 +110,29 @@ export function FlowNodeShape({
 
   // A bank-branded node carries the (in-box) bank logo — a third brand mark
   // alongside client + counterparty, so a flow isn't limited to two logos.
+  // A dark mark is painted to a clean white silhouette (keeping its alpha)
+  // rather than sat on a white backing plate — no card behind it, matching the
+  // bank-enclosure treatment.
   if (node.bankLogo && bankLogoUrl) {
-    const lightPlate = bankLogoPlate === "light";
-    const pad = lightPlate ? 12 : 6;
+    const dark = bankLogoPlate === "light";
+    const pad = 9;
     return (
       <g>
         {rect}
-        {lightPlate && <rect x={x + 6} y={y + 6} width={w - 12} height={h - 12} rx={7} fill="#ffffff" />}
-        <image href={bankLogoUrl} x={x + pad} y={y + pad} width={w - pad * 2} height={h - pad * 2} preserveAspectRatio="xMidYMid meet" />
+        {dark && (
+          <filter id={`tf-nodebankwhite-${node.id}`} x="-5%" y="-5%" width="110%" height="110%">
+            <feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1 0" />
+          </filter>
+        )}
+        <image
+          href={bankLogoUrl}
+          x={x + pad}
+          y={y + pad}
+          width={w - pad * 2}
+          height={h - pad * 2}
+          preserveAspectRatio="xMidYMid meet"
+          filter={dark ? `url(#tf-nodebankwhite-${node.id})` : undefined}
+        />
       </g>
     );
   }
