@@ -519,7 +519,83 @@ export async function renderProposalFlowPngs(
     const it = valid[i];
     const flow = getFlow(it.flowId)!;
     const support = supportFor(config, flow);
-    out.push(await renderDeckPng(flowSlide({ ...config, flowId: it.flowId }, flow, it.name, deckFlowLabel(i, valid.length, config.flowsLabel), support)));
+    const label = deckFlowLabel(i, valid.length, config.flowsLabel);
+    out.push(await renderDeckPng(flowSlide({ ...config, flowId: it.flowId }, flow, it.name, label, support)));
+    // The drawer notes for this flow follow as their own slide(s), so the
+    // written prose the client reads on the link also ships in the download.
+    const notes = config.proposalNotes?.[it.flowId]?.trim();
+    if (notes) for (const png of await renderNotesSlides(notes, it.name, label)) out.push(png);
+  }
+  return out;
+}
+
+// ── proposal notes slide(s) ──────────────────────────────────────────────────
+// The Notes-drawer prose for a flow, printed on the silk deck. Paragraph breaks
+// (a blank line) are preserved as vertical gaps and "- "/"•" lines render as
+// bullets, matching the client link. Long notes paginate across slides.
+const NOTES_MAX_CHARS = 96; // wrap width at 13.5px across the ~860px column
+const NOTES_LH = 21;
+const NOTES_TOP = 150;
+const NOTES_BOTTOM = 500;
+
+function wrapNoteLine(text: string, bullet: boolean): string[] {
+  const words = text.split(/\s+/).filter(Boolean);
+  const segs: string[] = [];
+  let cur = "";
+  for (const w of words) {
+    if ((cur + " " + w).trim().length > NOTES_MAX_CHARS) {
+      segs.push(cur);
+      cur = w;
+    } else cur = cur ? `${cur} ${w}` : w;
+  }
+  if (cur) segs.push(cur);
+  // first wrapped segment of a bullet gets the dot; continuations hang-indent
+  return segs.map((s, i) => (bullet ? (i === 0 ? `•  ${s}` : `     ${s}`) : s));
+}
+
+/** Notes prose → laid-out lines ("" = a paragraph gap). */
+function notesToLines(notes: string): string[] {
+  const paras = notes.replace(/\r/g, "").split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+  const out: string[] = [];
+  paras.forEach((p, pi) => {
+    if (pi) out.push(""); // blank line between paragraphs
+    p.split("\n").map((l) => l.trim()).filter(Boolean).forEach((line) => {
+      const bullet = /^[-*•]\s+/.test(line);
+      out.push(...wrapNoteLine(line.replace(/^[-*•]\s+/, ""), bullet));
+    });
+  });
+  return out;
+}
+
+function notesSlide(lines: string[], name: string, label: string, part: number, parts: number): React.ReactElement {
+  return (
+    <Frame>
+      <text x={48} y={56} fontSize={11} fontWeight={600} fill={LABEL} letterSpacing={2}>
+        NOTES
+      </text>
+      <text x={48} y={86} fontSize={24} fontWeight={700} fill={TITLE}>
+        {`${label} - ${clientFlowName(name)}`}
+        {parts > 1 ? `  (${part + 1}/${parts})` : ""}
+      </text>
+      {lines.map((t, i) =>
+        t ? (
+          <text key={i} x={48} y={NOTES_TOP + i * NOTES_LH} fontSize={13.5} fill="#c7cec9">
+            {t}
+          </text>
+        ) : null,
+      )}
+    </Frame>
+  );
+}
+
+async function renderNotesSlides(notes: string, name: string, label: string): Promise<string[]> {
+  const all = notesToLines(notes);
+  const perPage = Math.max(1, Math.floor((NOTES_BOTTOM - NOTES_TOP) / NOTES_LH));
+  const pages: string[][] = [];
+  for (let i = 0; i < all.length; i += perPage) pages.push(all.slice(i, i + perPage));
+  const out: string[] = [];
+  for (let p = 0; p < pages.length; p++) {
+    out.push(await renderDeckPng(notesSlide(pages[p], name, label, p, pages.length)));
   }
   return out;
 }

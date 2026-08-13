@@ -325,6 +325,7 @@ export function ControlPanel({
         nodePartner: config.nodePartner,
         nodeBank: config.nodeBank,
         nodeBranded: config.nodeBranded,
+        proposalNotes: config.proposalNotes,
         flowsLabel: config.flowsLabel,
         comments: config.comments,
         nodeEntities: config.nodeEntities,

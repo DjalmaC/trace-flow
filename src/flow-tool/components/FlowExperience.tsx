@@ -665,10 +665,32 @@ function SettlementToggle({
 // it's a plain multi-line paragraph with the breaks preserved.
 const BULLET_RE = /^[-*•]\s+/;
 function NoteBody({ text }: { text: string }) {
-  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  // Blocks split on a blank line (a paragraph break the rep typed); within a
+  // block, single newlines are kept. Blank lines are preserved as spacing
+  // instead of being collapsed away.
+  const blocks = text
+    .replace(/\r/g, "")
+    .split(/\n\s*\n/)
+    .map((b) => b.replace(/\s+$/, ""))
+    .filter((b) => b.trim());
+  const lines = blocks.flatMap((b) => b.split(/\n/)).map((l) => l.trim()).filter(Boolean);
   const asBullets = lines.length > 1 && lines.some((l) => BULLET_RE.test(l));
-  // Plain paragraph: preserve breaks, bounded width so long lines wrap.
-  if (!asBullets) return <span className="mx-auto block max-w-[40rem]" style={{ whiteSpace: "pre-line" }}>{lines.join("\n")}</span>;
+  // Plain prose: render each paragraph as its own block with a gap between,
+  // preserving single breaks within a paragraph.
+  if (!asBullets)
+    return (
+      <span className="mx-auto block max-w-[40rem]">
+        {blocks.map((b, i) => (
+          <span
+            key={i}
+            className="block"
+            style={{ whiteSpace: "pre-line", marginTop: i ? "0.6em" : 0 }}
+          >
+            {b.split(/\n/).map((l) => l.trim()).filter(Boolean).join("\n")}
+          </span>
+        ))}
+      </span>
+    );
   // Bullets: hanging indent (wrapped text lines up under the text, not the
   // dot); two columns once the list gets long so it stays short vertically.
   const twoCol = lines.length > 4;
