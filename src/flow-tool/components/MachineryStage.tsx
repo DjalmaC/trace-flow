@@ -25,9 +25,10 @@ import {
 const EASE = "cubic-bezier(.4,0,.2,1)";
 const HUB_R = 22;
 
-// "Account held within a bank" enclosure padding around the wrapped box.
+// "Account held within a bank" enclosure padding around the wrapped box. The
+// top padding is computed per-enclosure (it grows to fit the stacked name +
+// logo title); these are the sides and bottom.
 const BANK_PAD_X = 16;
-const BANK_PAD_TOP = 30; // room above for the bank title chip
 const BANK_PAD_BOTTOM = 12;
 
 // ── motion-design constants ──────────────────────────────────────────────────
@@ -616,10 +617,10 @@ export function MachineryStage({
 
 // A dotted container marking that a box is an account held WITHIN a bank. The
 // wrapped box keeps its own label (the account holder, e.g. "Pix Inc NRA");
-// this frame carries the bank's name + optional logo in a glass title chip
-// straddling the top edge, reading as "[Bank] ( account holder )". Drawn behind
-// the box (see the enclosure pass in MachineryStage) so the rail crosses into
-// it. Used on the web canvas, the client link and — via animate={false} — the
+// this frame carries a stacked title at the top — the bank NAME over its LOGO,
+// reading as "[Bank name] / [logo] ( account holder )". Drawn behind the box
+// (see the enclosure pass in MachineryStage) so the rail crosses into it. Used
+// on the web canvas, the client link and — via animate={false} — the
 // downloaded PDF, where an uploaded logo is already a data URI and renders
 // straight through the rasteriser.
 function BankEnclosure({
@@ -629,25 +630,30 @@ function BankEnclosure({
   node: NodeLayout;
   bank: { label?: string; logoUrl?: string; logoPlate?: "light" | "none" };
 }) {
-  const encX = node.x - BANK_PAD_X;
-  const encY = node.y - BANK_PAD_TOP;
-  const encW = node.w + BANK_PAD_X * 2;
-  const encH = node.h + BANK_PAD_TOP + BANK_PAD_BOTTOM;
   const label = bank.label?.trim() ?? "";
   const hasLogo = !!bank.logoUrl;
   const light = bank.logoPlate === "light";
+  const cx = node.x + node.w / 2;
 
-  // Title chip, centred on the top border. Width is estimated from content
-  // (a translucent glass chip, so a small misestimate only shifts padding).
-  const chipH = 23;
-  const logoSlot = hasLogo ? 26 : 0;
-  const gap = hasLogo && label ? 7 : 0;
-  const textW = label.length * 6.4;
-  const chipW = Math.max(46, logoSlot + gap + textW + 22);
-  const chipX = node.x + node.w / 2 - chipW / 2;
-  const chipY = encY - chipH / 2;
-  const chipCy = chipY + chipH / 2;
-  const contentX = chipX + 11;
+  // Stacked title block: name row on top, a prominent (but not overpowering)
+  // logo beneath. The enclosure's top padding grows to fit whatever it holds.
+  const NAME_H = label ? 17 : 0;
+  const LOGO_H = 30; // logo drawn large; capped in width so it never dominates
+  const LOGO_W = Math.min(node.w - 24, 124);
+  const GAP = label && hasLogo ? 8 : 0;
+  const titleH = NAME_H + GAP + (hasLogo ? LOGO_H : 0);
+  const padTop = titleH + 18; // title block + breathing room above the box
+
+  const encX = node.x - BANK_PAD_X;
+  const encY = node.y - padTop;
+  const encW = node.w + BANK_PAD_X * 2;
+  const encH = node.h + padTop + BANK_PAD_BOTTOM;
+
+  // name shrinks to stay inside the enclosure interior on long bank names
+  const nameSize = Math.min(12.5, Math.max(9.5, (encW - 24) / Math.max(1, label.length * 0.6)));
+  const nameBaseline = encY + 15;
+  const logoTop = encY + NAME_H + GAP + 4;
+  const plateH = LOGO_H + 6;
 
   return (
     <g>
@@ -663,25 +669,21 @@ function BankEnclosure({
         strokeDasharray="0.1 8"
         strokeLinecap="round"
       />
-      {/* glass title chip — same translucent material as the station boxes, so
-          it reads over the silk; a second, more opaque base darkens it just
-          enough that the dotted border behind stays subtle without a hard cut */}
-      <rect x={chipX} y={chipY} width={chipW} height={chipH} rx={8} fill="rgba(9,13,11,0.72)" />
-      <rect x={chipX} y={chipY} width={chipW} height={chipH} rx={8} fill={GLASS_CARD.tint} stroke={GLASS_CARD.hairline} />
-      {hasLogo &&
-        (light ? (
-          <>
-            <rect x={contentX} y={chipCy - 8.5} width={logoSlot - 4} height={17} rx={4} fill="#ffffff" />
-            <image href={bank.logoUrl} x={contentX + 2} y={chipCy - 6.5} width={logoSlot - 8} height={13} preserveAspectRatio="xMidYMid meet" />
-          </>
-        ) : (
-          <image href={bank.logoUrl} x={contentX} y={chipCy - 7} width={logoSlot - 4} height={14} preserveAspectRatio="xMinYMid meet" />
-        ))}
       {label && (
-        <text x={contentX + logoSlot + gap} y={chipCy + 4} fontSize={11.5} fontWeight={600} fill="#e6ebe8">
+        <text x={cx} y={nameBaseline} textAnchor="middle" fontSize={nameSize} fontWeight={700} fill="#eef1ee" letterSpacing={0.2}>
           {label}
         </text>
       )}
+      {hasLogo &&
+        (light ? (
+          <>
+            {/* dark logo → white backing plate so it reads on the deck */}
+            <rect x={cx - LOGO_W / 2} y={logoTop - 3} width={LOGO_W} height={plateH} rx={7} fill="#ffffff" />
+            <image href={bank.logoUrl} x={cx - LOGO_W / 2 + 6} y={logoTop} width={LOGO_W - 12} height={LOGO_H} preserveAspectRatio="xMidYMid meet" />
+          </>
+        ) : (
+          <image href={bank.logoUrl} x={cx - LOGO_W / 2} y={logoTop} width={LOGO_W} height={LOGO_H} preserveAspectRatio="xMidYMid meet" />
+        ))}
     </g>
   );
 }
