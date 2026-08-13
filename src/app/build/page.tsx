@@ -45,7 +45,7 @@ export default function BuildPage() {
   const [editingCode, setEditingCode] = useState<string | null>(null);
   // Double-click rename overlay for the flow boxes / lane names / hero
   // subtitle on the canvas.
-  const [rename, setRename] = useState<{ key: string; lane?: "brazil" | "abroad"; hero?: boolean; platformCaption?: boolean; comment?: boolean; node?: boolean; entity?: string; entityOn?: boolean; branded?: boolean; partner?: boolean; bankOn?: boolean; bankLabel?: string; bankLogoUrl?: string; bankLogoPlate?: "light" | "none"; original: string; value: string; left: number; top: number; width: number } | null>(null);
+  const [rename, setRename] = useState<{ key: string; lane?: "brazil" | "abroad"; hero?: boolean; platformCaption?: boolean; comment?: boolean; node?: boolean; entity?: string; entityOn?: boolean; branded?: boolean; partner?: boolean; bankOn?: boolean; bankLabel?: string; bankBold?: boolean; bankLogoUrl?: string; bankLogoPlate?: "light" | "none"; original: string; value: string; left: number; top: number; width: number } | null>(null);
   const renameRef = useRef<HTMLInputElement>(null);
   // Set while the bank-logo file picker is open: its focus theft would
   // otherwise blur (and commit/close) the node card before a file is chosen.
@@ -301,6 +301,7 @@ export default function BuildPage() {
       partner: !!config.nodePartner?.[key],
       bankOn: !!bank,
       bankLabel: bank?.label ?? "",
+      bankBold: bank?.labelBold !== false,
       bankLogoUrl: bank?.logoUrl,
       bankLogoPlate: bank?.logoPlate,
       original,
@@ -390,7 +391,7 @@ export default function BuildPage() {
       const banks = { ...(c.nodeBank ?? {}) };
       const bankLabel = (rename.bankLabel ?? "").trim();
       if (rename.bankOn && (bankLabel || rename.bankLogoUrl))
-        banks[rename.key] = { label: bankLabel || undefined, logoUrl: rename.bankLogoUrl, logoPlate: rename.bankLogoPlate };
+        banks[rename.key] = { label: bankLabel || undefined, labelBold: rename.bankBold === false ? false : undefined, logoUrl: rename.bankLogoUrl, logoPlate: rename.bankLogoPlate };
       else delete banks[rename.key];
       return {
         ...c,
@@ -730,10 +731,21 @@ export default function BuildPage() {
                     if (e.key === "Enter") commitRename();
                     else if (e.key === "Escape") setRename(null);
                   }}
-                  placeholder="Bank name"
-                  aria-label="Bank name"
+                  placeholder="Label (e.g. Held at)"
+                  aria-label="Bank enclosure label"
                   className="w-full rounded-md border border-node-stroke bg-[#0c110f] px-2.5 py-1.5 text-center text-[12px] text-title outline-none placeholder:text-muted focus:border-mint"
                 />
+                {(rename.bankLabel ?? "").trim() && (
+                  <label className="flex cursor-pointer items-center gap-2 px-0.5 text-[11px] font-medium text-subtitle">
+                    <input
+                      type="checkbox"
+                      checked={rename.bankBold !== false}
+                      onChange={(e) => setRename({ ...rename, bankBold: e.target.checked })}
+                      className="h-3 w-3 accent-mint"
+                    />
+                    Bold label
+                  </label>
+                )}
                 {rename.bankLogoUrl ? (
                   <div className="flex items-center gap-2">
                     <span

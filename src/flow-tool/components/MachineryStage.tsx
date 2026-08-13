@@ -28,16 +28,29 @@ const HUB_R = 22;
 // "Account held within a bank" enclosure. The bank NAME sits above the wrapped
 // box, its LOGO large below the box; the dotted frame wraps all three. Padding
 // is computed per-enclosure from what it holds.
-const BANK_PAD_X = 16;
-const BANK_NAME_H = 24; // name zone above the box
-const BANK_LOGO_H = 46; // logo drawn large, below the box
-const BANK_LOGO_GAP = 12; // box bottom → logo top
-const BANK_LOGO_PAD = 12; // logo → enclosure bottom
-const BANK_PLAIN_PAD = 12; // enclosure padding on a side with nothing in it
+// The enclosure is drawn deliberately LARGER than the account box on every
+// side, so the bank reads as the big container and the account as a small part
+// of it. The label + logo stack sits ABOVE the box; the box gets generous room
+// all around.
+const BANK_PAD_X = 40; // wide side margins → enclosure clearly wider than the box
+const BANK_PAD_BOTTOM = 34; // generous room under the box
+const BANK_TOP_MARGIN = 16; // above the label, inside the dotted top edge
+const BANK_LABEL_H = 17; // label line height
+const BANK_LABEL_GAP = 8; // label → logo
+const BANK_LOGO_H = 44; // logo drawn large
+const BANK_LOGO_GAP = 18; // logo → box top
 
-/** Enclosure padding below a wrapped box: room for the logo when there is one. */
-function bankPadBottom(bank?: { logoUrl?: string }): number {
-  return bank?.logoUrl ? BANK_LOGO_GAP + BANK_LOGO_H + BANK_LOGO_PAD : BANK_PLAIN_PAD;
+/** Height of the title stack (label + logo) that sits above the box. */
+function bankStackH(bank: { label?: string; logoUrl?: string }): number {
+  const labelH = bank.label?.trim() ? BANK_LABEL_H : 0;
+  const gap = bank.label?.trim() && bank.logoUrl ? BANK_LABEL_GAP : 0;
+  const logoH = bank.logoUrl ? BANK_LOGO_H : 0;
+  return labelH + gap + logoH;
+}
+/** Padding above the box: the title stack plus its top margin and the gap to the box. */
+function bankPadTop(bank: { label?: string; logoUrl?: string }): number {
+  const stack = bankStackH(bank);
+  return stack ? BANK_TOP_MARGIN + stack + BANK_LOGO_GAP : BANK_TOP_MARGIN;
 }
 
 // ── motion-design constants ──────────────────────────────────────────────────
@@ -443,6 +456,18 @@ export function MachineryStage({
       )}
       <MachineryContainer layout={layout} showHeading={showHeading} />
 
+      {/* "account held within a bank" enclosures — a dotted container drawn
+          BEHIND the rail and boxes, so the rail/resting pills and the box sit
+          cleanly over the dotted border (it reads as the bank perimeter the
+          value crosses into). Its border is padded outside the box, so it never
+          shows through the translucent box. Opt-in per box via config.nodeBank. */}
+      {nodes.map((node) => {
+        if (node.kind === "engine") return null;
+        const bank = config.nodeBank?.[`${config.flowId}:${node.srcId ?? node.id}`];
+        if (!bank || (!bank.label?.trim() && !bank.logoUrl)) return null;
+        return <BankEnclosure key={`bank-${node.id}`} node={node} bank={bank} />;
+      })}
+
       {/* tributary conduits — a second origin merging into the rail. The same
           recessed-channel material as the rail, drawn as a curve: a soft wide
           channel plus a hairline spine. Behind everything, like the rail. */}
@@ -524,16 +549,6 @@ export function MachineryStage({
             </g>
           ))}
 
-      {/* "account held within a bank" enclosures — a dotted container drawn
-          BEHIND the box it wraps (after the rail, so the rail reads as crossing
-          into the bank). Opt-in per box via config.nodeBank. */}
-      {nodes.map((node) => {
-        if (node.kind === "engine") return null;
-        const bank = config.nodeBank?.[`${config.flowId}:${node.srcId ?? node.id}`];
-        if (!bank || (!bank.label?.trim() && !bank.logoUrl)) return null;
-        return <BankEnclosure key={`bank-${node.id}`} node={node} bank={bank} />;
-      })}
-
       {/* station boxes — cover the rail's ends + the resting token.
           data-flow-node lets the build page offer double-click renaming. */}
       {nodes.map((node) => {
@@ -541,10 +556,10 @@ export function MachineryStage({
         // (e.g. "(Brazilian VASP)"). Keyed like nodeLabels, on the content id.
         const entity =
           node.kind === "engine" ? undefined : config.nodeEntities?.[`${config.flowId}:${node.srcId ?? node.id}`]?.trim();
-        // A bank enclosure extends below the box (its logo); drop the entity
+        // A bank enclosure adds generous padding below the box; drop the entity
         // line below the whole enclosure so the two don't collide.
         const bank = node.kind === "engine" ? undefined : config.nodeBank?.[`${config.flowId}:${node.srcId ?? node.id}`];
-        const entityY = node.y + node.h + (bank ? bankPadBottom(bank) + 15 : 14);
+        const entityY = node.y + node.h + (bank ? BANK_PAD_BOTTOM + 15 : 14);
         return (
           <g key={node.id} data-flow-node={node.kind === "engine" ? undefined : node.srcId ?? node.id}>
             <FlowNodeShape
@@ -624,40 +639,39 @@ export function MachineryStage({
 }
 
 // A dotted container marking that a box is an account held WITHIN a bank. The
-// wrapped box keeps its own label (the account holder, e.g. "Pix Inc NRA"); the
-// bank's NAME sits just above the box and its LOGO large below it, the dotted
-// frame wrapping all three ("[Bank name] / ( account holder ) / [logo]"). Drawn
-// behind the box (see the enclosure pass in MachineryStage) so the rail crosses
-// into it. Used on the web canvas, the client link and — via animate={false} —
-// the downloaded PDF, where an uploaded logo is already a data URI and renders
-// straight through the rasteriser. The logo's background is cut at upload time
-// (build page), so it usually needs no backing plate.
+// wrapped box keeps its own label (the account holder, e.g. "Pix Inc NRA");
+// ABOVE it sits a title stack — a label ("Held at", optionally un-bolded to a
+// quiet caption) over the bank's LOGO. The dotted frame is drawn deliberately
+// larger than the box on every side, so the bank reads as the big container and
+// the account as a part of it. Drawn behind the box (see the enclosure pass in
+// MachineryStage) so the rail crosses into it. Used on the web canvas, the
+// client link and — via animate={false} — the downloaded PDF, where an
+// uploaded logo is already a data URI and rasterises straight through. The
+// logo's background is cut at upload time, so it usually needs no backing plate.
 function BankEnclosure({
   node,
   bank,
 }: {
   node: NodeLayout;
-  bank: { label?: string; logoUrl?: string; logoPlate?: "light" | "none" };
+  bank: { label?: string; logoUrl?: string; logoPlate?: "light" | "none"; labelBold?: boolean };
 }) {
   const label = bank.label?.trim() ?? "";
   const hasLogo = !!bank.logoUrl;
   const light = bank.logoPlate === "light";
+  const bold = bank.labelBold !== false; // default bold; false = quiet skim text
   const cx = node.x + node.w / 2;
 
-  const padTop = label ? BANK_NAME_H : BANK_PLAIN_PAD;
-  const padBottom = bankPadBottom(bank);
+  const padTop = bankPadTop(bank);
   const encX = node.x - BANK_PAD_X;
   const encY = node.y - padTop;
   const encW = node.w + BANK_PAD_X * 2;
-  const encH = node.h + padTop + padBottom;
+  const encH = node.h + padTop + BANK_PAD_BOTTOM;
 
-  // name shrinks to stay inside the enclosure interior on long bank names
-  const nameSize = Math.min(13, Math.max(10, (encW - 24) / Math.max(1, label.length * 0.6)));
-  const nameBaseline = node.y - 9; // just above the box top
-
-  // logo below the box — large, spanning most of the enclosure width
-  const logoW = Math.min(encW - 16, 180);
-  const logoTop = node.y + node.h + BANK_LOGO_GAP;
+  // Title stack, top-down from the top margin: label, then the logo.
+  const labelBaseline = encY + BANK_TOP_MARGIN + BANK_LABEL_H - 4;
+  const logoTop = encY + BANK_TOP_MARGIN + (label ? BANK_LABEL_H + BANK_LABEL_GAP : 0);
+  const labelSize = Math.min(13, Math.max(10, (encW - 24) / Math.max(1, label.length * 0.62)));
+  const logoW = Math.min(encW - 24, 190);
 
   return (
     <g>
@@ -674,7 +688,15 @@ function BankEnclosure({
         strokeLinecap="round"
       />
       {label && (
-        <text x={cx} y={nameBaseline} textAnchor="middle" fontSize={nameSize} fontWeight={700} fill="#eef1ee" letterSpacing={0.2}>
+        <text
+          x={cx}
+          y={labelBaseline}
+          textAnchor="middle"
+          fontSize={labelSize}
+          fontWeight={bold ? 700 : 400}
+          fill={bold ? "#eef1ee" : "#93a09a"}
+          letterSpacing={bold ? 0.2 : 0.3}
+        >
           {label}
         </text>
       )}

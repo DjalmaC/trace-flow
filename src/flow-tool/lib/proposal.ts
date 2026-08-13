@@ -104,7 +104,7 @@ export interface ProposalBuildOpts {
   /** Per-proposal partner-branding flags (see FlowConfig.nodePartner). */
   nodePartner?: Record<string, boolean>;
   /** Per-proposal "held in a bank" enclosures (see FlowConfig.nodeBank). */
-  nodeBank?: Record<string, { label?: string; logoUrl?: string; logoPlate?: "light" | "none" }>;
+  nodeBank?: Record<string, { label?: string; logoUrl?: string; logoPlate?: "light" | "none"; labelBold?: boolean }>;
   /** Per-proposal second-client branding flags (see FlowConfig.nodeBranded). */
   nodeBranded?: Record<string, boolean>;
   /** Per-flow proposal notes (see FlowConfig.proposalNotes) — the drawer prose,
