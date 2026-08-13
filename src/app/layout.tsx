@@ -20,8 +20,10 @@ export const metadata: Metadata = {
   description:
     "Describe the deal, and the right Trace Finance flow appears — animated and branded for the client.",
   // Without an explicit icon the browser probes /favicon.ico, which doesn't
-  // exist here and logged a 404 on every proposal open.
-  icons: { icon: "/assets/trace_logo.png" },
+  // exist here and logged a 404 on every proposal open. Point at the SQUARE
+  // mark (trace_icon.png) — the wordmark-width trace_logo.png got squished into
+  // the browser's square tab slot and looked stretched.
+  icons: { icon: "/assets/trace_icon.png" },
 };
 
 // Without this, phones default to a ~980px layout viewport (content overflows /
