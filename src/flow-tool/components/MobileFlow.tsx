@@ -338,11 +338,11 @@ function NodeCard({ node, primary, config, laneOverrides, partnerDefault }: { no
           <img src={config.partnerLogoUrl} alt="" className="h-6 w-auto max-w-[96px] shrink-0 object-contain" />
         )
       ) : hasBankLogo ? (
+        // A dark bank mark is painted white (no white plate), matching the
+        // desktop FlowNodeShape treatment; a light mark renders as-is.
         config.bankLogoPlate === "light" ? (
-          <span className="flex shrink-0 items-center rounded-md bg-white px-1.5 py-1">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={config.bankLogoUrl} alt="" className="h-5 w-auto max-w-[88px] object-contain" />
-          </span>
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={config.bankLogoUrl} alt="" className="h-6 w-auto max-w-[96px] shrink-0 object-contain" style={{ filter: "brightness(0) invert(1)" }} />
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={config.bankLogoUrl} alt="" className="h-6 w-auto max-w-[96px] shrink-0 object-contain" />
