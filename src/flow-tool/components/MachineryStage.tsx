@@ -25,6 +25,11 @@ import {
 const EASE = "cubic-bezier(.4,0,.2,1)";
 const HUB_R = 22;
 
+// "Account held within a bank" enclosure padding around the wrapped box.
+const BANK_PAD_X = 16;
+const BANK_PAD_TOP = 30; // room above for the bank title chip
+const BANK_PAD_BOTTOM = 12;
+
 // ── motion-design constants ──────────────────────────────────────────────────
 const MS_PER_PX = 14; // CONSTANT travel speed across every leg (higher = slower, more deliberate)
 const MIN_GO = 560; // floor so a short half-leg into/out of a hub isn't a blink
@@ -509,6 +514,16 @@ export function MachineryStage({
             </g>
           ))}
 
+      {/* "account held within a bank" enclosures — a dotted container drawn
+          BEHIND the box it wraps (after the rail, so the rail reads as crossing
+          into the bank). Opt-in per box via config.nodeBank. */}
+      {nodes.map((node) => {
+        if (node.kind === "engine") return null;
+        const bank = config.nodeBank?.[`${config.flowId}:${node.srcId ?? node.id}`];
+        if (!bank || (!bank.label?.trim() && !bank.logoUrl)) return null;
+        return <BankEnclosure key={`bank-${node.id}`} node={node} bank={bank} />;
+      })}
+
       {/* station boxes — cover the rail's ends + the resting token.
           data-flow-node lets the build page offer double-click renaming. */}
       {nodes.map((node) => {
@@ -516,6 +531,11 @@ export function MachineryStage({
         // (e.g. "(Brazilian VASP)"). Keyed like nodeLabels, on the content id.
         const entity =
           node.kind === "engine" ? undefined : config.nodeEntities?.[`${config.flowId}:${node.srcId ?? node.id}`]?.trim();
+        // A bank enclosure sits BANK_PAD_BOTTOM under the box; drop the entity
+        // line below the enclosure so the two don't collide.
+        const enclosed =
+          node.kind !== "engine" && !!config.nodeBank?.[`${config.flowId}:${node.srcId ?? node.id}`];
+        const entityY = node.y + node.h + (enclosed ? BANK_PAD_BOTTOM + 15 : 14);
         return (
           <g key={node.id} data-flow-node={node.kind === "engine" ? undefined : node.srcId ?? node.id}>
             <FlowNodeShape
@@ -528,7 +548,7 @@ export function MachineryStage({
               partnerLogoPlate={config.partnerLogoPlate}
             />
             {entity && (
-              <text x={node.x + node.w / 2} y={node.y + node.h + 14} textAnchor="middle" fontSize={11} fill={C.subtitle}>
+              <text x={node.x + node.w / 2} y={entityY} textAnchor="middle" fontSize={11} fill={C.subtitle}>
                 ({entity})
               </text>
             )}
@@ -590,6 +610,78 @@ export function MachineryStage({
             direction={config.direction}
           />
         ))}
+    </g>
+  );
+}
+
+// A dotted container marking that a box is an account held WITHIN a bank. The
+// wrapped box keeps its own label (the account holder, e.g. "Pix Inc NRA");
+// this frame carries the bank's name + optional logo in a glass title chip
+// straddling the top edge, reading as "[Bank] ( account holder )". Drawn behind
+// the box (see the enclosure pass in MachineryStage) so the rail crosses into
+// it. Used on the web canvas, the client link and — via animate={false} — the
+// downloaded PDF, where an uploaded logo is already a data URI and renders
+// straight through the rasteriser.
+function BankEnclosure({
+  node,
+  bank,
+}: {
+  node: NodeLayout;
+  bank: { label?: string; logoUrl?: string; logoPlate?: "light" | "none" };
+}) {
+  const encX = node.x - BANK_PAD_X;
+  const encY = node.y - BANK_PAD_TOP;
+  const encW = node.w + BANK_PAD_X * 2;
+  const encH = node.h + BANK_PAD_TOP + BANK_PAD_BOTTOM;
+  const label = bank.label?.trim() ?? "";
+  const hasLogo = !!bank.logoUrl;
+  const light = bank.logoPlate === "light";
+
+  // Title chip, centred on the top border. Width is estimated from content
+  // (a translucent glass chip, so a small misestimate only shifts padding).
+  const chipH = 23;
+  const logoSlot = hasLogo ? 26 : 0;
+  const gap = hasLogo && label ? 7 : 0;
+  const textW = label.length * 6.4;
+  const chipW = Math.max(46, logoSlot + gap + textW + 22);
+  const chipX = node.x + node.w / 2 - chipW / 2;
+  const chipY = encY - chipH / 2;
+  const chipCy = chipY + chipH / 2;
+  const contentX = chipX + 11;
+
+  return (
+    <g>
+      <rect
+        x={encX}
+        y={encY}
+        width={encW}
+        height={encH}
+        rx={16}
+        fill="none"
+        stroke="rgba(255,255,255,0.34)"
+        strokeWidth={2}
+        strokeDasharray="0.1 8"
+        strokeLinecap="round"
+      />
+      {/* glass title chip — same translucent material as the station boxes, so
+          it reads over the silk; a second, more opaque base darkens it just
+          enough that the dotted border behind stays subtle without a hard cut */}
+      <rect x={chipX} y={chipY} width={chipW} height={chipH} rx={8} fill="rgba(9,13,11,0.72)" />
+      <rect x={chipX} y={chipY} width={chipW} height={chipH} rx={8} fill={GLASS_CARD.tint} stroke={GLASS_CARD.hairline} />
+      {hasLogo &&
+        (light ? (
+          <>
+            <rect x={contentX} y={chipCy - 8.5} width={logoSlot - 4} height={17} rx={4} fill="#ffffff" />
+            <image href={bank.logoUrl} x={contentX + 2} y={chipCy - 6.5} width={logoSlot - 8} height={13} preserveAspectRatio="xMidYMid meet" />
+          </>
+        ) : (
+          <image href={bank.logoUrl} x={contentX} y={chipCy - 7} width={logoSlot - 4} height={14} preserveAspectRatio="xMinYMid meet" />
+        ))}
+      {label && (
+        <text x={contentX + logoSlot + gap} y={chipCy + 4} fontSize={11.5} fontWeight={600} fill="#e6ebe8">
+          {label}
+        </text>
+      )}
     </g>
   );
 }

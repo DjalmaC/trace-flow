@@ -323,6 +323,8 @@ export function ControlPanel({
         partnerLogoUrl: config.partnerLogoUrl,
         partnerLogoPlate: config.partnerLogoPlate,
         nodePartner: config.nodePartner,
+        nodeBank: config.nodeBank,
+        nodeBranded: config.nodeBranded,
         flowsLabel: config.flowsLabel,
         comments: config.comments,
         nodeEntities: config.nodeEntities,

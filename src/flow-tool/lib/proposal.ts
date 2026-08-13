@@ -103,6 +103,10 @@ export interface ProposalBuildOpts {
   partnerLogoPlate?: "light" | "none";
   /** Per-proposal partner-branding flags (see FlowConfig.nodePartner). */
   nodePartner?: Record<string, boolean>;
+  /** Per-proposal "held in a bank" enclosures (see FlowConfig.nodeBank). */
+  nodeBank?: Record<string, { label?: string; logoUrl?: string; logoPlate?: "light" | "none" }>;
+  /** Per-proposal second-client branding flags (see FlowConfig.nodeBranded). */
+  nodeBranded?: Record<string, boolean>;
   /** Group label for the flow slides (see FlowConfig.flowsLabel). */
   flowsLabel?: string;
   /** Per-flow explanatory notes (see FlowConfig.comments) — the rep's written
@@ -585,6 +589,8 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
     partnerLogoUrl: opts.partnerLogoUrl,
     partnerLogoPlate: opts.partnerLogoPlate,
     nodePartner: opts.nodePartner,
+    nodeBank: opts.nodeBank,
+    nodeBranded: opts.nodeBranded,
     flowsLabel: opts.flowsLabel,
     comments: opts.comments,
     nodeEntities: opts.nodeEntities,

@@ -463,6 +463,13 @@ export interface FlowConfig {
   /** Per-proposal partner-branding (double-click a box → "Show counterparty
    *  logo"), keyed "<flowId>:<nodeId>" — the box carries partnerLogoUrl. */
   nodePartner?: Record<string, boolean>;
+  /** Per-proposal "account held within a bank" enclosure (double-click a box →
+   *  "Held in a bank"), keyed "<flowId>:<nodeId>". Draws a dotted container
+   *  around the box — the box keeps its own label (the account holder, e.g.
+   *  "Pix Inc NRA") while the enclosure carries the bank's name and optional
+   *  logo, reading as "[Bank] ( account holder )". Applied at render time so
+   *  the canvas, the client link, mobile and the PDF all inherit it. */
+  nodeBank?: Record<string, { label?: string; logoUrl?: string; logoPlate?: "light" | "none" }>;
   /** What the flow-variant group is CALLED on the client link and the PDF —
    *  e.g. "Settle in" when the variants differ only by settlement currency.
    *  Defaults to "Flows". Shown as the eyebrow beside the variant tabs; PDF
