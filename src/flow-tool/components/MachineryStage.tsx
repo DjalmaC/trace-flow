@@ -25,11 +25,20 @@ import {
 const EASE = "cubic-bezier(.4,0,.2,1)";
 const HUB_R = 22;
 
-// "Account held within a bank" enclosure padding around the wrapped box. The
-// top padding is computed per-enclosure (it grows to fit the stacked name +
-// logo title); these are the sides and bottom.
+// "Account held within a bank" enclosure. The bank NAME sits above the wrapped
+// box, its LOGO large below the box; the dotted frame wraps all three. Padding
+// is computed per-enclosure from what it holds.
 const BANK_PAD_X = 16;
-const BANK_PAD_BOTTOM = 12;
+const BANK_NAME_H = 24; // name zone above the box
+const BANK_LOGO_H = 46; // logo drawn large, below the box
+const BANK_LOGO_GAP = 12; // box bottom → logo top
+const BANK_LOGO_PAD = 12; // logo → enclosure bottom
+const BANK_PLAIN_PAD = 12; // enclosure padding on a side with nothing in it
+
+/** Enclosure padding below a wrapped box: room for the logo when there is one. */
+function bankPadBottom(bank?: { logoUrl?: string }): number {
+  return bank?.logoUrl ? BANK_LOGO_GAP + BANK_LOGO_H + BANK_LOGO_PAD : BANK_PLAIN_PAD;
+}
 
 // ── motion-design constants ──────────────────────────────────────────────────
 const MS_PER_PX = 14; // CONSTANT travel speed across every leg (higher = slower, more deliberate)
@@ -532,11 +541,10 @@ export function MachineryStage({
         // (e.g. "(Brazilian VASP)"). Keyed like nodeLabels, on the content id.
         const entity =
           node.kind === "engine" ? undefined : config.nodeEntities?.[`${config.flowId}:${node.srcId ?? node.id}`]?.trim();
-        // A bank enclosure sits BANK_PAD_BOTTOM under the box; drop the entity
-        // line below the enclosure so the two don't collide.
-        const enclosed =
-          node.kind !== "engine" && !!config.nodeBank?.[`${config.flowId}:${node.srcId ?? node.id}`];
-        const entityY = node.y + node.h + (enclosed ? BANK_PAD_BOTTOM + 15 : 14);
+        // A bank enclosure extends below the box (its logo); drop the entity
+        // line below the whole enclosure so the two don't collide.
+        const bank = node.kind === "engine" ? undefined : config.nodeBank?.[`${config.flowId}:${node.srcId ?? node.id}`];
+        const entityY = node.y + node.h + (bank ? bankPadBottom(bank) + 15 : 14);
         return (
           <g key={node.id} data-flow-node={node.kind === "engine" ? undefined : node.srcId ?? node.id}>
             <FlowNodeShape
@@ -616,13 +624,14 @@ export function MachineryStage({
 }
 
 // A dotted container marking that a box is an account held WITHIN a bank. The
-// wrapped box keeps its own label (the account holder, e.g. "Pix Inc NRA");
-// this frame carries a stacked title at the top — the bank NAME over its LOGO,
-// reading as "[Bank name] / [logo] ( account holder )". Drawn behind the box
-// (see the enclosure pass in MachineryStage) so the rail crosses into it. Used
-// on the web canvas, the client link and — via animate={false} — the
-// downloaded PDF, where an uploaded logo is already a data URI and renders
-// straight through the rasteriser.
+// wrapped box keeps its own label (the account holder, e.g. "Pix Inc NRA"); the
+// bank's NAME sits just above the box and its LOGO large below it, the dotted
+// frame wrapping all three ("[Bank name] / ( account holder ) / [logo]"). Drawn
+// behind the box (see the enclosure pass in MachineryStage) so the rail crosses
+// into it. Used on the web canvas, the client link and — via animate={false} —
+// the downloaded PDF, where an uploaded logo is already a data URI and renders
+// straight through the rasteriser. The logo's background is cut at upload time
+// (build page), so it usually needs no backing plate.
 function BankEnclosure({
   node,
   bank,
@@ -635,25 +644,20 @@ function BankEnclosure({
   const light = bank.logoPlate === "light";
   const cx = node.x + node.w / 2;
 
-  // Stacked title block: name row on top, a prominent (but not overpowering)
-  // logo beneath. The enclosure's top padding grows to fit whatever it holds.
-  const NAME_H = label ? 17 : 0;
-  const LOGO_H = 30; // logo drawn large; capped in width so it never dominates
-  const LOGO_W = Math.min(node.w - 24, 124);
-  const GAP = label && hasLogo ? 8 : 0;
-  const titleH = NAME_H + GAP + (hasLogo ? LOGO_H : 0);
-  const padTop = titleH + 18; // title block + breathing room above the box
-
+  const padTop = label ? BANK_NAME_H : BANK_PLAIN_PAD;
+  const padBottom = bankPadBottom(bank);
   const encX = node.x - BANK_PAD_X;
   const encY = node.y - padTop;
   const encW = node.w + BANK_PAD_X * 2;
-  const encH = node.h + padTop + BANK_PAD_BOTTOM;
+  const encH = node.h + padTop + padBottom;
 
   // name shrinks to stay inside the enclosure interior on long bank names
-  const nameSize = Math.min(12.5, Math.max(9.5, (encW - 24) / Math.max(1, label.length * 0.6)));
-  const nameBaseline = encY + 15;
-  const logoTop = encY + NAME_H + GAP + 4;
-  const plateH = LOGO_H + 6;
+  const nameSize = Math.min(13, Math.max(10, (encW - 24) / Math.max(1, label.length * 0.6)));
+  const nameBaseline = node.y - 9; // just above the box top
+
+  // logo below the box — large, spanning most of the enclosure width
+  const logoW = Math.min(encW - 16, 180);
+  const logoTop = node.y + node.h + BANK_LOGO_GAP;
 
   return (
     <g>
@@ -677,12 +681,13 @@ function BankEnclosure({
       {hasLogo &&
         (light ? (
           <>
-            {/* dark logo → white backing plate so it reads on the deck */}
-            <rect x={cx - LOGO_W / 2} y={logoTop - 3} width={LOGO_W} height={plateH} rx={7} fill="#ffffff" />
-            <image href={bank.logoUrl} x={cx - LOGO_W / 2 + 6} y={logoTop} width={LOGO_W - 12} height={LOGO_H} preserveAspectRatio="xMidYMid meet" />
+            {/* a dark logo we couldn't cut to a light mark → white backing plate */}
+            <rect x={cx - logoW / 2} y={logoTop - 4} width={logoW} height={BANK_LOGO_H + 8} rx={8} fill="#ffffff" />
+            <image href={bank.logoUrl} x={cx - logoW / 2 + 8} y={logoTop} width={logoW - 16} height={BANK_LOGO_H} preserveAspectRatio="xMidYMid meet" />
           </>
         ) : (
-          <image href={bank.logoUrl} x={cx - LOGO_W / 2} y={logoTop} width={LOGO_W} height={LOGO_H} preserveAspectRatio="xMidYMid meet" />
+          // background already cut → sits straight on the deck, no plate
+          <image href={bank.logoUrl} x={cx - logoW / 2} y={logoTop} width={logoW} height={BANK_LOGO_H} preserveAspectRatio="xMidYMid meet" />
         ))}
     </g>
   );

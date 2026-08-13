@@ -5,7 +5,7 @@ import { SilkBackdrop } from "@/flow-tool/components/Glass";
 import { ControlPanel } from "@/components/ControlPanel";
 import { NotesDrawer } from "@/components/NotesDrawer";
 import { LogoDrop } from "@/components/LogoDrop";
-import { normalizeLogo } from "@/flow-tool/lib/logo";
+import { normalizeLogo, removeBackground } from "@/flow-tool/lib/logo";
 import { defaultConfig, getFlow } from "@/flow-tool/data";
 import { registerCustomFlows } from "@/flow-tool/data/custom-flows";
 import { deckPricing, normalizePricing, type Flow, type FlowConfig, type ProposalPricing, type ProposalSetup } from "@/flow-tool/data/schema";
@@ -767,7 +767,11 @@ export default function BuildPage() {
                       onImage={async (raw) => {
                         browsingRef.current = false;
                         const key = rename.key;
-                        const r = await normalizeLogo(raw);
+                        // Cut the background so the logo can sit large and clean
+                        // below the box: try the keying pass first (handles busy
+                        // backgrounds), then normalize (trim + plate decision).
+                        const cut = await removeBackground(raw).catch(() => null);
+                        const r = await normalizeLogo(cut ?? raw);
                         setRename((prev) => (prev ? { ...prev, bankOn: true, bankLogoUrl: r.url, bankLogoPlate: r.plate } : prev));
                         setBankLogo(key, r.url, r.plate);
                       }}
