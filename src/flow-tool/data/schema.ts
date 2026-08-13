@@ -463,6 +463,15 @@ export interface FlowConfig {
   /** Per-proposal partner-branding (double-click a box → "Show counterparty
    *  logo"), keyed "<flowId>:<nodeId>" — the box carries partnerLogoUrl. */
   nodePartner?: Record<string, boolean>;
+  /** A THIRD in-box brand mark (the bank's logo), so one flow can show the
+   *  company, the counterparty AND a bank logo across its boxes. Same shape as
+   *  the partner logo; rendered INSIDE the box (distinct from nodeBank, which
+   *  draws a dotted "account held at a bank" container AROUND the box). */
+  bankLogoUrl?: string;
+  bankLogoPlate?: "light" | "none";
+  /** Per-proposal bank-branding (double-click a box → "Show bank logo"),
+   *  keyed "<flowId>:<nodeId>" — the box carries bankLogoUrl. */
+  nodeBankLogo?: Record<string, boolean>;
   /** Per-proposal "account held within a bank" enclosure (double-click a box →
    *  "Held in a bank"), keyed "<flowId>:<nodeId>". Draws a dotted container
    *  around the box — the box keeps its own label (the account holder, e.g.

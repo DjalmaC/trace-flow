@@ -325,6 +325,9 @@ export function ControlPanel({
         nodePartner: config.nodePartner,
         nodeBank: config.nodeBank,
         nodeBranded: config.nodeBranded,
+        bankLogoUrl: config.bankLogoUrl,
+        bankLogoPlate: config.bankLogoPlate,
+        nodeBankLogo: config.nodeBankLogo,
         proposalNotes: config.proposalNotes,
         flowsLabel: config.flowsLabel,
         comments: config.comments,
@@ -391,6 +394,13 @@ export function ControlPanel({
   async function onPartnerLogoData(raw: string) {
     const r = await normalizeLogo(raw);
     patch({ partnerLogoUrl: r.url, partnerLogoPlate: r.plate });
+  }
+
+  // A THIRD in-box brand mark (a bank), so a flow can show the company, the
+  // counterparty AND a bank logo across its boxes. Same pipeline as partner.
+  async function onBankLogoData(raw: string) {
+    const r = await normalizeLogo(raw);
+    patch({ bankLogoUrl: r.url, bankLogoPlate: r.plate });
   }
 
   async function copyLink() {
@@ -661,6 +671,24 @@ export function ControlPanel({
                       </span>
                       <button
                         onClick={() => patch({ partnerLogoUrl: undefined, partnerLogoPlate: undefined, nodePartner: undefined })}
+                        className="text-[11px] font-medium text-muted transition-colors duration-150 ease-ds hover:text-title"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )}
+                </Field>
+
+                <Field label="Bank logo · optional, a third in-box mark for any box">
+                  <LogoDrop compact hasLogo={!!config.bankLogoUrl} onImage={onBankLogoData} />
+                  {config.bankLogoUrl && (
+                    <div className="mt-2 flex items-center justify-between rounded-[9px] border border-hairline-control bg-surface-input px-3 py-2">
+                      <span className={`flex h-9 items-center rounded-md px-2 ${config.bankLogoPlate === "light" ? "bg-white" : ""}`}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={config.bankLogoUrl} alt="bank logo" className="h-6 w-auto max-w-[140px] object-contain" />
+                      </span>
+                      <button
+                        onClick={() => patch({ bankLogoUrl: undefined, bankLogoPlate: undefined, nodeBankLogo: undefined })}
                         className="text-[11px] font-medium text-muted transition-colors duration-150 ease-ds hover:text-title"
                       >
                         Remove

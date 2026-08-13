@@ -570,6 +570,8 @@ export function MachineryStage({
               clientLogoPlate={config.clientLogoPlate}
               partnerLogoUrl={config.partnerLogoUrl}
               partnerLogoPlate={config.partnerLogoPlate}
+              bankLogoUrl={config.bankLogoUrl}
+              bankLogoPlate={config.bankLogoPlate}
             />
             {entity && (
               <text x={node.x + node.w / 2} y={entityY} textAnchor="middle" fontSize={11} fill={C.subtitle}>

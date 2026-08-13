@@ -168,7 +168,7 @@ export function NettingStage({
         const role = roleOf(node);
         return (
           <g key={node.id} data-flow-node={node.srcId ?? node.id}>
-            <FlowNodeShape node={node} isPrimaryClient={node.id === layout.primaryClientId} clientName={config.clientName} clientLogoUrl={config.clientLogoUrl} clientLogoPlate={config.clientLogoPlate} partnerLogoUrl={config.partnerLogoUrl} partnerLogoPlate={config.partnerLogoPlate} />
+            <FlowNodeShape node={node} isPrimaryClient={node.id === layout.primaryClientId} clientName={config.clientName} clientLogoUrl={config.clientLogoUrl} clientLogoPlate={config.clientLogoPlate} partnerLogoUrl={config.partnerLogoUrl} partnerLogoPlate={config.partnerLogoPlate} bankLogoUrl={config.bankLogoUrl} bankLogoPlate={config.bankLogoPlate} />
             {role && (
               <text x={node.cx} y={node.y + node.h + 16} textAnchor="middle" fontSize={9.5} fill={C.muted} letterSpacing="0.16em" fontFamily="var(--font-inter), system-ui, sans-serif">
                 {role.toUpperCase()}
