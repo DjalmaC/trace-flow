@@ -302,9 +302,6 @@ export function FlowExperience({
   // situate the viewer. Double-click editable on the build canvas.
   const flowComment = config.comments?.[config.flowId]?.trim();
 
-  // Links without a client name (e.g. anonymised slug routes) degrade to
-  // "Built for you" instead of a dangling "Built for ".
-  const clientDisplay = config.clientName.trim() || "you";
 
   const SurfaceHeading = (
     // width min(…, 100%): sized by the PARENT, so the heading never overflows
@@ -314,7 +311,7 @@ export function FlowExperience({
         The desired transaction
       </div>
       <h1 className="font-display text-3xl font-semibold tracking-[-0.01em] text-[#f2f5f3] md:text-5xl">
-        Built for <span className="text-mint">{clientDisplay}</span>
+        Built for <ClientMark config={config} />
       </h1>
       <p className="mt-3 text-[15px] font-normal leading-relaxed text-[#8b948f] md:text-base" data-hero-support>
         {support}
@@ -457,7 +454,7 @@ export function FlowExperience({
             <div className="flex min-h-0 flex-1 flex-col justify-center py-7">
               <div className="font-jbmono text-[11px] font-medium uppercase tracking-[0.34em] text-[#6f8a7f]">{eyebrow}</div>
               <h1 className="mt-3 font-display text-[34px] font-semibold leading-[1.1] tracking-[-0.02em] text-[#eef1ee]">
-                Built for <span className="text-mint">{clientDisplay}</span>
+                Built for <ClientMark config={config} />
               </h1>
               <p className="mt-3 max-w-[560px] text-[14.5px] leading-[1.55] text-subtitle" data-hero-support>
                 {support}
@@ -699,10 +696,32 @@ function SettlementToggle({
 // it's a plain multi-line paragraph with the breaks preserved.
 const BULLET_RE = /^[-*•]\s+/;
 function NoteBody({ text }: { text: string }) {
-  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  // Blocks split on a blank line (a paragraph break the rep typed); within a
+  // block, single newlines are kept. Blank lines are preserved as spacing
+  // instead of being collapsed away.
+  const blocks = text
+    .replace(/\r/g, "")
+    .split(/\n\s*\n/)
+    .map((b) => b.replace(/\s+$/, ""))
+    .filter((b) => b.trim());
+  const lines = blocks.flatMap((b) => b.split(/\n/)).map((l) => l.trim()).filter(Boolean);
   const asBullets = lines.length > 1 && lines.some((l) => BULLET_RE.test(l));
-  // Plain paragraph: preserve breaks, bounded width so long lines wrap.
-  if (!asBullets) return <span className="mx-auto block max-w-[40rem]" style={{ whiteSpace: "pre-line" }}>{lines.join("\n")}</span>;
+  // Plain prose: render each paragraph as its own block with a gap between,
+  // preserving single breaks within a paragraph.
+  if (!asBullets)
+    return (
+      <span className="mx-auto block max-w-[40rem]">
+        {blocks.map((b, i) => (
+          <span
+            key={i}
+            className="block"
+            style={{ whiteSpace: "pre-line", marginTop: i ? "0.6em" : 0 }}
+          >
+            {b.split(/\n/).map((l) => l.trim()).filter(Boolean).join("\n")}
+          </span>
+        ))}
+      </span>
+    );
   // Bullets: hanging indent (wrapped text lines up under the text, not the
   // dot); two columns once the list gets long so it stays short vertically.
   const twoCol = lines.length > 4;
@@ -757,4 +776,19 @@ function DirectionToggle({
       ))}
     </div>
   );
+}
+function ClientMark({ config }: { config: FlowConfig }) {
+  const name = config.clientName.trim();
+  if (name) return <span className="text-mint">{name}</span>;
+  const src = config.clientLogoUrl;
+  if (!src) return <span className="text-mint">you</span>;
+  if (config.clientLogoPlate === "light")
+    return (
+      <span className="inline-flex translate-y-[0.1em] items-center rounded-[0.28em] bg-white px-[0.34em] py-[0.16em] align-baseline">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={src} alt="" className="h-[0.62em] w-auto max-w-[7.5em] object-contain" />
+      </span>
+    );
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={src} alt="" className="inline-block h-[0.88em] w-auto max-w-[8.5em] object-contain align-[-0.08em]" />;
 }

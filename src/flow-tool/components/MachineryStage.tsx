@@ -10,6 +10,7 @@ import {
   MachineryContainer,
   TraceArrow,
   displayCurrency,
+  tokenWidth,
 } from "./FlowSvg";
 
 // Stage 2 — "how Trace makes it happen". The machinery reads as ONE continuous
@@ -23,6 +24,34 @@ import {
 
 const EASE = "cubic-bezier(.4,0,.2,1)";
 const HUB_R = 22;
+
+// "Account held within a bank" enclosure. The bank NAME sits above the wrapped
+// box, its LOGO large below the box; the dotted frame wraps all three. Padding
+// is computed per-enclosure from what it holds.
+// The enclosure is drawn deliberately LARGER than the account box on every
+// side, so the bank reads as the big container and the account as a small part
+// of it. The label + logo stack sits ABOVE the box; the box gets generous room
+// all around.
+const BANK_PAD_X = 40; // wide side margins → enclosure clearly wider than the box
+const BANK_PAD_BOTTOM = 34; // generous room under the box
+const BANK_TOP_MARGIN = 16; // above the label, inside the dotted top edge
+const BANK_LABEL_H = 17; // label line height
+const BANK_LABEL_GAP = 8; // label → logo
+const BANK_LOGO_H = 44; // logo drawn large
+const BANK_LOGO_GAP = 18; // logo → box top
+
+/** Height of the title stack (label + logo) that sits above the box. */
+function bankStackH(bank: { label?: string; logoUrl?: string }): number {
+  const labelH = bank.label?.trim() ? BANK_LABEL_H : 0;
+  const gap = bank.label?.trim() && bank.logoUrl ? BANK_LABEL_GAP : 0;
+  const logoH = bank.logoUrl ? BANK_LOGO_H : 0;
+  return labelH + gap + logoH;
+}
+/** Padding above the box: the title stack plus its top margin and the gap to the box. */
+function bankPadTop(bank: { label?: string; logoUrl?: string }): number {
+  const stack = bankStackH(bank);
+  return stack ? BANK_TOP_MARGIN + stack + BANK_LOGO_GAP : BANK_TOP_MARGIN;
+}
 
 // ── motion-design constants ──────────────────────────────────────────────────
 const MS_PER_PX = 14; // CONSTANT travel speed across every leg (higher = slower, more deliberate)
@@ -324,6 +353,42 @@ export function MachineryStage({
   // into (and out of) each housing before vanishing.
   const railSegs = layout.legs.filter((l) => !l.offTrunk && l.y1 === l.y2);
   const railTransition = reduced ? undefined : `fill .55s ${EASE}, stroke .55s ${EASE}`;
+
+  // Static (PDF / reduced-motion) rail furniture. Each trunk gap — split at
+  // its conversion hub when it has one — shares its visible pipe between the
+  // direction arrow (36px at the source end, kept only when the pill still
+  // fits beside it) and a resting currency pill centered in what remains,
+  // shrunk to fit so nothing hides under the translucent boxes.
+  const resting = useMemo(() => {
+    const pills: { x: number; cur: Currency; k: number }[] = [];
+    const arrowXs: number[] = [];
+    if (run) return { pills, arrowXs };
+    const fromLeft = config.direction === "collection";
+    const ARROW = 36;
+    for (const l of layout.legs) {
+      if (l.offTrunk) continue;
+      const g0 = Math.min(l.x1, l.x2) + RAIL_IN;
+      const g1 = Math.max(l.x1, l.x2) - RAIL_IN;
+      const regions = l.convertsTo
+        ? [
+            { cur: displayCurrency(l.carries, config), a: g0, b: Math.min(l.mid.x - HUB_R - 8, g1), arrow: fromLeft },
+            { cur: displayCurrency(l.convertsTo, config), a: Math.max(l.mid.x + HUB_R + 8, g0), b: g1, arrow: !fromLeft },
+          ]
+        : [{ cur: displayCurrency(l.carries, config), a: g0, b: g1, arrow: true }];
+      for (const r of regions) {
+        let { a, b } = r;
+        if (b - a < 26) continue; // e.g. a hubAtEngine leg has no after-hub gap
+        if (r.arrow && b - a - ARROW >= 30) {
+          arrowXs.push(fromLeft ? a + 22 : b - 22);
+          if (fromLeft) a += ARROW;
+          else b -= ARROW;
+        }
+        const k = Math.min(1, (b - a - 8) / tokenWidth(r.cur, config.stablecoin));
+        pills.push({ x: (a + b) / 2, cur: r.cur, k });
+      }
+    }
+    return { pills, arrowXs };
+  }, [run, layout, config]);
   const markW = HUB_R;
   const markH = markW / TRACE_LOGO_AR;
 
@@ -391,6 +456,18 @@ export function MachineryStage({
       )}
       <MachineryContainer layout={layout} showHeading={showHeading} />
 
+      {/* "account held within a bank" enclosures — a dotted container drawn
+          BEHIND the rail and boxes, so the rail/resting pills and the box sit
+          cleanly over the dotted border (it reads as the bank perimeter the
+          value crosses into). Its border is padded outside the box, so it never
+          shows through the translucent box. Opt-in per box via config.nodeBank. */}
+      {nodes.map((node) => {
+        if (node.kind === "engine") return null;
+        const bank = config.nodeBank?.[`${config.flowId}:${node.srcId ?? node.id}`];
+        if (!bank || (!bank.label?.trim() && !bank.logoUrl)) return null;
+        return <BankEnclosure key={`bank-${node.id}`} node={node} bank={bank} />;
+      })}
+
       {/* tributary conduits — a second origin merging into the rail. The same
           recessed-channel material as the rail, drawn as a curve: a soft wide
           channel plus a hairline spine. Behind everything, like the rail. */}
@@ -439,14 +516,26 @@ export function MachineryStage({
         </g>
         </g>
       ) : (
-        // reduced motion: static value resting in each plain gap
-        layout.legs
-          .filter((l) => !l.convertsTo)
-          .map((l) => (
-            <g key={l.index} transform={`translate(${l.mid.x},${l.mid.y})`}>
-              <CurrencyToken currency={displayCurrency(l.carries, config)} coin={config.stablecoin} />
+        // Resting value (PDF / reduced motion): EVERY leg names what it
+        // carries — a converting leg shows its input before the hub and its
+        // output after it, so the swap reads left to right without the
+        // animation. Placement is precomputed (`resting`) so each pill centers
+        // in the visible pipe, shrinks to fit a narrow gap, and shares the gap
+        // with the direction arrow instead of colliding with it.
+        <>
+          {resting.pills.map((sp, i) => (
+            <g key={`rest-${i}`} transform={`translate(${sp.x},${railY}) scale(${sp.k.toFixed(3)})`}>
+              <CurrencyToken currency={sp.cur} coin={config.stablecoin} />
             </g>
-          ))
+          ))}
+          {layout.legs
+            .filter((l) => l.offTrunk && !l.convertsTo)
+            .map((l) => (
+              <g key={`rest-trib-${l.index}`} transform={`translate(${l.mid.x},${l.mid.y})`}>
+                <CurrencyToken currency={displayCurrency(l.carries, config)} coin={config.stablecoin} />
+              </g>
+            ))}
+        </>
       )}
 
       {/* tributary value at rest — the relay travels the trunk, so each merging
@@ -467,6 +556,10 @@ export function MachineryStage({
         // (e.g. "(Brazilian VASP)"). Keyed like nodeLabels, on the content id.
         const entity =
           node.kind === "engine" ? undefined : config.nodeEntities?.[`${config.flowId}:${node.srcId ?? node.id}`]?.trim();
+        // A bank enclosure adds generous padding below the box; drop the entity
+        // line below the whole enclosure so the two don't collide.
+        const bank = node.kind === "engine" ? undefined : config.nodeBank?.[`${config.flowId}:${node.srcId ?? node.id}`];
+        const entityY = node.y + node.h + (bank ? BANK_PAD_BOTTOM + 15 : 14);
         return (
           <g key={node.id} data-flow-node={node.kind === "engine" ? undefined : node.srcId ?? node.id}>
             <FlowNodeShape
@@ -479,7 +572,7 @@ export function MachineryStage({
               partnerLogoPlate={config.partnerLogoPlate}
             />
             {entity && (
-              <text x={node.x + node.w / 2} y={node.y + node.h + 14} textAnchor="middle" fontSize={11} fill={C.subtitle}>
+              <text x={node.x + node.w / 2} y={entityY} textAnchor="middle" fontSize={11} fill={C.subtitle}>
                 ({entity})
               </text>
             )}
@@ -511,18 +604,23 @@ export function MachineryStage({
 
       {/* directional indicators — one per rail segment, sat just ahead of where
           the token emerges (the source end, which flips with direction). The
-          resting tributary token already tells that conduit's story. */}
-      {layout.legs
-        .filter((l) => !l.offTrunk)
-        .map((l) => (
-          <TraceArrow
-            key={l.index}
-            cx={config.direction === "collection" ? Math.min(l.x1, l.x2) + RAIL_IN + 22 : Math.max(l.x1, l.x2) - RAIL_IN - 22}
-            cy={railY}
-            size={22}
-            direction={config.direction}
-          />
-        ))}
+          resting tributary token already tells that conduit's story. Static
+          mode draws only the arrows the resting pills left room for. */}
+      {run
+        ? layout.legs
+            .filter((l) => !l.offTrunk)
+            .map((l) => (
+              <TraceArrow
+                key={l.index}
+                cx={config.direction === "collection" ? Math.min(l.x1, l.x2) + RAIL_IN + 22 : Math.max(l.x1, l.x2) - RAIL_IN - 22}
+                cy={railY}
+                size={22}
+                direction={config.direction}
+              />
+            ))
+        : resting.arrowXs.map((x, i) => (
+            <TraceArrow key={`ra-${i}`} cx={x} cy={railY} size={22} direction={config.direction} />
+          ))}
       {/* branch lanes get the same arrows on their straight segments, so a
           branch reads with an explicit direction too */}
       {layout.legs
@@ -535,6 +633,83 @@ export function MachineryStage({
             size={22}
             direction={config.direction}
           />
+        ))}
+    </g>
+  );
+}
+
+// A dotted container marking that a box is an account held WITHIN a bank. The
+// wrapped box keeps its own label (the account holder, e.g. "Pix Inc NRA");
+// ABOVE it sits a title stack — a label ("Held at", optionally un-bolded to a
+// quiet caption) over the bank's LOGO. The dotted frame is drawn deliberately
+// larger than the box on every side, so the bank reads as the big container and
+// the account as a part of it. Drawn behind the box (see the enclosure pass in
+// MachineryStage) so the rail crosses into it. Used on the web canvas, the
+// client link and — via animate={false} — the downloaded PDF, where an
+// uploaded logo is already a data URI and rasterises straight through. The
+// logo's background is cut at upload time, so it usually needs no backing plate.
+function BankEnclosure({
+  node,
+  bank,
+}: {
+  node: NodeLayout;
+  bank: { label?: string; logoUrl?: string; logoPlate?: "light" | "none"; labelBold?: boolean };
+}) {
+  const label = bank.label?.trim() ?? "";
+  const hasLogo = !!bank.logoUrl;
+  const light = bank.logoPlate === "light";
+  const bold = bank.labelBold !== false; // default bold; false = quiet skim text
+  const cx = node.x + node.w / 2;
+
+  const padTop = bankPadTop(bank);
+  const encX = node.x - BANK_PAD_X;
+  const encY = node.y - padTop;
+  const encW = node.w + BANK_PAD_X * 2;
+  const encH = node.h + padTop + BANK_PAD_BOTTOM;
+
+  // Title stack, top-down from the top margin: label, then the logo.
+  const labelBaseline = encY + BANK_TOP_MARGIN + BANK_LABEL_H - 4;
+  const logoTop = encY + BANK_TOP_MARGIN + (label ? BANK_LABEL_H + BANK_LABEL_GAP : 0);
+  const labelSize = Math.min(13, Math.max(10, (encW - 24) / Math.max(1, label.length * 0.62)));
+  const logoW = Math.min(encW - 24, 190);
+
+  return (
+    <g>
+      <rect
+        x={encX}
+        y={encY}
+        width={encW}
+        height={encH}
+        rx={16}
+        fill="none"
+        stroke="rgba(255,255,255,0.34)"
+        strokeWidth={2}
+        strokeDasharray="0.1 8"
+        strokeLinecap="round"
+      />
+      {label && (
+        <text
+          x={cx}
+          y={labelBaseline}
+          textAnchor="middle"
+          fontSize={labelSize}
+          fontWeight={bold ? 700 : 400}
+          fill={bold ? "#eef1ee" : "#93a09a"}
+          letterSpacing={bold ? 0.2 : 0.3}
+        >
+          {label}
+        </text>
+      )}
+      {hasLogo &&
+        (light ? (
+          <>
+            {/* a dark logo we couldn't cut to a light mark → white backing plate */}
+            <rect x={cx - logoW / 2} y={logoTop - 4} width={logoW} height={BANK_LOGO_H + 8} rx={8} fill="#ffffff" />
+            <image href={bank.logoUrl} x={cx - logoW / 2 + 8} y={logoTop} width={logoW - 16} height={BANK_LOGO_H} preserveAspectRatio="xMidYMid meet" />
+          </>
+        ) : (
+          // background already cut → sits straight on the deck, no plate
+          <image href={bank.logoUrl} x={cx - logoW / 2} y={logoTop} width={logoW} height={BANK_LOGO_H} preserveAspectRatio="xMidYMid meet" />
         ))}
     </g>
   );

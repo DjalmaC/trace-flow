@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { motion, LayoutGroup } from "framer-motion";
 import { FlowExperience, useIsMobile } from "@/flow-tool/components/FlowExperience";
 import { GlassPanel, SilkBackdrop } from "@/flow-tool/components/Glass";
@@ -166,7 +166,9 @@ export function SharedFlowView({ code }: { code: string }) {
       }
       const a = document.createElement("a");
       a.href = href;
-      a.download = `Trace Finance - ${config.clientName} - Proposal.pdf`;
+      a.download = config.clientName.trim()
+        ? `Trace Finance - ${config.clientName.trim()} - Proposal.pdf`
+        : "Trace Finance - Proposal.pdf";
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -193,6 +195,9 @@ export function SharedFlowView({ code }: { code: string }) {
           partnerLogoUrl: config.partnerLogoUrl,
           partnerLogoPlate: config.partnerLogoPlate,
           nodePartner: config.nodePartner,
+          nodeBank: config.nodeBank,
+          nodeBranded: config.nodeBranded,
+          proposalNotes: config.proposalNotes,
           flowsLabel: config.flowsLabel,
           comments: config.comments,
           nodeEntities: config.nodeEntities,
@@ -302,8 +307,23 @@ export function SharedFlowView({ code }: { code: string }) {
 
   const isMobile = useIsMobile();
   const hasVariants = !!variants && variants.length > 1;
-  const showWelcomeLogo = intro === "welcome";
+  // No company name typed → the uploaded logo stands in for it wherever the
+  // name would appear (welcome line, pricing headings). The hero logo above
+  // "Welcome" moves INTO the line in that case, so it never shows twice.
+  const logoAsName = !!config && !config.clientName.trim() && !!safeSrc(config.clientLogoUrl);
+  const welcomeLogoInline = logoAsName && !repName;
+  const showWelcomeLogo = intro === "welcome" && !welcomeLogoInline;
   const showChrome = intro === "fadeout" || intro === "done"; // header + downloads settle in
+  const clientRef = config?.clientName.trim() || "you";
+  // "What {Client} pays" — the mint name, the logo standing in for it, or
+  // nothing (the heading falls back to "What you pay").
+  const nameMark: ReactNode | null = config
+    ? config.clientName.trim()
+      ? <span className="text-mint">{config.clientName.trim()}</span>
+      : logoAsName
+        ? <InlineClientLogo config={config} />
+        : null
+    : null;
 
   // Pricing source (design 2a): the link's ProposalPricing when present, the
   // legacy card shape as-is when detected (keeps the live ARQ link rendering),
@@ -325,7 +345,7 @@ export function SharedFlowView({ code }: { code: string }) {
   const pricingEl = config
     ? legacyPricing
       ? <LegacyPricingView pricing={legacyPricing} inline={isMobile} />
-      : <PricingView pricing={proposalPricing} clientName={config.clientName} inline={isMobile} />
+      : <PricingView pricing={proposalPricing} nameMark={nameMark} inline={isMobile} />
     : null;
 
   // Only offer pricing when the link actually carries RATES. A link saved
@@ -383,7 +403,7 @@ export function SharedFlowView({ code }: { code: string }) {
                     <div className="flex items-center gap-3">
                       <ClientLogo config={config} size="header" />
                       <div className="min-w-0 flex-1 leading-tight">
-                        <div className="truncate text-[15px] font-semibold text-title">{config.clientName}</div>
+                        {config.clientName.trim() && <div className="truncate text-[15px] font-semibold text-title">{config.clientName}</div>}
                         {config.clientRep && <div className="truncate text-[11.5px] text-muted">Prepared for {config.clientRep}</div>}
                       </div>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -484,7 +504,7 @@ export function SharedFlowView({ code }: { code: string }) {
                       <div className="mt-2.5 flex items-center gap-3">
                         <ClientLogo config={config} size="header" />
                         <div className="tf-fade leading-tight">
-                          <div className="text-[15px] font-semibold text-title">{config.clientName}</div>
+                          {config.clientName.trim() && <div className="text-[15px] font-semibold text-title">{config.clientName}</div>}
                           <div className="text-[12px] text-muted">
                             {config.clientRep ? `Prepared for ${config.clientRep}` : "Prepared by Trace Finance"}
                           </div>
@@ -537,7 +557,7 @@ export function SharedFlowView({ code }: { code: string }) {
                       </>
                     ) : undefined,
                   rail: hasPricing ? (
-                    <PricingRail pricing={proposalPricing} legacy={legacyPricing} clientName={config.clientName} />
+                    <PricingRail pricing={proposalPricing} legacy={legacyPricing} nameMark={nameMark} />
                   ) : undefined,
                   railPosition: railBelow ? "below" : "beside",
                   closing: config.salesperson ? <RepRow sp={config.salesperson} company={config.clientName} /> : undefined,
@@ -574,15 +594,16 @@ export function SharedFlowView({ code }: { code: string }) {
               <div className="flex flex-col items-center gap-5">
                 <Brandmark size="lg" />
                 {showWelcomeLogo && <ClientLogo config={config!} size="hero" />}
-                <h1 className="font-display text-3xl font-semibold tracking-[-0.01em] text-title md:text-4xl">
-                  Welcome{repName ? `, ${repName}` : ""}
+                <h1 className="flex flex-wrap items-center justify-center gap-x-[0.45em] font-display text-3xl font-semibold tracking-[-0.01em] text-title md:text-4xl">
+                  <span>Welcome{repName ? `, ${repName}` : ""}</span>
+                  {welcomeLogoInline && intro === "welcome" && <ClientLogo config={config!} size="inline" />}
                 </h1>
                 <p className="max-w-md text-sm text-subtitle">
                   {/* no client name on the link: drop the "for …" clause instead
                       of rendering "prepared for ." with dangling grammar */}
                   {hasVariants
-                    ? `Here are the cross-border payment flows we’ve prepared${config!.clientName.trim() ? ` for ${config!.clientName.trim()}` : ""}.`
-                    : `Here’s the cross-border payment flow we’ve prepared${config!.clientName.trim() ? ` for ${config!.clientName.trim()}` : ""}.`}
+                    ? `Here are the cross-border payment flows we’ve prepared for ${clientRef}.`
+                    : `Here’s the cross-border payment flow we’ve prepared for ${clientRef}.`}
                 </p>
               </div>
             ) : (
@@ -678,10 +699,10 @@ function GateScreen({ wrong, onSubmit }: { wrong: boolean; onSubmit: (pw: string
 // The client logo, as a single layoutId element so it can "magic-move" between
 // the centred welcome and its header slot. Honours the logo plate (a dark logo
 // rides a white card; a light/transparent logo sits straight on the deck).
-function ClientLogo({ config, size }: { config: SharedConfig; size: "header" | "hero" }) {
+function ClientLogo({ config, size }: { config: SharedConfig; size: "header" | "hero" | "inline" }) {
   const logoSrc = safeSrc(config.clientLogoUrl);
   if (!logoSrc) {
-    if (size === "header") return null;
+    if (size !== "hero") return null;
     return <div className="font-display text-2xl font-semibold text-title">{config.clientName}</div>;
   }
   // Keep the magic-move inside the overlay's crossfade window (FADE_MS) so the
@@ -689,8 +710,8 @@ function ClientLogo({ config, size }: { config: SharedConfig; size: "header" | "
   const t = { layout: { duration: 0.42, ease: [0.4, 0, 0.2, 1] as [number, number, number, number] } };
   const light = config.clientLogoPlate === "light";
   if (light) {
-    const wrap = size === "header" ? "px-1.5 py-1 rounded-md" : "px-6 py-4 rounded-2xl";
-    const img = size === "header" ? "h-6 max-w-[110px]" : "h-14 max-w-[260px]";
+    const wrap = size === "header" ? "px-1.5 py-1 rounded-md" : size === "inline" ? "px-2.5 py-1.5 rounded-lg" : "px-6 py-4 rounded-2xl";
+    const img = size === "header" ? "h-6 max-w-[110px]" : size === "inline" ? "h-[0.72em] max-w-[8em]" : "h-14 max-w-[260px]";
     return (
       <motion.span layoutId="client-logo" transition={t} className={`flex items-center justify-center bg-white ${wrap}`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -698,11 +719,27 @@ function ClientLogo({ config, size }: { config: SharedConfig; size: "header" | "
       </motion.span>
     );
   }
-  const img = size === "header" ? "h-7 max-w-[120px]" : "h-16 max-w-[280px]";
+  const img = size === "header" ? "h-7 max-w-[120px]" : size === "inline" ? "h-[0.95em] max-w-[9em]" : "h-16 max-w-[280px]";
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <motion.img layoutId="client-logo" transition={t} src={logoSrc} alt={config.clientName} className={`${img} object-contain`} />
   );
+}
+
+// The logo standing in for the client's name inside a text line — sized to the
+// surrounding letters (em units) so it reads as a word, not a picture.
+function InlineClientLogo({ config }: { config: SharedConfig }) {
+  const logoSrc = safeSrc(config.clientLogoUrl);
+  if (!logoSrc) return null;
+  if (config.clientLogoPlate === "light")
+    return (
+      <span className="inline-flex translate-y-[0.1em] items-center rounded-[0.28em] bg-white px-[0.34em] py-[0.16em] align-baseline">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={logoSrc} alt="" className="h-[0.62em] w-auto max-w-[7.5em] object-contain" />
+      </span>
+    );
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={logoSrc} alt="" className="inline-block h-[0.88em] w-auto max-w-[8.5em] object-contain align-[-0.08em]" />;
 }
 
 // ── the pricing rail (panel architecture) ────────────────────────────────────
@@ -710,7 +747,7 @@ function ClientLogo({ config, size }: { config: SharedConfig; size: "header" | "
 // (ProposalPricing) or a legacy link's hand-built cards, in the mock's compact
 // card style. Reflows to a 2-column grid when the rail drops below the canvas
 // (globals.css .tf-price-list).
-function PricingRail({ pricing, legacy, clientName }: { pricing: ProposalPricing; legacy: LegacyPricing | null; clientName: string }) {
+function PricingRail({ pricing, legacy, nameMark }: { pricing: ProposalPricing; legacy: LegacyPricing | null; nameMark: ReactNode | null }) {
   const cards = legacy
     ? legacy.cards.map((c) => ({
         key: c.title,
@@ -737,11 +774,7 @@ function PricingRail({ pricing, legacy, clientName }: { pricing: ProposalPricing
   return (
     <>
       <div className="font-display text-[21px] font-semibold tracking-[-0.01em] text-title">
-        {clientName.trim() ? (
-          <>What <span className="text-mint">{clientName}</span> pays</>
-        ) : (
-          <>What <span className="text-mint">you</span> pay</>
-        )}
+        {nameMark ? <>What {nameMark} pays</> : <>What you pay</>}
       </div>
       {legacy && (
         <div className="mt-1.5 flex items-center gap-2 text-[12.5px] text-[#8b948f]">
@@ -876,7 +909,7 @@ function cardRows(card: PriceCard): PriceRow[] {
 
 const CARD_BADGE: Record<PriceCard["badge"], string> = { pix: "P", dollar: "$", percent: "%", up: "↑", down: "↓" };
 
-function PricingView({ pricing, clientName, inline }: { pricing: ProposalPricing; clientName: string; inline?: boolean }) {
+function PricingView({ pricing, nameMark, inline }: { pricing: ProposalPricing; nameMark: ReactNode | null; inline?: boolean }) {
   const cards = pricing.cards.map((card) => ({
     badge: CARD_BADGE[card.badge] ?? "$",
     badgeBg: card.accent === "blue" ? "#2be8d6" : "#00f2b1",
@@ -891,11 +924,7 @@ function PricingView({ pricing, clientName, inline }: { pricing: ProposalPricing
         <GlassPanel className={inline ? "px-5 py-7" : "px-8 py-9 md:px-10"}>
         <div className="text-center">
           <h1 className="font-display text-[28px] font-semibold leading-[1.05] tracking-[-0.02em] text-title md:text-[37px]">
-            {clientName.trim() ? (
-              <>What <span className="text-mint">{clientName}</span> pays</>
-            ) : (
-              <>What <span className="text-mint">you</span> pay</>
-            )}
+            {nameMark ? <>What {nameMark} pays</> : <>What you pay</>}
           </h1>
         </div>
 

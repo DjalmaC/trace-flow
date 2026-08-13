@@ -141,9 +141,31 @@ function titleSlide(config: FlowConfig) {
       <text x={DW / 2} y={cy + ch + 66} fontSize={30} fontWeight={700} fill={TITLE} textAnchor="middle">
         Cross-border payment architecture
       </text>
-      <text x={DW / 2} y={cy + ch + 98} fontSize={15} fill={SUB} textAnchor="middle">
-        {config.clientRep ? `Prepared for ${config.clientRep}` : `Prepared for ${config.clientName}`}
-      </text>
+      {config.clientRep || config.clientName.trim() || !config.clientLogoUrl ? (
+        <text x={DW / 2} y={cy + ch + 98} fontSize={15} fill={SUB} textAnchor="middle">
+          {config.clientRep
+            ? `Prepared for ${config.clientRep}`
+            : `Prepared for ${config.clientName.trim() || "you"}`}
+        </text>
+      ) : (
+        // no contact and no company name — the logo IS the name, letter-sized
+        <>
+          <text x={DW / 2 - 6} y={cy + ch + 98} fontSize={15} fill={SUB} textAnchor="end">
+            Prepared for
+          </text>
+          {config.clientLogoPlate === "light" && (
+            <rect x={DW / 2 + 4} y={cy + ch + 98 - 15.5} width={72} height={20} rx={4} fill="#ffffff" />
+          )}
+          <image
+            href={config.clientLogoUrl}
+            x={DW / 2 + (config.clientLogoPlate === "light" ? 8 : 6)}
+            y={cy + ch + 98 - (config.clientLogoPlate === "light" ? 12.5 : 14)}
+            width={config.clientLogoPlate === "light" ? 64 : 76}
+            height={config.clientLogoPlate === "light" ? 14 : 17}
+            preserveAspectRatio="xMinYMid meet"
+          />
+        </>
+      )}
     </Frame>
   );
 }
@@ -167,29 +189,19 @@ function deckFlowLabel(index: number, total: number, custom?: string): string {
 
 function flowSlide(config: FlowConfig, flow: Flow, name: string, label: string, support?: string) {
   const layout = computeLayout(flow, config);
-  const flowComment = config.comments?.[flow.id]?.trim();
-  // A flow with settlement options prints its PRIMARY settlement; the live
-  // link carries the toggle. A short note names the other option(s).
-  const disp = (c: Flow["legs"][number]["carries"]) => {
-    const d = displayCurrency(c, config);
-    if (d === "USDC/USDT") return config.stablecoin === "both" ? "USDC/USDT" : config.stablecoin;
-    if (d === "USD/USDT" && config.stablecoin === "USDT") return "USDT";
-    return d;
-  };
-  const settleAlts = settlementChoices(flow).slice(1);
-  const fundAlts = fundingChoices(flow).slice(1);
-  const convLeg = flow.legs.find((l) => l.convertsTo && (l.settlements?.length || l.funding?.length));
-  const optName = (o: { label?: string; out: Flow["legs"][number]["carries"] }) => (o.label?.trim() ? o.label.trim() : disp(o.out));
-  const settleNote =
-    (settleAlts.length || fundAlts.length) && convLeg
-      ? `Also supported: ${[disp(convLeg.carries), ...fundAlts.map(optName)].join(" or ")} → ${
-          settleAlts.length ? settleAlts.map(optName).join(" or ") : disp(convLeg.convertsTo!)
-        }`
-      : null;
+  const settleNote = settleNoteFor(config, flow);
+  const band = computeBand(config, flow, !!settleNote);
+
+  // The band sits along the bottom; the diagram takes whatever remains above
+  // it (its full height when there's no band).
+  const page0 = band.page0;
+  const bandRows = Math.max(page0.left.length, page0.right.length);
+  const bandTopBaseline = band.bandBottom - (bandRows - 1) * band.LH; // first row's baseline
+  const areaTop = 122;
+  const areaBottom = band.hasContent ? bandTopBaseline - 24 : 474;
+
   const mw = layout.width;
   const mh = (layout.stageH ?? CONT_H) + 30;
-  const areaTop = 122;
-  const areaBottom = 474;
   const availW = DW - 80;
   const maxH = areaBottom - areaTop;
   let w2 = availW;
@@ -222,52 +234,9 @@ function flowSlide(config: FlowConfig, flow: Flow, name: string, label: string, 
           <MachineryStage layout={layout} config={config} animate={false} showHeading={false} />
         )}
       </svg>
-      {flowComment &&
-        (() => {
-          const bulletRe = /^[-*•]\s+/;
-          // SVG text doesn't wrap — word-wrap each source line to a readable
-          // width, marking the first segment of a bullet with "•".
-          const wrap = (l: string): string[] => {
-            const bul = bulletRe.test(l);
-            const words = l.replace(bulletRe, "").split(/\s+/).filter(Boolean);
-            const MAX = 58;
-            const segs: string[] = [];
-            let cur = "";
-            for (const w of words) {
-              if ((cur + " " + w).trim().length > MAX) {
-                segs.push(cur);
-                cur = w;
-              } else cur = cur ? `${cur} ${w}` : w;
-            }
-            if (cur) segs.push(cur);
-            return segs.map((s, i) => (i === 0 && bul ? `•  ${s}` : s));
-          };
-          const flat = flowComment.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).flatMap(wrap);
-          const LH = 13;
-          const twoCol = flat.length > 6;
-          const baseY = settleNote ? 498 : 514;
-          if (!twoCol) {
-            const topY = baseY - (flat.length - 1) * LH;
-            return flat.map((t, i) => (
-              <text key={i} x={48} y={topY + i * LH} fontSize={10.5} fill={SUB} opacity={0.9}>{t}</text>
-            ));
-          }
-          const half = Math.ceil(flat.length / 2);
-          const rows = Math.max(half, flat.length - half);
-          const topY = baseY - (rows - 1) * LH;
-          return (
-            <>
-              {flat.slice(0, half).map((t, i) => (
-                <text key={`a${i}`} x={48} y={topY + i * LH} fontSize={10.5} fill={SUB} opacity={0.9}>{t}</text>
-              ))}
-              {flat.slice(half).map((t, i) => (
-                <text key={`b${i}`} x={498} y={topY + i * LH} fontSize={10.5} fill={SUB} opacity={0.9}>{t}</text>
-              ))}
-            </>
-          );
-        })()}
+      {band.hasContent && bandColumns(page0, band.both, band.LH, band.fs, bandTopBaseline, band.bandBottom)}
       {settleNote && (
-        <text x={48} y={514} fontSize={10.5} fill={SUB} opacity={0.9}>
+        <text x={48} y={524} fontSize={10} fill={SUB} opacity={0.9}>
           {settleNote}
         </text>
       )}
@@ -495,11 +464,158 @@ export async function renderProposalFlowPngs(
   const out: string[] = [];
   for (let i = 0; i < valid.length; i++) {
     const it = valid[i];
+    const flowConfig = { ...config, flowId: it.flowId };
     const flow = getFlow(it.flowId)!;
     const support = supportFor(config, flow);
-    out.push(await renderDeckPng(flowSlide({ ...config, flowId: it.flowId }, flow, it.name, deckFlowLabel(i, valid.length, config.flowsLabel), support)));
+    const label = deckFlowLabel(i, valid.length, config.flowsLabel);
+    out.push(await renderDeckPng(flowSlide(flowConfig, flow, it.name, label, support)));
+    // Only a note too long to fit the flow slide's band spills to a
+    // continuation slide — the common case adds no extra page.
+    const band = computeBand(flowConfig, flow, !!settleNoteFor(flowConfig, flow));
+    for (let p = 0; p < band.contPages.length; p++) {
+      out.push(await renderDeckPng(contextSlide(band.contPages[p], band.both, band.LH, band.fs, it.name, label, p + 1, band.contPages.length + 1)));
+    }
   }
   return out;
+}
+
+// ── flow-slide context band (the step comment + the drawer notes) ────────────
+// Both texts share a band along the bottom of the flow slide: when BOTH exist
+// they split into two columns (comment left, notes right); when only one
+// exists it takes the left column; when neither, there's no band and the
+// diagram uses the full height. Paragraph breaks ("" line) and "-"/"•" bullets
+// are preserved. If the content is too tall even shrunk, the overflow spills to
+// a continuation slide — the common case stays a single slide per flow.
+const BAND_LEFT_X = 48;
+const BAND_RIGHT_X = 500;
+const BAND_COL_CHARS = 52; // wrap width for a half-slide column
+const BAND_TOP_MIN = 278; // band can't start above this (keeps the diagram usable)
+const BAND_DIVIDER_X = 482;
+
+function wrapProse(text: string, maxChars: number, bullet: boolean): string[] {
+  const words = text.split(/\s+/).filter(Boolean);
+  const segs: string[] = [];
+  let cur = "";
+  for (const w of words) {
+    if ((cur + " " + w).trim().length > maxChars) {
+      segs.push(cur);
+      cur = w;
+    } else cur = cur ? `${cur} ${w}` : w;
+  }
+  if (cur) segs.push(cur);
+  // first wrapped segment of a bullet gets the dot; continuations hang-indent
+  return segs.map((s, i) => (bullet ? (i === 0 ? `•  ${s}` : `     ${s}`) : s));
+}
+
+/** Prose → laid-out lines ("" = a blank line, i.e. a paragraph gap). */
+function proseToLines(text: string, maxChars: number): string[] {
+  const paras = text.replace(/\r/g, "").split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+  const out: string[] = [];
+  paras.forEach((p, pi) => {
+    if (pi) out.push(""); // paragraph gap
+    p.split("\n").map((l) => l.trim()).filter(Boolean).forEach((line) => {
+      const bullet = /^[-*•]\s+/.test(line);
+      out.push(...wrapProse(line.replace(/^[-*•]\s+/, ""), maxChars, bullet));
+    });
+  });
+  return out;
+}
+
+type BandPage = { left: string[]; right: string[] };
+interface Band {
+  both: boolean;
+  hasContent: boolean;
+  LH: number;
+  fs: number;
+  bandBottom: number;
+  page0: BandPage;
+  contPages: BandPage[];
+}
+
+/** Compute the flow slide's bottom band: which lines show on the slide itself
+ *  (page0), the row height/font that fits, and any overflow continuation
+ *  pages. Pure — called by both flowSlide (page0) and the flow renderer
+ *  (continuation slides). */
+function computeBand(config: FlowConfig, flow: Flow, hasSettle: boolean): Band {
+  const comment = config.comments?.[flow.id]?.trim() || "";
+  const notes = config.proposalNotes?.[flow.id]?.trim() || "";
+  const both = !!comment && !!notes;
+  const leftText = comment || notes; // a lone text always takes the left column
+  const rightText = both ? notes : "";
+  const left = leftText ? proseToLines(leftText, BAND_COL_CHARS) : [];
+  const right = rightText ? proseToLines(rightText, BAND_COL_CHARS) : [];
+  const hasContent = left.length > 0 || right.length > 0;
+  const bandBottom = hasSettle ? 494 : 508;
+
+  const rows = Math.max(left.length, right.length);
+  // pick the tallest line height whose page-0 capacity holds all rows; shrink
+  // before spilling to a continuation slide.
+  const capAt = (LH: number) => Math.floor((bandBottom - BAND_TOP_MIN) / LH) + 1;
+  let LH = 14, fs = 10.5;
+  for (const [lh, f] of [[14, 10.5], [12.5, 9.5], [11, 8.5]] as const) {
+    LH = lh; fs = f;
+    if (rows <= capAt(lh)) break;
+  }
+  const cap0 = capAt(LH);
+  const page0: BandPage = { left: left.slice(0, cap0), right: right.slice(0, cap0) };
+  const contPages: BandPage[] = [];
+  const capCont = Math.floor((508 - 150) / LH) + 1; // full-height continuation
+  for (let i = cap0; i < left.length || i < right.length; i += capCont) {
+    contPages.push({ left: left.slice(i, i + capCont), right: right.slice(i, i + capCont) });
+  }
+  return { both, hasContent, LH, fs, bandBottom, page0, contPages };
+}
+
+/** The "Also supported: …" alternative-settlement line, or null. */
+function settleNoteFor(config: FlowConfig, flow: Flow): string | null {
+  const disp = (c: Flow["legs"][number]["carries"]) => {
+    const d = displayCurrency(c, config);
+    if (d === "USDC/USDT") return config.stablecoin === "both" ? "USDC/USDT" : config.stablecoin;
+    if (d === "USD/USDT" && config.stablecoin === "USDT") return "USDT";
+    return d;
+  };
+  const settleAlts = settlementChoices(flow).slice(1);
+  const fundAlts = fundingChoices(flow).slice(1);
+  const convLeg = flow.legs.find((l) => l.convertsTo && (l.settlements?.length || l.funding?.length));
+  const optName = (o: { label?: string; out: Flow["legs"][number]["carries"] }) => (o.label?.trim() ? o.label.trim() : disp(o.out));
+  return (settleAlts.length || fundAlts.length) && convLeg
+    ? `Also supported: ${[disp(convLeg.carries), ...fundAlts.map(optName)].join(" or ")} → ${
+        settleAlts.length ? settleAlts.map(optName).join(" or ") : disp(convLeg.convertsTo!)
+      }`
+    : null;
+}
+
+/** Render a two-column band page (used inline under the diagram and on
+ *  continuation slides). `topBaseline` is the baseline of the first row. */
+function bandColumns(page: BandPage, both: boolean, LH: number, fs: number, topBaseline: number, bottom: number) {
+  const line = (t: string, x: number, i: number, key: string) =>
+    t ? (
+      <text key={key} x={x} y={topBaseline + i * LH} fontSize={fs} fill="#c2c9c5">
+        {t}
+      </text>
+    ) : null;
+  return (
+    <>
+      {both && <line x1={BAND_DIVIDER_X} y1={topBaseline - 12} x2={BAND_DIVIDER_X} y2={bottom + 4} stroke="rgba(255,255,255,0.12)" strokeWidth={1} />}
+      {page.left.map((t, i) => line(t, BAND_LEFT_X, i, `l${i}`))}
+      {both && page.right.map((t, i) => line(t, BAND_RIGHT_X, i, `r${i}`))}
+    </>
+  );
+}
+
+function contextSlide(page: BandPage, both: boolean, LH: number, fs: number, name: string, label: string, part: number, parts: number): React.ReactElement {
+  return (
+    <Frame>
+      <text x={48} y={56} fontSize={11} fontWeight={600} fill={LABEL} letterSpacing={2}>
+        BENEATH THE SURFACE
+      </text>
+      <text x={48} y={86} fontSize={24} fontWeight={700} fill={TITLE}>
+        {`${label} - ${clientFlowName(name)}`}
+        {parts > 1 ? `  (cont. ${part}/${parts - 1})` : ""}
+      </text>
+      {bandColumns(page, both, LH, fs, 150, 508)}
+    </Frame>
+  );
 }
 
 /** QA hook: render one deck slide to a PNG data URL. */

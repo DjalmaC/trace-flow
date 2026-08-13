@@ -10,23 +10,37 @@ import { useState } from "react";
 const BULLET_RE = /^[-*•]\s+/;
 
 function NotesBody({ text }: { text: string }) {
-  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-  if (!lines.length) return null;
-  const asBullets = lines.some((l) => BULLET_RE.test(l));
-  if (!asBullets) return <p className="whitespace-pre-line text-[13.5px] leading-relaxed text-subtitle">{lines.join("\n")}</p>;
+  // Blocks are separated by a blank line (a paragraph break the rep typed);
+  // within a block, single newlines are kept. This preserves the spacing the
+  // rep sees while writing, instead of collapsing it all into one paragraph.
+  const blocks = text
+    .replace(/\r/g, "")
+    .split(/\n\s*\n/)
+    .map((b) => b.replace(/\s+$/, ""))
+    .filter((b) => b.trim());
+  if (!blocks.length) return null;
   return (
-    <ul className="flex flex-col gap-2 text-[13.5px] leading-relaxed text-subtitle">
-      {lines.map((l, i) =>
-        BULLET_RE.test(l) ? (
-          <li key={i} className="flex gap-2">
-            <span className="mt-[7px] h-[3px] w-[3px] shrink-0 rounded-full bg-mint" />
-            <span className="min-w-0">{l.replace(BULLET_RE, "")}</span>
-          </li>
-        ) : (
-          <li key={i}>{l}</li>
-        ),
-      )}
-    </ul>
+    <div className="flex flex-col gap-3 text-[13.5px] leading-relaxed text-subtitle">
+      {blocks.map((b, bi) => {
+        const lines = b.split(/\n/).map((l) => l.trim()).filter(Boolean);
+        const asBullets = lines.some((l) => BULLET_RE.test(l));
+        if (!asBullets) return <p key={bi} className="whitespace-pre-line">{lines.join("\n")}</p>;
+        return (
+          <ul key={bi} className="flex flex-col gap-2">
+            {lines.map((l, i) =>
+              BULLET_RE.test(l) ? (
+                <li key={i} className="flex gap-2">
+                  <span className="mt-[7px] h-[3px] w-[3px] shrink-0 rounded-full bg-mint" />
+                  <span className="min-w-0">{l.replace(BULLET_RE, "")}</span>
+                </li>
+              ) : (
+                <li key={i}>{l}</li>
+              ),
+            )}
+          </ul>
+        );
+      })}
+    </div>
   );
 }
 

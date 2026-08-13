@@ -1,0 +1,144 @@
+{
+  "timing": {
+    "arq": [
+      {
+        "url": "/f/z4mf3eeyn",
+        "marks": {
+          "dcl_ms": 854,
+          "welcomeShown_ms": 4377,
+          "heroRendered_ms": 4399,
+          "welcomeRemoved_ms": 6131,
+          "welcomeText": "Welcome",
+          "welcomePara": "Here are the cross-border payment flows we’ve prepared for ARQ.",
+          "heroText": "Built for ARQ"
+        },
+        "pageErrors": []
+      },
+      {
+        "url": "/f/z4mf3eeyn",
+        "marks": {
+          "dcl_ms": 601,
+          "welcomeShown_ms": 2953,
+          "heroRendered_ms": 2981,
+          "welcomeRemoved_ms": 4713,
+          "welcomeText": "Welcome",
+          "welcomePara": "Here are the cross-border payment flows we’ve prepared for ARQ.",
+          "heroText": "Built for ARQ"
+        },
+        "pageErrors": []
+      }
+    ],
+    "nuvera": [
+      {
+        "url": "/f/gg9vi8nbc",
+        "marks": {
+          "dcl_ms": 674,
+          "welcomeShown_ms": 3173,
+          "heroRendered_ms": 3200,
+          "welcomeRemoved_ms": 4936,
+          "welcomeText": "Welcome, Marcelo Correa",
+          "welcomePara": "Here are the cross-border payment flows we’ve prepared for Nuvera.",
+          "heroText": "Built for Nuvera"
+        },
+        "pageErrors": []
+      },
+      {
+        "url": "/f/gg9vi8nbc",
+        "marks": {
+          "dcl_ms": 635,
+          "welcomeShown_ms": 3077,
+          "heroRendered_ms": 3105,
+          "welcomeRemoved_ms": 4837,
+          "welcomeText": "Welcome, Marcelo Correa",
+          "welcomePara": "Here are the cross-border payment flows we’ve prepared for Nuvera.",
+          "heroText": "Built for Nuvera"
+        },
+        "pageErrors": []
+      }
+    ]
+  },
+  "metaEmptyClient": {
+    "welcomeText": "Welcome",
+    "welcomePara": "Here are the cross-border payment flows we’ve prepared.",
+    "heroHeading": "Built for you",
+    "heroFromMarks": "Built for you",
+    "errors": []
+  },
+  "coin": {
+    "totalSamples": 1041,
+    "violationSamples": 118,
+    "worst_t_opacity_overlapPx": [
+      4290,
+      0.449,
+      5.1
+    ],
+    "top10": [
+      [
+        4290,
+        0.449,
+        5.1
+      ],
+      [
+        6549,
+        0.449,
+        5.1
+      ],
+      [
+        7420,
+        0.449,
+        5.1
+      ],
+      [
+        291,
+        0.431,
+        5.3
+      ],
+      [
+        9679,
+        0.466,
+        4.9
+      ],
+      [
+        5166,
+        0.439,
+        5.2
+      ],
+      [
+        2037,
+        0.422,
+        5.4
+      ],
+      [
+        8294,
+        0.474,
+        4.8
+      ],
+      [
+        9082,
+        0.446,
+        5.1
+      ],
+      [
+        4899,
+        0.464,
+        4.9
+      ]
+    ]
+  },
+  "desktop": {
+    "sawWelcome": true,
+    "scrolledTo": "FlowsPayout for Latin touristsLiquidity from Arq MXPay-inPay",
+    "welcomeMidIntro": [],
+    "welcomePostIntro": [],
+    "marks": {
+      "welcomeShown_ms": 2835,
+      "welcomeRemoved_ms": 4617,
+      "hero_ms": 2869
+    },
+    "errors": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": []
+    }
+  }
+}

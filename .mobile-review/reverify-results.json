@@ -1,0 +1,2060 @@
+{
+  "arq-mobile": {
+    "url": "/f/z4mf3eeyn",
+    "timings": {
+      "welcomeShown_ms": 3724,
+      "heroRendered_ms": 3724,
+      "contentRevealed_ms": 5015,
+      "overlayGoneFromDom_ms": 5294
+    },
+    "welcomeCaptured": "Welcome",
+    "welcomeParagraph": "Here are the cross-border payment flows we’ve prepared for ARQ.",
+    "heroText": "Built for ARQ",
+    "samples": [
+      {
+        "dt": 661,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 822,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 918,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 1007,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 1075,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 1156,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 1279,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 1388,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 1468,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 1572,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 1643,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 1724,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 1868,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 1939,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 2011,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 2078,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 2144,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 2214,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 2656,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 2962,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 3032,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 3098,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 3190,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 3265,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 3345,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 3724,
+        "overlayOpacity": 1,
+        "welcomeInDom": true,
+        "heroVisible": true
+      },
+      {
+        "dt": 3857,
+        "overlayOpacity": 1,
+        "welcomeInDom": true,
+        "heroVisible": true
+      },
+      {
+        "dt": 3925,
+        "overlayOpacity": 1,
+        "welcomeInDom": true,
+        "heroVisible": true
+      },
+      {
+        "dt": 3997,
+        "overlayOpacity": 1,
+        "welcomeInDom": true,
+        "heroVisible": true
+      },
+      {
+        "dt": 4097,
+        "overlayOpacity": 1,
+        "welcomeInDom": true,
+        "heroVisible": true
+      },
+      {
+        "dt": 4307,
+        "overlayOpacity": 1,
+        "welcomeInDom": true,
+        "heroVisible": true
+      },
+      {
+        "dt": 4392,
+        "overlayOpacity": 1,
+        "welcomeInDom": true,
+        "heroVisible": true
+      },
+      {
+        "dt": 4573,
+        "overlayOpacity": 1,
+        "welcomeInDom": true,
+        "heroVisible": true
+      },
+      {
+        "dt": 4673,
+        "overlayOpacity": 1,
+        "welcomeInDom": true,
+        "heroVisible": true
+      },
+      {
+        "dt": 4745,
+        "overlayOpacity": 1,
+        "welcomeInDom": true,
+        "heroVisible": true
+      },
+      {
+        "dt": 4857,
+        "overlayOpacity": 0.987,
+        "welcomeInDom": true,
+        "heroVisible": true
+      },
+      {
+        "dt": 4944,
+        "overlayOpacity": 0.693,
+        "welcomeInDom": true,
+        "heroVisible": true
+      },
+      {
+        "dt": 5015,
+        "overlayOpacity": 0.338,
+        "welcomeInDom": true,
+        "heroVisible": true
+      },
+      {
+        "dt": 5083,
+        "overlayOpacity": 0.13,
+        "welcomeInDom": true,
+        "heroVisible": true
+      },
+      {
+        "dt": 5148,
+        "overlayOpacity": 0.044,
+        "welcomeInDom": true,
+        "heroVisible": true
+      },
+      {
+        "dt": 5216,
+        "overlayOpacity": 0.007,
+        "welcomeInDom": true,
+        "heroVisible": true
+      },
+      {
+        "dt": 5294,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": true
+      }
+    ],
+    "ghostRemnants": [],
+    "final": {
+      "heroText": "Built for ARQ",
+      "scrollWidth": 390,
+      "innerWidth": 390,
+      "welcomeInDom": false
+    },
+    "errors": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": []
+    },
+    "sweepDims": {
+      "sh": 1368,
+      "ih": 844,
+      "sw": 390,
+      "iw": 390
+    },
+    "buttons": [
+      {
+        "text": "Flow",
+        "h": 44,
+        "w": 58.4,
+        "pressed": "true"
+      },
+      {
+        "text": "Pricing",
+        "h": 44,
+        "w": 72.8,
+        "pressed": "false"
+      },
+      {
+        "text": "Pay-in",
+        "h": 44,
+        "w": 71.8,
+        "pressed": "true"
+      },
+      {
+        "text": "Pay-out",
+        "h": 44,
+        "w": 81,
+        "pressed": "false"
+      },
+      {
+        "text": "Payout for Latin tourists",
+        "h": 44,
+        "w": 189.5,
+        "pressed": "true"
+      },
+      {
+        "text": "Liquidity from Arq MX",
+        "h": 44,
+        "w": 172.7,
+        "pressed": "false"
+      },
+      {
+        "text": "Download Proposal",
+        "h": 48,
+        "w": 358,
+        "pressed": null
+      }
+    ]
+  },
+  "nuvera-mobile": {
+    "url": "/f/gg9vi8nbc",
+    "timings": {
+      "welcomeShown_ms": 3676,
+      "heroRendered_ms": 3676,
+      "contentRevealed_ms": 5276,
+      "overlayGoneFromDom_ms": 5376
+    },
+    "welcomeCaptured": "Welcome, Marcelo Correa",
+    "welcomeParagraph": "Here are the cross-border payment flows we’ve prepared for Nuvera.",
+    "heroText": "Built for Nuvera",
+    "samples": [
+      {
+        "dt": 603,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 744,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 941,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 1015,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 1091,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 1181,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 1252,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 1349,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 1456,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 1533,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 1634,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 1707,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 1769,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 1840,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 1910,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 1989,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 2059,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 2132,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 2199,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 2819,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 3036,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 3150,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 3224,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 3306,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 3373,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 3676,
+        "overlayOpacity": 1,
+        "welcomeInDom": true,
+        "heroVisible": true
+      },
+      {
+        "dt": 3761,
+        "overlayOpacity": 1,
+        "welcomeInDom": true,
+        "heroVisible": true
+      },
+      {
+        "dt": 3901,
+        "overlayOpacity": 1,
+        "welcomeInDom": true,
+        "heroVisible": true
+      },
+      {
+        "dt": 3971,
+        "overlayOpacity": 1,
+        "welcomeInDom": true,
+        "heroVisible": true
+      },
+      {
+        "dt": 4103,
+        "overlayOpacity": 1,
+        "welcomeInDom": true,
+        "heroVisible": true
+      },
+      {
+        "dt": 4176,
+        "overlayOpacity": 1,
+        "welcomeInDom": true,
+        "heroVisible": true
+      },
+      {
+        "dt": 4257,
+        "overlayOpacity": 1,
+        "welcomeInDom": true,
+        "heroVisible": true
+      },
+      {
+        "dt": 4327,
+        "overlayOpacity": 1,
+        "welcomeInDom": true,
+        "heroVisible": true
+      },
+      {
+        "dt": 4396,
+        "overlayOpacity": 1,
+        "welcomeInDom": true,
+        "heroVisible": true
+      },
+      {
+        "dt": 4509,
+        "overlayOpacity": 1,
+        "welcomeInDom": true,
+        "heroVisible": true
+      },
+      {
+        "dt": 4890,
+        "overlayOpacity": 1,
+        "welcomeInDom": true,
+        "heroVisible": true
+      },
+      {
+        "dt": 5276,
+        "overlayOpacity": 0.044,
+        "welcomeInDom": true,
+        "heroVisible": true
+      },
+      {
+        "dt": 5376,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": true
+      }
+    ],
+    "ghostRemnants": [],
+    "final": {
+      "heroText": "Built for Nuvera",
+      "scrollWidth": 390,
+      "innerWidth": 390,
+      "welcomeInDom": false
+    },
+    "errors": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": []
+    },
+    "sweepDims": {
+      "sh": 1526,
+      "ih": 844,
+      "sw": 390,
+      "iw": 390
+    },
+    "buttons": [
+      {
+        "text": "Flow",
+        "h": 44,
+        "w": 58.4,
+        "pressed": "true"
+      },
+      {
+        "text": "Pricing",
+        "h": 44,
+        "w": 72.8,
+        "pressed": "false"
+      },
+      {
+        "text": "Pay-in",
+        "h": 44,
+        "w": 71.8,
+        "pressed": "true"
+      },
+      {
+        "text": "Pay-out",
+        "h": 44,
+        "w": 81,
+        "pressed": "false"
+      },
+      {
+        "text": "Nuvera Payment Flow",
+        "h": 44,
+        "w": 173.9,
+        "pressed": "true"
+      },
+      {
+        "text": "Treasury netting",
+        "h": 44,
+        "w": 137.9,
+        "pressed": "false"
+      },
+      {
+        "text": "Download Proposal",
+        "h": 48,
+        "w": 358,
+        "pressed": null
+      }
+    ]
+  },
+  "meta-mobile": {
+    "url": "/meta-z99mee",
+    "timings": {
+      "welcomeShown_ms": null,
+      "heroRendered_ms": null,
+      "contentRevealed_ms": null,
+      "overlayGoneFromDom_ms": null
+    },
+    "welcomeCaptured": null,
+    "welcomeParagraph": null,
+    "heroText": null,
+    "samples": [
+      {
+        "dt": 635,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 753,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 827,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 904,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 995,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 1080,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 1151,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 1255,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 1327,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 1395,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 1463,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 1528,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 1600,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 1666,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 1736,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 1801,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 1868,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 2287,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 2536,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 2621,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 2685,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 2751,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 2822,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 2887,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 2964,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 3052,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 3120,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 3196,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 3272,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 3335,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 3401,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 3464,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 3530,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 3594,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 3660,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 3727,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 3795,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 3861,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 3928,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 4005,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 4105,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 4170,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 4236,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 4302,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 4367,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 4431,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 4522,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 4587,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 4652,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 4717,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 4779,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 4843,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 4909,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 4975,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 5037,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 5101,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 5166,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 5230,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 5294,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 5359,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 5424,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 5489,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 5552,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 5617,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 5680,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 5746,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 5811,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 5876,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 5938,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 6005,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 6069,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 6134,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 6196,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 6262,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 6327,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 6395,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 6463,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 6528,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 6595,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 6662,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 6811,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 6997,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 7078,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 7301,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 7514,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 7600,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 7667,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 7863,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 7927,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 8070,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 8137,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 8204,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 8284,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 8346,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 8420,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 8484,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 8549,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 8621,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 8684,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 8771,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 8836,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 8900,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 8969,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 9039,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 9105,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 9170,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 9237,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 9302,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 9367,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 9434,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 9496,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 9583,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 9648,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 9713,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 9777,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 9843,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 9909,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 9972,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 10036,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 10104,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 10168,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 10231,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 10296,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 10361,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 10427,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 10492,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 10558,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 10630,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 10704,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 10767,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 10829,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 10894,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 10961,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 11028,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 11093,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 11160,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 11225,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 11288,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 11351,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 11414,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 11478,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 11545,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 11619,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 11684,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 11746,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 11811,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 11872,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 11935,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 12000,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 12083,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 12147,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 12212,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 12279,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 12342,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 12404,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 12473,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 12536,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 12612,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 12676,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 12743,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 12808,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 12872,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 12934,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 12999,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 13063,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 13127,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 13193,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 13259,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 13322,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 13386,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 13451,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 13513,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 13577,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 13643,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 13705,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 13769,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 13833,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 13895,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 13960,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 14029,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 14095,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 14161,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 14226,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 14290,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 14353,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 14418,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 14484,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 14546,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 14621,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 14684,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 14746,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 14817,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 14883,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      },
+      {
+        "dt": 14945,
+        "overlayOpacity": 0,
+        "welcomeInDom": false,
+        "heroVisible": false
+      }
+    ],
+    "ghostRemnants": [],
+    "final": {
+      "heroText": null,
+      "scrollWidth": 390,
+      "innerWidth": 390,
+      "welcomeInDom": false
+    },
+    "errors": {
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "pageErrors": [],
+      "failedRequests": [
+        "HTTP 404 http://localhost:3200/api/flow/meta-z99mee"
+      ]
+    },
+    "sweepDims": {
+      "sh": 844,
+      "ih": 844,
+      "sw": 390,
+      "iw": 390
+    },
+    "buttons": []
+  },
+  "coin": {
+    "chips": [
+      "Payout for Latin tourists",
+      "Liquidity from Arq MX"
+    ],
+    "clickedVariant": "Liquidity from Arq MX",
+    "sampleCount": 31,
+    "violations": [
+      {
+        "dt": 3107,
+        "opacity": 0.507,
+        "coinH": 20.5,
+        "maxOverlapPx": 4.4
+      }
+    ],
+    "maxOpacityWhileOverlapping": 0.507,
+    "visibleSamples": 11,
+    "samples": [
+      {
+        "dt": 3,
+        "opacity": 1,
+        "coinH": 20.5,
+        "maxOverlapPx": 0
+      },
+      {
+        "dt": 151,
+        "opacity": 1,
+        "coinH": 20.5,
+        "maxOverlapPx": 0
+      },
+      {
+        "dt": 301,
+        "opacity": 0,
+        "coinH": 20.5,
+        "maxOverlapPx": 18.1
+      },
+      {
+        "dt": 448,
+        "opacity": 0,
+        "coinH": 20.5,
+        "maxOverlapPx": 20.5
+      },
+      {
+        "dt": 592,
+        "opacity": 0,
+        "coinH": 20.5,
+        "maxOverlapPx": 10.3
+      },
+      {
+        "dt": 740,
+        "opacity": 0,
+        "coinH": 20.5,
+        "maxOverlapPx": 10.3
+      },
+      {
+        "dt": 884,
+        "opacity": 0,
+        "coinH": 20.5,
+        "maxOverlapPx": 20.5
+      },
+      {
+        "dt": 1032,
+        "opacity": 0,
+        "coinH": 20.5,
+        "maxOverlapPx": 19.5
+      },
+      {
+        "dt": 1179,
+        "opacity": 1,
+        "coinH": 20.5,
+        "maxOverlapPx": 0
+      },
+      {
+        "dt": 1322,
+        "opacity": 1,
+        "coinH": 20.5,
+        "maxOverlapPx": 0
+      },
+      {
+        "dt": 1466,
+        "opacity": 0,
+        "coinH": 20.5,
+        "maxOverlapPx": 20.5
+      },
+      {
+        "dt": 1615,
+        "opacity": 0,
+        "coinH": 20.5,
+        "maxOverlapPx": 20.5
+      },
+      {
+        "dt": 1763,
+        "opacity": 1,
+        "coinH": 20.5,
+        "maxOverlapPx": 0
+      },
+      {
+        "dt": 1907,
+        "opacity": 1,
+        "coinH": 20.5,
+        "maxOverlapPx": 0
+      },
+      {
+        "dt": 2053,
+        "opacity": 0,
+        "coinH": 20.5,
+        "maxOverlapPx": 17.8
+      },
+      {
+        "dt": 2199,
+        "opacity": 0,
+        "coinH": 20.5,
+        "maxOverlapPx": 20.5
+      },
+      {
+        "dt": 2375,
+        "opacity": 1,
+        "coinH": 20.5,
+        "maxOverlapPx": 0
+      },
+      {
+        "dt": 2522,
+        "opacity": 1,
+        "coinH": 20.5,
+        "maxOverlapPx": 0
+      },
+      {
+        "dt": 2665,
+        "opacity": 1,
+        "coinH": 20.5,
+        "maxOverlapPx": 0
+      },
+      {
+        "dt": 2814,
+        "opacity": 0,
+        "coinH": 20.5,
+        "maxOverlapPx": 12.5
+      },
+      {
+        "dt": 2956,
+        "opacity": 0,
+        "coinH": 20.5,
+        "maxOverlapPx": 20.5
+      },
+      {
+        "dt": 3107,
+        "opacity": 0.507,
+        "coinH": 20.5,
+        "maxOverlapPx": 4.4
+      },
+      {
+        "dt": 3253,
+        "opacity": 1,
+        "coinH": 20.5,
+        "maxOverlapPx": 0
+      },
+      {
+        "dt": 3431,
+        "opacity": 0,
+        "coinH": 20.5,
+        "maxOverlapPx": 18.7
+      },
+      {
+        "dt": 3580,
+        "opacity": 0,
+        "coinH": 20.5,
+        "maxOverlapPx": 20.5
+      },
+      {
+        "dt": 3724,
+        "opacity": 0,
+        "coinH": 20.5,
+        "maxOverlapPx": 10.3
+      },
+      {
+        "dt": 3870,
+        "opacity": 0,
+        "coinH": 20.5,
+        "maxOverlapPx": 10.3
+      },
+      {
+        "dt": 4015,
+        "opacity": 0,
+        "coinH": 20.5,
+        "maxOverlapPx": 20.5
+      },
+      {
+        "dt": 4229,
+        "opacity": 0,
+        "coinH": 20.5,
+        "maxOverlapPx": 14.1
+      },
+      {
+        "dt": 4665,
+        "opacity": 0,
+        "coinH": 20.5,
+        "maxOverlapPx": 18
+      },
+      {
+        "dt": 9957,
+        "opacity": 0,
+        "coinH": 20.5,
+        "maxOverlapPx": 10.3
+      }
+    ],
+    "errors": []
+  },
+  "arq-desktop": {
+    "sawWelcome": false,
+    "scrolledTo": null,
+    "midIntro": {
+      "overlayOpacity": 0,
+      "welcomeInDom": false
+    },
+    "postIntroGhosts": [],
+    "dims": {
+      "sw": 1440,
+      "iw": 1440
+    },
+    "errors": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": []
+    }
+  }
+}

@@ -4,6 +4,8 @@ import { FlowExperience } from "@/flow-tool/components/FlowExperience";
 import { SilkBackdrop } from "@/flow-tool/components/Glass";
 import { ControlPanel } from "@/components/ControlPanel";
 import { NotesDrawer } from "@/components/NotesDrawer";
+import { LogoDrop } from "@/components/LogoDrop";
+import { normalizeLogo, removeBackground } from "@/flow-tool/lib/logo";
 import { defaultConfig, getFlow } from "@/flow-tool/data";
 import { registerCustomFlows } from "@/flow-tool/data/custom-flows";
 import { deckPricing, normalizePricing, type Flow, type FlowConfig, type ProposalPricing, type ProposalSetup } from "@/flow-tool/data/schema";
@@ -43,8 +45,20 @@ export default function BuildPage() {
   const [editingCode, setEditingCode] = useState<string | null>(null);
   // Double-click rename overlay for the flow boxes / lane names / hero
   // subtitle on the canvas.
-  const [rename, setRename] = useState<{ key: string; lane?: "brazil" | "abroad"; hero?: boolean; platformCaption?: boolean; comment?: boolean; node?: boolean; entity?: string; entityOn?: boolean; branded?: boolean; partner?: boolean; original: string; value: string; left: number; top: number; width: number } | null>(null);
+  const [rename, setRename] = useState<{ key: string; lane?: "brazil" | "abroad"; hero?: boolean; platformCaption?: boolean; comment?: boolean; node?: boolean; entity?: string; entityOn?: boolean; branded?: boolean; partner?: boolean; bankOn?: boolean; bankLabel?: string; bankBold?: boolean; bankLogoUrl?: string; bankLogoPlate?: "light" | "none"; original: string; value: string; left: number; top: number; width: number } | null>(null);
   const renameRef = useRef<HTMLInputElement>(null);
+  // Set while the bank-logo file picker is open: its focus theft would
+  // otherwise blur (and commit/close) the node card before a file is chosen.
+  // Cleared when the window regains focus, so a cancelled dialog doesn't wedge
+  // the card open.
+  const browsingRef = useRef(false);
+  useEffect(() => {
+    const clear = () => {
+      browsingRef.current = false;
+    };
+    window.addEventListener("focus", clear);
+    return () => window.removeEventListener("focus", clear);
+  }, []);
   // Edit mode ("Arrange boxes"): drag a box onto another to swap places, or
   // into a rail gap to move it. Stored as config.nodeOrder, so the client
   // link, mobile and the PDF all inherit the new order.
@@ -277,6 +291,7 @@ export default function BuildPage() {
     const original = getFlow(config.flowId)?.nodes.find((n) => n.id === id)?.label ?? "";
     const r = el.getBoundingClientRect();
     const entity = config.nodeEntities?.[key];
+    const bank = config.nodeBank?.[key];
     setRename({
       key,
       node: true,
@@ -284,11 +299,29 @@ export default function BuildPage() {
       entityOn: !!entity,
       branded: !!config.nodeBranded?.[key],
       partner: !!config.nodePartner?.[key],
+      bankOn: !!bank,
+      bankLabel: bank?.label ?? "",
+      bankBold: bank?.labelBold !== false,
+      bankLogoUrl: bank?.logoUrl,
+      bankLogoPlate: bank?.logoPlate,
       original,
       value: config.nodeLabels?.[key] ?? original,
       left: r.left,
       top: r.top + r.height / 2 - 17,
       width: Math.max(r.width, 190),
+    });
+  }
+  // Write a box's bank logo straight into config, merging with any bank name
+  // already set. Used from the node card's LogoDrop, whose file dialog closes
+  // the card before its normal commit can run.
+  function setBankLogo(key: string, logoUrl: string | undefined, logoPlate: "light" | "none" | undefined) {
+    setConfig((c) => {
+      const banks = { ...(c.nodeBank ?? {}) };
+      const cur = banks[key] ?? {};
+      const next = { ...cur, logoUrl, logoPlate };
+      if (!next.label?.trim() && !next.logoUrl) delete banks[key];
+      else banks[key] = next;
+      return { ...c, nodeBank: Object.keys(banks).length ? banks : undefined };
     });
   }
   function commitRename() {
@@ -353,12 +386,20 @@ export default function BuildPage() {
       const partner = { ...(c.nodePartner ?? {}) };
       if (rename.partner) partner[rename.key] = true;
       else delete partner[rename.key];
+      // "Held in a bank": a dotted enclosure with the bank's name + logo. Kept
+      // only when it carries something (a name or a logo).
+      const banks = { ...(c.nodeBank ?? {}) };
+      const bankLabel = (rename.bankLabel ?? "").trim();
+      if (rename.bankOn && (bankLabel || rename.bankLogoUrl))
+        banks[rename.key] = { label: bankLabel || undefined, labelBold: rename.bankBold === false ? false : undefined, logoUrl: rename.bankLogoUrl, logoPlate: rename.bankLogoPlate };
+      else delete banks[rename.key];
       return {
         ...c,
         nodeLabels: Object.keys(labels).length ? labels : undefined,
         nodeEntities: Object.keys(ents).length ? ents : undefined,
         nodeBranded: Object.keys(branded).length ? branded : undefined,
         nodePartner: Object.keys(partner).length ? partner : undefined,
+        nodeBank: Object.keys(banks).length ? banks : undefined,
       };
     });
     setRename(null);
@@ -601,6 +642,7 @@ export default function BuildPage() {
         className="fixed z-[80] flex flex-col gap-1.5 rounded-lg border border-mint bg-[#0c110f] p-2 shadow-xl"
         style={{ left: rename.left, top: rename.top - 4, width: Math.max(rename.width, 200) }}
         onBlur={(e) => {
+          if (browsingRef.current) return; // file dialog open — keep the card
           if (!e.currentTarget.contains(e.relatedTarget as Node | null)) commitRename();
         }}
       >
@@ -668,6 +710,89 @@ export default function BuildPage() {
             aria-label="Entity under the box"
             className="w-full rounded-md border border-node-stroke bg-[#0c110f] px-2.5 py-1.5 text-center text-[12px] text-title outline-none placeholder:text-muted focus:border-mint"
           />
+        )}
+        {!rename.key.includes("__hero__") && (
+          <>
+            <label className="flex cursor-pointer items-center gap-2 px-0.5 text-[11px] font-medium text-subtitle">
+              <input
+                type="checkbox"
+                checked={!!rename.bankOn}
+                onChange={(e) => setRename({ ...rename, bankOn: e.target.checked })}
+                className="h-3 w-3 accent-mint"
+              />
+              Held in a bank
+            </label>
+            {rename.bankOn && (
+              <div className="flex flex-col gap-1.5 rounded-md border border-white/10 bg-[#0a0f0d]/60 p-1.5">
+                <input
+                  value={rename.bankLabel ?? ""}
+                  onChange={(e) => setRename({ ...rename, bankLabel: e.target.value })}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") commitRename();
+                    else if (e.key === "Escape") setRename(null);
+                  }}
+                  placeholder="Label (e.g. Held at)"
+                  aria-label="Bank enclosure label"
+                  className="w-full rounded-md border border-node-stroke bg-[#0c110f] px-2.5 py-1.5 text-center text-[12px] text-title outline-none placeholder:text-muted focus:border-mint"
+                />
+                {(rename.bankLabel ?? "").trim() && (
+                  <label className="flex cursor-pointer items-center gap-2 px-0.5 text-[11px] font-medium text-subtitle">
+                    <input
+                      type="checkbox"
+                      checked={rename.bankBold !== false}
+                      onChange={(e) => setRename({ ...rename, bankBold: e.target.checked })}
+                      className="h-3 w-3 accent-mint"
+                    />
+                    Bold label
+                  </label>
+                )}
+                {rename.bankLogoUrl ? (
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`flex h-8 flex-1 items-center justify-center rounded-md ${rename.bankLogoPlate === "light" ? "bg-white" : "bg-[#0c110f]"}`}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={rename.bankLogoUrl} alt="" className="max-h-6 max-w-[80%] object-contain" />
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRename((r) => (r ? { ...r, bankLogoUrl: undefined, bankLogoPlate: undefined } : r));
+                        setBankLogo(rename.key, undefined, undefined);
+                      }}
+                      className="rounded-md border border-white/12 px-2 py-1 text-[10.5px] text-muted hover:border-white/25 hover:text-subtitle"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  // Picking a file blurs (and so commits/closes) this card, so
+                  // the logo is written straight to config here — not deferred
+                  // to the card's commit — and survives the card closing.
+                  <span
+                    onPointerDownCapture={() => {
+                      browsingRef.current = true;
+                    }}
+                  >
+                    <LogoDrop
+                      compact
+                      onImage={async (raw) => {
+                        browsingRef.current = false;
+                        const key = rename.key;
+                        // Cut the background so the logo can sit large and clean
+                        // below the box: try the keying pass first (handles busy
+                        // backgrounds), then normalize (trim + plate decision).
+                        const cut = await removeBackground(raw).catch(() => null);
+                        const r = await normalizeLogo(cut ?? raw);
+                        setRename((prev) => (prev ? { ...prev, bankOn: true, bankLogoUrl: r.url, bankLogoPlate: r.plate } : prev));
+                        setBankLogo(key, r.url, r.plate);
+                      }}
+                    />
+                  </span>
+                )}
+              </div>
+            )}
+          </>
         )}
       </div>
     ) : (

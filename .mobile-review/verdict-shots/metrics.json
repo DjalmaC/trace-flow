@@ -1,0 +1,1444 @@
+{
+  "landing-390": {
+    "overflow": {
+      "scrollWidth": 390,
+      "innerWidth": 390,
+      "scrollHeight": 844
+    },
+    "wide": [],
+    "smallText": [
+      {
+        "fs": 10.5,
+        "text": "TRACE FLOW · INTERNAL",
+        "cls": "mt-auto pb-6 pt-12 font-jbmono text-[10.5px] font-medium tra"
+      }
+    ],
+    "smallTargets": []
+  },
+  "arq-390": {
+    "overflow": {
+      "scrollWidth": 390,
+      "innerWidth": 390,
+      "scrollHeight": 844
+    },
+    "wide": [],
+    "smallText": [],
+    "smallTargets": []
+  },
+  "nuvera-390": {
+    "overflow": {
+      "scrollWidth": 390,
+      "innerWidth": 390,
+      "scrollHeight": 1516
+    },
+    "wide": [],
+    "smallText": [
+      {
+        "fs": 9.5,
+        "text": "A Trace Finance Proposal",
+        "cls": "pb-1.5 font-jbmono text-[9.5px] font-medium uppercase tracki"
+      },
+      {
+        "fs": 9.5,
+        "text": "Flows",
+        "cls": "px-4 pb-1.5 font-jbmono text-[9.5px] font-medium uppercase t"
+      },
+      {
+        "fs": 10,
+        "text": "The desired transaction",
+        "cls": "mb-2 font-mono text-[10px] font-medium uppercase tracking-[0"
+      },
+      {
+        "fs": 10,
+        "text": "Brasil",
+        "cls": "shrink-0 text-[10px] font-medium uppercase tracking-wide"
+      },
+      {
+        "fs": 10,
+        "text": "into Abroad",
+        "cls": "text-[10px] font-medium uppercase tracking-wide"
+      },
+      {
+        "fs": 10,
+        "text": "Your Trace Finance contact",
+        "cls": "font-jbmono text-[10px] font-medium uppercase tracking-[0.3e"
+      }
+    ],
+    "smallTargets": [
+      {
+        "tag": "BUTTON",
+        "w": 58,
+        "h": 38,
+        "text": "Flow"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 73,
+        "h": 38,
+        "text": "Pricing"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 72,
+        "h": 38,
+        "text": "Pay-in"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 81,
+        "h": 38,
+        "text": "Pay-out"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 174,
+        "h": 42,
+        "text": "Nuvera Payment Flow"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 138,
+        "h": 42,
+        "text": "Treasury netting"
+      }
+    ]
+  },
+  "meta-slug-390": {
+    "overflow": {
+      "scrollWidth": 390,
+      "innerWidth": 390,
+      "scrollHeight": 1085
+    },
+    "wide": [],
+    "smallText": [
+      {
+        "fs": 9.5,
+        "text": "A Trace Finance Proposal",
+        "cls": "pb-1.5 font-jbmono text-[9.5px] font-medium uppercase tracki"
+      },
+      {
+        "fs": 9.5,
+        "text": "Flows",
+        "cls": "px-4 pb-1.5 font-jbmono text-[9.5px] font-medium uppercase t"
+      },
+      {
+        "fs": 10,
+        "text": "The desired transaction",
+        "cls": "mb-2 font-mono text-[10px] font-medium uppercase tracking-[0"
+      },
+      {
+        "fs": 10,
+        "text": "Brasil",
+        "cls": "shrink-0 text-[10px] font-medium uppercase tracking-wide"
+      },
+      {
+        "fs": 10,
+        "text": "into Abroad",
+        "cls": "text-[10px] font-medium uppercase tracking-wide"
+      }
+    ],
+    "smallTargets": [
+      {
+        "tag": "BUTTON",
+        "w": 71,
+        "h": 42,
+        "text": "USDC"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 60,
+        "h": 42,
+        "text": "USD"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 101,
+        "h": 42,
+        "text": "USD (NRA)"
+      }
+    ]
+  },
+  "build-390": {
+    "overflow": {
+      "scrollWidth": 390,
+      "innerWidth": 390,
+      "scrollHeight": 844
+    },
+    "wide": [],
+    "smallText": [
+      {
+        "fs": 10.5,
+        "text": "⌘K",
+        "cls": "shrink-0 rounded-md border border-hairline-control px-2 py-1"
+      },
+      {
+        "fs": 10,
+        "text": "Experiment without touching your pipeline.",
+        "cls": "block text-[10px] leading-snug text-muted"
+      },
+      {
+        "fs": 10,
+        "text": "Deal",
+        "cls": "text-[10px] font-semibold text-[#bfe8d4]"
+      },
+      {
+        "fs": 10,
+        "text": "Client",
+        "cls": "text-[10px] font-medium text-muted"
+      },
+      {
+        "fs": 10.5,
+        "text": "Build a client-specific diagram from scratch",
+        "cls": "block text-[10.5px] text-muted"
+      },
+      {
+        "fs": 10,
+        "text": "On canvas",
+        "cls": "font-jbmono text-[10px] font-medium uppercase tracking-[.18e"
+      },
+      {
+        "fs": 10.5,
+        "text": "Empty deck presents just the flow on canvas. Add flows to st",
+        "cls": "mt-1.5 text-[10.5px] leading-snug text-muted"
+      },
+      {
+        "fs": 10,
+        "text": "Notes",
+        "cls": "font-mono text-[10px] font-semibold uppercase tracking-[0.24"
+      },
+      {
+        "fs": 10,
+        "text": "The desired transaction",
+        "cls": "mb-2 font-mono text-[10px] font-medium uppercase tracking-[0"
+      },
+      {
+        "fs": 10,
+        "text": "Brasil",
+        "cls": "shrink-0 text-[10px] font-medium uppercase tracking-wide"
+      },
+      {
+        "fs": 10,
+        "text": "into Abroad",
+        "cls": "text-[10px] font-medium uppercase tracking-wide"
+      }
+    ],
+    "smallTargets": [
+      {
+        "tag": "BUTTON",
+        "w": 31,
+        "h": 26,
+        "text": "⌘K"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 81,
+        "h": 28,
+        "text": "Present"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 22,
+        "h": 22,
+        "text": "Collapse panel"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 28,
+        "h": 49,
+        "text": "1Deal"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 28,
+        "h": 49,
+        "text": "2Client"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 36,
+        "h": 49,
+        "text": "3Present"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 98,
+        "h": 25,
+        "text": "Add to deck"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 61,
+        "h": 42,
+        "text": "Back"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 233,
+        "h": 42,
+        "text": "Continue →"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 119,
+        "h": 34,
+        "text": "Arrange boxes"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 32,
+        "h": 104,
+        "text": "Notes"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 14,
+        "h": 14,
+        "text": "Close notes"
+      },
+      {
+        "tag": "A",
+        "w": 108,
+        "h": 34,
+        "text": "← Proposals"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 73,
+        "h": 36,
+        "text": "Pay-in"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 83,
+        "h": 36,
+        "text": "Pay-out"
+      }
+    ]
+  },
+  "new-390": {
+    "overflow": {
+      "scrollWidth": 390,
+      "innerWidth": 390,
+      "scrollHeight": 844
+    },
+    "wide": [],
+    "smallText": [
+      {
+        "fs": 10.5,
+        "text": "TRACE FLOW · INTERNAL",
+        "cls": "mt-auto pb-6 pt-12 font-jbmono text-[10.5px] font-medium tra"
+      }
+    ],
+    "smallTargets": []
+  },
+  "landing-430": {
+    "overflow": {
+      "scrollWidth": 430,
+      "innerWidth": 430,
+      "scrollHeight": 932
+    },
+    "wide": [],
+    "smallText": [
+      {
+        "fs": 10.5,
+        "text": "TRACE FLOW · INTERNAL",
+        "cls": "mt-auto pb-6 pt-12 font-jbmono text-[10.5px] font-medium tra"
+      }
+    ],
+    "smallTargets": []
+  },
+  "arq-430": {
+    "overflow": {
+      "scrollWidth": 430,
+      "innerWidth": 430,
+      "scrollHeight": 1359
+    },
+    "wide": [],
+    "smallText": [
+      {
+        "fs": 9.5,
+        "text": "A Trace Finance Proposal",
+        "cls": "pb-1.5 font-jbmono text-[9.5px] font-medium uppercase tracki"
+      },
+      {
+        "fs": 9.5,
+        "text": "Flows",
+        "cls": "px-4 pb-1.5 font-jbmono text-[9.5px] font-medium uppercase t"
+      },
+      {
+        "fs": 10,
+        "text": "The desired transaction",
+        "cls": "mb-2 font-mono text-[10px] font-medium uppercase tracking-[0"
+      },
+      {
+        "fs": 10,
+        "text": "Abroad",
+        "cls": "shrink-0 text-[10px] font-medium uppercase tracking-wide"
+      },
+      {
+        "fs": 10,
+        "text": "into Brasil 🇧🇷",
+        "cls": "text-[10px] font-medium uppercase tracking-wide"
+      },
+      {
+        "fs": 10,
+        "text": "Your Trace Finance contact",
+        "cls": "font-jbmono text-[10px] font-medium uppercase tracking-[0.3e"
+      }
+    ],
+    "smallTargets": [
+      {
+        "tag": "BUTTON",
+        "w": 58,
+        "h": 38,
+        "text": "Flow"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 73,
+        "h": 38,
+        "text": "Pricing"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 72,
+        "h": 38,
+        "text": "Pay-in"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 81,
+        "h": 38,
+        "text": "Pay-out"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 189,
+        "h": 42,
+        "text": "Payout for Latin tourists"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 173,
+        "h": 42,
+        "text": "Liquidity from Arq MX"
+      }
+    ]
+  },
+  "nuvera-430": {
+    "overflow": {
+      "scrollWidth": 430,
+      "innerWidth": 430,
+      "scrollHeight": 1387
+    },
+    "wide": [],
+    "smallText": [
+      {
+        "fs": 9.5,
+        "text": "Flows",
+        "cls": "px-4 pb-1.5 font-jbmono text-[9.5px] font-medium uppercase t"
+      },
+      {
+        "fs": 10,
+        "text": "The desired transaction",
+        "cls": "mb-2 font-mono text-[10px] font-medium uppercase tracking-[0"
+      },
+      {
+        "fs": 10,
+        "text": "Brasil",
+        "cls": "shrink-0 text-[10px] font-medium uppercase tracking-wide"
+      },
+      {
+        "fs": 10,
+        "text": "into Abroad",
+        "cls": "text-[10px] font-medium uppercase tracking-wide"
+      },
+      {
+        "fs": 10,
+        "text": "Your Trace Finance contact",
+        "cls": "font-jbmono text-[10px] font-medium uppercase tracking-[0.3e"
+      }
+    ],
+    "smallTargets": [
+      {
+        "tag": "BUTTON",
+        "w": 174,
+        "h": 42,
+        "text": "Nuvera Payment Flow"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 138,
+        "h": 42,
+        "text": "Treasury netting"
+      }
+    ]
+  },
+  "meta-slug-430": {
+    "overflow": {
+      "scrollWidth": 430,
+      "innerWidth": 430,
+      "scrollHeight": 1062
+    },
+    "wide": [],
+    "smallText": [
+      {
+        "fs": 9.5,
+        "text": "A Trace Finance Proposal",
+        "cls": "pb-1.5 font-jbmono text-[9.5px] font-medium uppercase tracki"
+      },
+      {
+        "fs": 9.5,
+        "text": "Flows",
+        "cls": "px-4 pb-1.5 font-jbmono text-[9.5px] font-medium uppercase t"
+      },
+      {
+        "fs": 10,
+        "text": "The desired transaction",
+        "cls": "mb-2 font-mono text-[10px] font-medium uppercase tracking-[0"
+      },
+      {
+        "fs": 10,
+        "text": "Brasil",
+        "cls": "shrink-0 text-[10px] font-medium uppercase tracking-wide"
+      },
+      {
+        "fs": 10,
+        "text": "into Abroad",
+        "cls": "text-[10px] font-medium uppercase tracking-wide"
+      }
+    ],
+    "smallTargets": [
+      {
+        "tag": "BUTTON",
+        "w": 71,
+        "h": 42,
+        "text": "USDC"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 60,
+        "h": 42,
+        "text": "USD"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 101,
+        "h": 42,
+        "text": "USD (NRA)"
+      }
+    ]
+  },
+  "build-430": {
+    "overflow": {
+      "scrollWidth": 430,
+      "innerWidth": 430,
+      "scrollHeight": 932
+    },
+    "wide": [],
+    "smallText": [
+      {
+        "fs": 10.5,
+        "text": "⌘K",
+        "cls": "shrink-0 rounded-md border border-hairline-control px-2 py-1"
+      },
+      {
+        "fs": 10,
+        "text": "Experiment without touching your pipeline.",
+        "cls": "block text-[10px] leading-snug text-muted"
+      },
+      {
+        "fs": 10,
+        "text": "Deal",
+        "cls": "text-[10px] font-semibold text-[#bfe8d4]"
+      },
+      {
+        "fs": 10,
+        "text": "Client",
+        "cls": "text-[10px] font-medium text-muted"
+      },
+      {
+        "fs": 10.5,
+        "text": "Build a client-specific diagram from scratch",
+        "cls": "block text-[10.5px] text-muted"
+      },
+      {
+        "fs": 10,
+        "text": "On canvas",
+        "cls": "font-jbmono text-[10px] font-medium uppercase tracking-[.18e"
+      },
+      {
+        "fs": 10.5,
+        "text": "Empty deck presents just the flow on canvas. Add flows to st",
+        "cls": "mt-1.5 text-[10.5px] leading-snug text-muted"
+      },
+      {
+        "fs": 10,
+        "text": "Notes",
+        "cls": "font-mono text-[10px] font-semibold uppercase tracking-[0.24"
+      },
+      {
+        "fs": 10,
+        "text": "The desired transaction",
+        "cls": "mb-2 font-mono text-[10px] font-medium uppercase tracking-[0"
+      },
+      {
+        "fs": 10,
+        "text": "Brasil",
+        "cls": "shrink-0 text-[10px] font-medium uppercase tracking-wide"
+      },
+      {
+        "fs": 10,
+        "text": "into Abroad",
+        "cls": "text-[10px] font-medium uppercase tracking-wide"
+      }
+    ],
+    "smallTargets": [
+      {
+        "tag": "BUTTON",
+        "w": 31,
+        "h": 26,
+        "text": "⌘K"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 81,
+        "h": 28,
+        "text": "Present"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 22,
+        "h": 22,
+        "text": "Collapse panel"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 28,
+        "h": 49,
+        "text": "1Deal"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 28,
+        "h": 49,
+        "text": "2Client"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 36,
+        "h": 49,
+        "text": "3Present"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 98,
+        "h": 25,
+        "text": "Add to deck"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 61,
+        "h": 42,
+        "text": "Back"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 233,
+        "h": 42,
+        "text": "Continue →"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 119,
+        "h": 34,
+        "text": "Arrange boxes"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 32,
+        "h": 104,
+        "text": "Notes"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 14,
+        "h": 14,
+        "text": "Close notes"
+      },
+      {
+        "tag": "A",
+        "w": 108,
+        "h": 34,
+        "text": "← Proposals"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 73,
+        "h": 36,
+        "text": "Pay-in"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 83,
+        "h": 36,
+        "text": "Pay-out"
+      }
+    ]
+  },
+  "new-430": {
+    "overflow": {
+      "scrollWidth": 430,
+      "innerWidth": 430,
+      "scrollHeight": 932
+    },
+    "wide": [],
+    "smallText": [
+      {
+        "fs": 10.5,
+        "text": "TRACE FLOW · INTERNAL",
+        "cls": "mt-auto pb-6 pt-12 font-jbmono text-[10.5px] font-medium tra"
+      }
+    ],
+    "smallTargets": []
+  },
+  "landing-360": {
+    "overflow": {
+      "scrollWidth": 360,
+      "innerWidth": 360,
+      "scrollHeight": 800
+    },
+    "wide": [],
+    "smallText": [
+      {
+        "fs": 10.5,
+        "text": "TRACE FLOW · INTERNAL",
+        "cls": "mt-auto pb-6 pt-12 font-jbmono text-[10.5px] font-medium tra"
+      }
+    ],
+    "smallTargets": []
+  },
+  "arq-360": {
+    "overflow": {
+      "scrollWidth": 360,
+      "innerWidth": 360,
+      "scrollHeight": 1359
+    },
+    "wide": [],
+    "smallText": [
+      {
+        "fs": 9.5,
+        "text": "A Trace Finance Proposal",
+        "cls": "pb-1.5 font-jbmono text-[9.5px] font-medium uppercase tracki"
+      },
+      {
+        "fs": 9.5,
+        "text": "Flows",
+        "cls": "px-4 pb-1.5 font-jbmono text-[9.5px] font-medium uppercase t"
+      },
+      {
+        "fs": 10,
+        "text": "The desired transaction",
+        "cls": "mb-2 font-mono text-[10px] font-medium uppercase tracking-[0"
+      },
+      {
+        "fs": 10,
+        "text": "Abroad",
+        "cls": "shrink-0 text-[10px] font-medium uppercase tracking-wide"
+      },
+      {
+        "fs": 10,
+        "text": "into Brasil 🇧🇷",
+        "cls": "text-[10px] font-medium uppercase tracking-wide"
+      },
+      {
+        "fs": 10,
+        "text": "Your Trace Finance contact",
+        "cls": "font-jbmono text-[10px] font-medium uppercase tracking-[0.3e"
+      }
+    ],
+    "smallTargets": [
+      {
+        "tag": "BUTTON",
+        "w": 58,
+        "h": 38,
+        "text": "Flow"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 73,
+        "h": 38,
+        "text": "Pricing"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 72,
+        "h": 38,
+        "text": "Pay-in"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 81,
+        "h": 38,
+        "text": "Pay-out"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 189,
+        "h": 42,
+        "text": "Payout for Latin tourists"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 173,
+        "h": 42,
+        "text": "Liquidity from Arq MX"
+      }
+    ]
+  },
+  "nuvera-360": {
+    "overflow": {
+      "scrollWidth": 360,
+      "innerWidth": 360,
+      "scrollHeight": 1516
+    },
+    "wide": [],
+    "smallText": [
+      {
+        "fs": 9.5,
+        "text": "A Trace Finance Proposal",
+        "cls": "pb-1.5 font-jbmono text-[9.5px] font-medium uppercase tracki"
+      },
+      {
+        "fs": 9.5,
+        "text": "Flows",
+        "cls": "px-4 pb-1.5 font-jbmono text-[9.5px] font-medium uppercase t"
+      },
+      {
+        "fs": 10,
+        "text": "The desired transaction",
+        "cls": "mb-2 font-mono text-[10px] font-medium uppercase tracking-[0"
+      },
+      {
+        "fs": 10,
+        "text": "Brasil",
+        "cls": "shrink-0 text-[10px] font-medium uppercase tracking-wide"
+      },
+      {
+        "fs": 10,
+        "text": "into Abroad",
+        "cls": "text-[10px] font-medium uppercase tracking-wide"
+      },
+      {
+        "fs": 10,
+        "text": "Your Trace Finance contact",
+        "cls": "font-jbmono text-[10px] font-medium uppercase tracking-[0.3e"
+      }
+    ],
+    "smallTargets": [
+      {
+        "tag": "BUTTON",
+        "w": 58,
+        "h": 38,
+        "text": "Flow"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 73,
+        "h": 38,
+        "text": "Pricing"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 72,
+        "h": 38,
+        "text": "Pay-in"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 81,
+        "h": 38,
+        "text": "Pay-out"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 174,
+        "h": 42,
+        "text": "Nuvera Payment Flow"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 138,
+        "h": 42,
+        "text": "Treasury netting"
+      }
+    ]
+  },
+  "meta-slug-360": {
+    "overflow": {
+      "scrollWidth": 360,
+      "innerWidth": 360,
+      "scrollHeight": 1017
+    },
+    "wide": [],
+    "smallText": [
+      {
+        "fs": 9.5,
+        "text": "Flows",
+        "cls": "px-4 pb-1.5 font-jbmono text-[9.5px] font-medium uppercase t"
+      },
+      {
+        "fs": 10,
+        "text": "The desired transaction",
+        "cls": "mb-2 font-mono text-[10px] font-medium uppercase tracking-[0"
+      },
+      {
+        "fs": 10,
+        "text": "Brasil",
+        "cls": "shrink-0 text-[10px] font-medium uppercase tracking-wide"
+      },
+      {
+        "fs": 10,
+        "text": "into Abroad",
+        "cls": "text-[10px] font-medium uppercase tracking-wide"
+      }
+    ],
+    "smallTargets": [
+      {
+        "tag": "BUTTON",
+        "w": 71,
+        "h": 42,
+        "text": "USDC"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 60,
+        "h": 42,
+        "text": "USD"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 101,
+        "h": 42,
+        "text": "USD (NRA)"
+      }
+    ]
+  },
+  "build-360": {
+    "overflow": {
+      "scrollWidth": 360,
+      "innerWidth": 360,
+      "scrollHeight": 800
+    },
+    "wide": [],
+    "smallText": [
+      {
+        "fs": 10.5,
+        "text": "⌘K",
+        "cls": "shrink-0 rounded-md border border-hairline-control px-2 py-1"
+      },
+      {
+        "fs": 10,
+        "text": "Experiment without touching your pipeline.",
+        "cls": "block text-[10px] leading-snug text-muted"
+      },
+      {
+        "fs": 10,
+        "text": "Deal",
+        "cls": "text-[10px] font-semibold text-[#bfe8d4]"
+      },
+      {
+        "fs": 10,
+        "text": "Client",
+        "cls": "text-[10px] font-medium text-muted"
+      },
+      {
+        "fs": 10.5,
+        "text": "Build a client-specific diagram from scratch",
+        "cls": "block text-[10.5px] text-muted"
+      },
+      {
+        "fs": 10,
+        "text": "On canvas",
+        "cls": "font-jbmono text-[10px] font-medium uppercase tracking-[.18e"
+      },
+      {
+        "fs": 10.5,
+        "text": "Empty deck presents just the flow on canvas. Add flows to st",
+        "cls": "mt-1.5 text-[10.5px] leading-snug text-muted"
+      },
+      {
+        "fs": 10,
+        "text": "Notes",
+        "cls": "font-mono text-[10px] font-semibold uppercase tracking-[0.24"
+      },
+      {
+        "fs": 10,
+        "text": "The desired transaction",
+        "cls": "mb-2 font-mono text-[10px] font-medium uppercase tracking-[0"
+      },
+      {
+        "fs": 10,
+        "text": "Brasil",
+        "cls": "shrink-0 text-[10px] font-medium uppercase tracking-wide"
+      },
+      {
+        "fs": 10,
+        "text": "into Abroad",
+        "cls": "text-[10px] font-medium uppercase tracking-wide"
+      }
+    ],
+    "smallTargets": [
+      {
+        "tag": "BUTTON",
+        "w": 31,
+        "h": 26,
+        "text": "⌘K"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 81,
+        "h": 28,
+        "text": "Present"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 22,
+        "h": 22,
+        "text": "Collapse panel"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 28,
+        "h": 49,
+        "text": "1Deal"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 28,
+        "h": 49,
+        "text": "2Client"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 36,
+        "h": 49,
+        "text": "3Present"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 98,
+        "h": 25,
+        "text": "Add to deck"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 61,
+        "h": 42,
+        "text": "Back"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 217,
+        "h": 42,
+        "text": "Continue →"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 119,
+        "h": 34,
+        "text": "Arrange boxes"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 32,
+        "h": 104,
+        "text": "Notes"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 14,
+        "h": 14,
+        "text": "Close notes"
+      },
+      {
+        "tag": "A",
+        "w": 108,
+        "h": 34,
+        "text": "← Proposals"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 73,
+        "h": 36,
+        "text": "Pay-in"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 83,
+        "h": 36,
+        "text": "Pay-out"
+      }
+    ]
+  },
+  "new-360": {
+    "overflow": {
+      "scrollWidth": 360,
+      "innerWidth": 360,
+      "scrollHeight": 800
+    },
+    "wide": [],
+    "smallText": [
+      {
+        "fs": 10.5,
+        "text": "TRACE FLOW · INTERNAL",
+        "cls": "mt-auto pb-6 pt-12 font-jbmono text-[10.5px] font-medium tra"
+      }
+    ],
+    "smallTargets": []
+  },
+  "landing-1440": {
+    "overflow": {
+      "scrollWidth": 1440,
+      "innerWidth": 1440,
+      "scrollHeight": 900
+    },
+    "wide": [],
+    "smallText": [
+      {
+        "fs": 10.5,
+        "text": "TRACE FLOW · INTERNAL",
+        "cls": "mt-auto pb-6 pt-12 font-jbmono text-[10.5px] font-medium tra"
+      }
+    ],
+    "smallTargets": []
+  },
+  "arq-1440": {
+    "overflow": {
+      "scrollWidth": 1440,
+      "innerWidth": 1440,
+      "scrollHeight": 1915
+    },
+    "wide": [],
+    "smallText": [
+      {
+        "fs": 10.5,
+        "text": "A Trace Finance Proposal",
+        "cls": "tf-fade font-jbmono text-[10.5px] font-medium uppercase trac"
+      },
+      {
+        "fs": 10,
+        "text": "Flows",
+        "cls": "font-jbmono text-[10px] font-medium uppercase tracking-[0.24"
+      },
+      {
+        "fs": 10.5,
+        "text": "Pix Inc",
+        "cls": "[object SVGAnimatedString]"
+      }
+    ],
+    "smallTargets": [
+      {
+        "tag": "BUTTON",
+        "w": 163,
+        "h": 37,
+        "text": "Download Proposal ↓"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 173,
+        "h": 31,
+        "text": "Payout for Latin tourists"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 157,
+        "h": 31,
+        "text": "Liquidity from Arq MX"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 65,
+        "h": 31,
+        "text": "Pay-in"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 73,
+        "h": 31,
+        "text": "Pay-out"
+      },
+      {
+        "tag": "A",
+        "w": 187,
+        "h": 42,
+        "text": "vmorelli@trace.finance"
+      }
+    ]
+  },
+  "nuvera-1440": {
+    "overflow": {
+      "scrollWidth": 1440,
+      "innerWidth": 1440,
+      "scrollHeight": 1663
+    },
+    "wide": [],
+    "smallText": [
+      {
+        "fs": 10,
+        "text": "Flows",
+        "cls": "font-jbmono text-[10px] font-medium uppercase tracking-[0.24"
+      },
+      {
+        "fs": 10.5,
+        "text": "Pix Inc CNR",
+        "cls": "[object SVGAnimatedString]"
+      }
+    ],
+    "smallTargets": [
+      {
+        "tag": "BUTTON",
+        "w": 157,
+        "h": 31,
+        "text": "Nuvera Payment Flow"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 123,
+        "h": 31,
+        "text": "Treasury netting"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 65,
+        "h": 31,
+        "text": "Pay-in"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 73,
+        "h": 31,
+        "text": "Pay-out"
+      },
+      {
+        "tag": "A",
+        "w": 204,
+        "h": 42,
+        "text": "dcassinelli@trace.finance"
+      }
+    ]
+  },
+  "meta-slug-1440": {
+    "overflow": {
+      "scrollWidth": 1440,
+      "innerWidth": 1440,
+      "scrollHeight": 1597
+    },
+    "wide": [],
+    "smallText": [
+      {
+        "fs": 10,
+        "text": "Flows",
+        "cls": "font-jbmono text-[10px] font-medium uppercase tracking-[0.24"
+      },
+      {
+        "fs": 10.5,
+        "text": "Trace's Bank",
+        "cls": "[object SVGAnimatedString]"
+      }
+    ],
+    "smallTargets": [
+      {
+        "tag": "BUTTON",
+        "w": 59,
+        "h": 31,
+        "text": "USDC"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 49,
+        "h": 31,
+        "text": "USD"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 87,
+        "h": 31,
+        "text": "USD (NRA)"
+      }
+    ]
+  },
+  "build-1440": {
+    "overflow": {
+      "scrollWidth": 1440,
+      "innerWidth": 1440,
+      "scrollHeight": 3060
+    },
+    "wide": [],
+    "smallText": [
+      {
+        "fs": 10.5,
+        "text": "⌘K",
+        "cls": "shrink-0 rounded-md border border-hairline-control px-2 py-1"
+      },
+      {
+        "fs": 10,
+        "text": "Experiment without touching your pipeline.",
+        "cls": "block text-[10px] leading-snug text-muted"
+      },
+      {
+        "fs": 10,
+        "text": "Deal",
+        "cls": "text-[10px] font-semibold text-[#bfe8d4]"
+      },
+      {
+        "fs": 10,
+        "text": "Client",
+        "cls": "text-[10px] font-medium text-muted"
+      },
+      {
+        "fs": 10.5,
+        "text": "Build a client-specific diagram from scratch",
+        "cls": "block text-[10.5px] text-muted"
+      },
+      {
+        "fs": 10,
+        "text": "On canvas",
+        "cls": "font-jbmono text-[10px] font-medium uppercase tracking-[.18e"
+      },
+      {
+        "fs": 10.5,
+        "text": "Empty deck presents just the flow on canvas. Add flows to st",
+        "cls": "mt-1.5 text-[10.5px] leading-snug text-muted"
+      },
+      {
+        "fs": 10,
+        "text": "Notes",
+        "cls": "font-mono text-[10px] font-semibold uppercase tracking-[0.24"
+      },
+      {
+        "fs": 9,
+        "text": "client logo",
+        "cls": "[object SVGAnimatedString]"
+      },
+      {
+        "fs": 10,
+        "text": "Your Client",
+        "cls": "[object SVGAnimatedString]"
+      },
+      {
+        "fs": 10.5,
+        "text": "Trace's Brazilian Banking",
+        "cls": "[object SVGAnimatedString]"
+      }
+    ],
+    "smallTargets": [
+      {
+        "tag": "BUTTON",
+        "w": 31,
+        "h": 26,
+        "text": "⌘K"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 81,
+        "h": 28,
+        "text": "Present"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 22,
+        "h": 22,
+        "text": "Collapse panel"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 28,
+        "h": 49,
+        "text": "1Deal"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 28,
+        "h": 49,
+        "text": "2Client"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 36,
+        "h": 49,
+        "text": "3Present"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 98,
+        "h": 25,
+        "text": "Add to deck"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 61,
+        "h": 42,
+        "text": "Back"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 233,
+        "h": 42,
+        "text": "Continue →"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 119,
+        "h": 34,
+        "text": "Arrange boxes"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 32,
+        "h": 104,
+        "text": "Notes"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 14,
+        "h": 14,
+        "text": "Close notes"
+      },
+      {
+        "tag": "A",
+        "w": 108,
+        "h": 34,
+        "text": "← Proposals"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 70,
+        "h": 31,
+        "text": "Pay-in"
+      },
+      {
+        "tag": "BUTTON",
+        "w": 79,
+        "h": 31,
+        "text": "Pay-out"
+      }
+    ]
+  },
+  "new-1440": {
+    "overflow": {
+      "scrollWidth": 1440,
+      "innerWidth": 1440,
+      "scrollHeight": 900
+    },
+    "wide": [],
+    "smallText": [
+      {
+        "fs": 10.5,
+        "text": "TRACE FLOW · INTERNAL",
+        "cls": "mt-auto pb-6 pt-12 font-jbmono text-[10.5px] font-medium tra"
+      }
+    ],
+    "smallTargets": []
+  }
+}

@@ -82,9 +82,26 @@ export function HeadlineStage({
     <g>
       {showChrome && (
         <>
-          <text x={34} y={50} fontSize={15} fontWeight={600} fill={C.title}>
-            Built for {config.clientName}
-          </text>
+          {config.clientName.trim() || !config.clientLogoUrl ? (
+            <text x={34} y={50} fontSize={15} fontWeight={600} fill={C.title}>
+              Built for {config.clientName.trim() || "you"}
+            </text>
+          ) : (
+            <>
+              <text x={34} y={50} fontSize={15} fontWeight={600} fill={C.title}>
+                Built for
+              </text>
+              {config.clientLogoPlate === "light" && <rect x={96} y={35} width={72} height={20} rx={4} fill="#ffffff" />}
+              <image
+                href={config.clientLogoUrl}
+                x={config.clientLogoPlate === "light" ? 100 : 98}
+                y={config.clientLogoPlate === "light" ? 38 : 36}
+                width={config.clientLogoPlate === "light" ? 64 : 76}
+                height={config.clientLogoPlate === "light" ? 14 : 18}
+                preserveAspectRatio="xMinYMid meet"
+              />
+            </>
+          )}
           <text x={layout.width - 34} y={42} fontSize={12} fill={C.muted} textAnchor="end">
             {flowTag}
           </text>

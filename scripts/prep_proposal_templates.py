@@ -110,6 +110,66 @@ for want in ("repCompany", "date", "corridor", "footer", "repName", "repEmail"):
     if not any(f["key"] == want for f in fields):
         raise SystemExit(f"missing expected field {want!r} — source layout changed?")
 
+# ── stat refresh: the cross-border volume figure ─────────────────────────────
+# The source deck (and the standalone no-rep closing slide) bake an outdated
+# "$10Bn+" stat. Swap the figure in place, matching the baked Inter Bold.
+# Idempotent: pages already showing STAT_NEW are left untouched.
+STAT_NEW = "$12Bn+"
+STAT_RE = re.compile(r"^\$\d+Bn\+$")
+
+def _inter_bold_ttf():
+    # PyMuPDF can't consume woff2 — decompress the app's Inter Bold to a ttf
+    import io
+    from fontTools.ttLib import TTFont
+    f = TTFont("/Users/diogo/trace-flow/public/fonts/inter-700.woff2")
+    f.flavor = None
+    buf = io.BytesIO()
+    f.save(buf)
+    path = "/tmp/tf-inter-bold.ttf"
+    open(path, "wb").write(buf.getvalue())
+    return path
+
+_INTER_BOLD = None
+def patch_stat(page):
+    global _INTER_BOLD
+    hits = []
+    for b in page.get_text("dict")["blocks"]:
+        for l in b.get("lines", []):
+            for sp in l["spans"]:
+                t = sp["text"].strip()
+                if STAT_RE.match(t) and t != STAT_NEW:
+                    hits.append(sp)
+    if not hits:
+        return False
+    if _INTER_BOLD is None:
+        _INTER_BOLD = _inter_bold_ttf()
+    for sp in hits:
+        page.add_redact_annot(fitz.Rect(*sp["bbox"]))
+    page.apply_redactions(images=fitz.PDF_REDACT_IMAGE_NONE,
+                          graphics=fitz.PDF_REDACT_LINE_ART_NONE)
+    for sp in hits:
+        c = sp["color"] & 0xFFFFFF
+        rgb = ((c >> 16) / 255, ((c >> 8) & 0xFF) / 255, (c & 0xFF) / 255)
+        page.insert_text(sp["origin"], STAT_NEW, fontsize=sp["size"],
+                         fontname="InterBoldStat", fontfile=_INTER_BOLD, color=rgb)
+    return True
+
+for pno, page in enumerate(doc):
+    if patch_stat(page):
+        print(f"  stat -> {STAT_NEW} on source p{pno}")
+
+# the user-supplied full-width closing used when NO rep is assigned
+norep = os.path.join(OUT, "closing-norep.pdf")
+if os.path.exists(norep):
+    nd = fitz.open(norep)
+    if any(patch_stat(pg) for pg in nd):
+        nd.save(norep + ".tmp", garbage=4, deflate=True)
+        nd.close()
+        os.replace(norep + ".tmp", norep)
+        print(f"  stat -> {STAT_NEW} in closing-norep.pdf")
+    else:
+        nd.close()
+
 # ── pass 2: the blank canvas page (from product page 1) ─────────────────────
 # Keep: wavy background, top rule, flag, "Brazil", top-right wordmark, lockup.
 # Strip: the glass card image, its bullet marks, all card text + vector lines,
