@@ -285,18 +285,17 @@ function BankedCard({ node, primary, config, laneOverrides, partnerDefault }: { 
             {label}
           </div>
         )}
-        {bank.logoUrl &&
-          (bank.logoPlate === "light" ? (
-            // a dark logo we couldn't cut to a light mark → white backing plate
-            <span className="flex items-center rounded-lg bg-white px-2 py-1">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={bank.logoUrl} alt="" className="h-4 w-auto max-w-[140px] object-contain" />
-            </span>
-          ) : (
-            // background already cut → sits straight on the deck, no plate
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={bank.logoUrl} alt="" className="h-5 w-auto max-w-[160px] object-contain" />
-          ))}
+        {bank.logoUrl && (
+          // A dark mark would vanish on the deck; instead of a backing plate we
+          // paint it white (keeping its alpha) — same treatment as the canvas.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={bank.logoUrl}
+            alt=""
+            className="h-5 w-auto max-w-[160px] object-contain"
+            style={bank.logoPlate === "light" ? { filter: "brightness(0) invert(1)" } : undefined}
+          />
+        )}
       </div>
       {card}
     </div>
@@ -312,6 +311,10 @@ function NodeCard({ node, primary, config, laneOverrides, partnerDefault }: { no
   // instruction and wins over client branding; the hero's beneficiary carries
   // it by default (partnerDefault) unless the box is client-branded.
   const hasPartnerLogo = !!config.partnerLogoUrl && (node.partnerLogo || (partnerDefault && !hasLogo));
+  // The third in-box brand mark (FlowConfig.bankLogoUrl + nodeBankLogo flag) —
+  // distinct from the nodeBank dotted enclosure. Ordered like FlowNodeShape:
+  // partner, then bank, then client.
+  const hasBankLogo = !hasPartnerLogo && !!config.bankLogoUrl && !!node.bankLogo;
   return (
     <div
       className="flex min-h-[56px] items-center gap-3 rounded-2xl border px-4 py-3"
@@ -333,6 +336,16 @@ function NodeCard({ node, primary, config, laneOverrides, partnerDefault }: { no
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={config.partnerLogoUrl} alt="" className="h-6 w-auto max-w-[96px] shrink-0 object-contain" />
+        )
+      ) : hasBankLogo ? (
+        config.bankLogoPlate === "light" ? (
+          <span className="flex shrink-0 items-center rounded-md bg-white px-1.5 py-1">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={config.bankLogoUrl} alt="" className="h-5 w-auto max-w-[88px] object-contain" />
+          </span>
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={config.bankLogoUrl} alt="" className="h-6 w-auto max-w-[96px] shrink-0 object-contain" />
         )
       ) : hasLogo ? (
         config.clientLogoPlate === "light" ? (
