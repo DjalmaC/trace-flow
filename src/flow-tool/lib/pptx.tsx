@@ -181,6 +181,13 @@ function supportFor(config: FlowConfig, flow: Flow, direction = config.direction
 
 // The client-facing flow label is POSITIONAL — "what flow is this to the client":
 // Flow 1, Flow 2, … by order in the proposal, or "The Flow" if there's only one.
+/** Slide title: positional labels read "Flow 1 - Name"; a custom group label
+ *  ("Settle in:") joins with a plain space — no dash. */
+function deckSlideTitle(label: string, name: string): string {
+  const positional = /^(Flow \d+|The Flow)$/.test(label);
+  return positional ? `${label} - ${clientFlowName(name)}` : `${label} ${clientFlowName(name)}`;
+}
+
 function deckFlowLabel(index: number, total: number, custom?: string): string {
   // a per-proposal group label ("Settle in") replaces the positional "Flow N"
   if (custom?.trim()) return custom.trim();
@@ -218,7 +225,7 @@ function flowSlide(config: FlowConfig, flow: Flow, name: string, label: string, 
         BENEATH THE SURFACE
       </text>
       <text x={48} y={86} fontSize={24} fontWeight={700} fill={TITLE}>
-        {`${label} - ${clientFlowName(name)}`}
+        {deckSlideTitle(label, name)}
       </text>
       {support && (
         <text x={48} y={108} fontSize={12.5} fill={SUB}>
@@ -610,7 +617,7 @@ function contextSlide(page: BandPage, both: boolean, LH: number, fs: number, nam
         BENEATH THE SURFACE
       </text>
       <text x={48} y={86} fontSize={24} fontWeight={700} fill={TITLE}>
-        {`${label} - ${clientFlowName(name)}`}
+        {deckSlideTitle(label, name)}
         {parts > 1 ? `  (cont. ${part}/${parts - 1})` : ""}
       </text>
       {bandColumns(page, both, LH, fs, 150, 508)}
