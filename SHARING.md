@@ -71,6 +71,13 @@ gracefully.
 
 ## Notes
 
+- **Fork** (dashboard row → Fork): copies a stored proposal's entire config —
+  flows, tailored flows, pricing, node edits, notes — into the builder as a
+  NEW proposal. Client attribution (name, contact, logo, brand color) and the
+  stored slug are reset; the rail opens on the Client step, and the first save
+  mints a fresh code + client-named slug. The original link is never touched
+  (Edit is the update-in-place path).
+
 - The rep key is a single shared password (identity-plus-a-lock, not per-user
   auth). Reps enter it once at login; it's sent as the `x-tf-key` header on
   privileged calls. Tighten with Supabase Auth if you ever need real accounts.

@@ -145,7 +145,7 @@ export function Dashboard({ rep, onSwitch }: { rep: TraceRep; onSwitch: () => vo
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterTab>("all");
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [busy, setBusy] = useState<Record<string, "pdf" | "del" | "edit" | undefined>>({});
+  const [busy, setBusy] = useState<Record<string, "pdf" | "del" | "edit" | "fork" | undefined>>({});
   const [copied, setCopied] = useState<string | null>(null);
 
   async function load() {
@@ -198,6 +198,22 @@ export function Dashboard({ rep, onSwitch }: { rep: TraceRep; onSwitch: () => vo
     } catch {
       setBusy((b) => ({ ...b, [code]: undefined }));
       setError("Could not open that proposal for editing.");
+    }
+  }
+
+  // Fork a stored proposal: copy its full config (flows, pricing, edits) into
+  // the builder as a NEW proposal — /build strips the client attribution and
+  // saving mints a fresh link; the original is never touched.
+  async function onFork(code: string) {
+    setBusy((b) => ({ ...b, [code]: "fork" }));
+    try {
+      const cfg = await loadSharedFlow(code);
+      if (!cfg) throw new Error("missing");
+      sessionStorage.setItem("tf:fork-proposal", JSON.stringify({ code, config: cfg }));
+      window.location.assign(`/build?fork=${encodeURIComponent(code)}`);
+    } catch {
+      setBusy((b) => ({ ...b, [code]: undefined }));
+      setError("Could not fork that proposal.");
     }
   }
 
@@ -518,6 +534,13 @@ export function Dashboard({ rep, onSwitch }: { rep: TraceRep; onSwitch: () => vo
                         className="rounded-[7px] border border-hairline-minted px-[9px] py-[5px] text-[11px] font-medium text-[#bfe8d4] transition-colors duration-150 ease-ds hover:bg-[rgba(0,242,177,.06)] disabled:opacity-60"
                       >
                         {busy[r.code] === "edit" ? "Opening…" : "Edit"}
+                      </button>
+                      <button
+                        onClick={() => onFork(r.code)}
+                        disabled={!!busy[r.code]}
+                        className="rounded-[7px] border border-hairline-minted px-[9px] py-[5px] text-[11px] font-medium text-[#bfe8d4] transition-colors duration-150 ease-ds hover:bg-[rgba(0,242,177,.06)] disabled:opacity-60"
+                      >
+                        {busy[r.code] === "fork" ? "Forking…" : "Fork"}
                       </button>
                       <button
                         onClick={() => onDownload(r)}

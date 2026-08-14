@@ -116,6 +116,7 @@ export function ControlPanel({
   sandbox = false,
   onSandboxChange,
   editingCode = null,
+  forked = false,
   onSaved,
   onOpenChange,
 }: {
@@ -137,6 +138,9 @@ export function ControlPanel({
   onSandboxChange?: (v: boolean) => void;
   /** Editing an existing proposal: its share code — enables Update-in-place. */
   editingCode?: string | null;
+  /** Forked from an existing proposal: opens the rail on the Client step so
+   *  the rep attributes the copy before sharing (saving mints a new link). */
+  forked?: boolean;
   /** Called after a successful save with the link code + the shipped config, so
    *  the builder can lock onto that link and persist the edits for re-editing. */
   onSaved?: (code: string, config: FlowConfig) => void;
@@ -151,9 +155,11 @@ export function ControlPanel({
   }, [open]);
   const [step, setStep] = useState(0);
   // Editing an existing proposal: open on Present, where Update-in-place lives.
+  // A fork opens on Client instead — the copy needs its new attribution first.
   useEffect(() => {
     if (editingCode) setStep(2);
-  }, [editingCode]);
+    else if (forked) setStep(1);
+  }, [editingCode, forked]);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [studio, setStudio] = useState<StudioMode | null>(null); // flow studio overlay
   // Tailored flows (design §4/§6): rep-built drafts from localStorage. Listing

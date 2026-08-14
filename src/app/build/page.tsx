@@ -9,7 +9,7 @@ import { normalizeLogo, removeBackground } from "@/flow-tool/lib/logo";
 import { defaultConfig, getFlow } from "@/flow-tool/data";
 import { registerCustomFlows } from "@/flow-tool/data/custom-flows";
 import { deckPricing, normalizePricing, type Flow, type FlowConfig, type ProposalPricing, type ProposalSetup } from "@/flow-tool/data/schema";
-import { loadSetup } from "@/flow-tool/lib/setup";
+import { defaultProposalDate, loadSetup } from "@/flow-tool/lib/setup";
 
 /** Stash written by the dashboard's Edit action: the stored proposal's config
  *  plus its share code, so the rail can update the SAME link in place. */
@@ -26,6 +26,10 @@ interface EditStash {
   };
 }
 const EDIT_STASH_KEY = "tf:edit-proposal";
+/** Stash written by the dashboard's Fork action: same shape, but /build clears
+ *  the client attribution and does NOT lock onto the source code — saving
+ *  mints a brand-new link, leaving the original untouched. */
+const FORK_STASH_KEY = "tf:fork-proposal";
 
 export default function BuildPage() {
   const [config, setConfig] = useState<FlowConfig>(() => defaultConfig("flow-1", "Your Client"));
@@ -43,6 +47,9 @@ export default function BuildPage() {
   const [sandbox, setSandbox] = useState(false);
   // Editing an existing proposal (dashboard → Edit): its share code.
   const [editingCode, setEditingCode] = useState<string | null>(null);
+  // Forked from an existing proposal (dashboard → Fork): opens the rail on the
+  // client step so the rep attributes the copy to its new client.
+  const [forked, setForked] = useState(false);
   // Double-click rename overlay for the flow boxes / lane names / hero
   // subtitle on the canvas.
   const [rename, setRename] = useState<{ key: string; lane?: "brazil" | "abroad"; hero?: boolean; platformCaption?: boolean; comment?: boolean; node?: boolean; entity?: string; entityOn?: boolean; branded?: boolean; partner?: boolean; bankBrand?: boolean; bankOn?: boolean; bankLabel?: string; bankBold?: boolean; bankLogoUrl?: string; bankLogoPlate?: "light" | "none"; original: string; value: string; left: number; top: number; width: number } | null>(null);
@@ -123,6 +130,54 @@ export default function BuildPage() {
             companyRep: c.clientRep,
             companyLogoUrl: c.clientLogoUrl,
             companyLogoPlate: c.clientLogoPlate,
+          });
+          return; // skip the /new setup hydration below
+        }
+      } catch {
+        /* fall through to normal hydration */
+      }
+    }
+    // Forking an existing proposal: hydrate the FULL config (flows, pricing,
+    // node edits, notes) but reset the client attribution and the stored slug,
+    // so the copy reads as a fresh proposal and saving mints a NEW link.
+    const forkParam = new URLSearchParams(window.location.search).get("fork");
+    if (forkParam) {
+      try {
+        const stash = JSON.parse(sessionStorage.getItem(FORK_STASH_KEY) ?? "null") as EditStash | null;
+        if (stash && stash.code === forkParam) {
+          // The stored config carries the source link's slug; a fork must never
+          // inherit it or the new row could collide with the original's URL.
+          const { slug: _slug, ...c } = stash.config as EditStash["config"] & { slug?: string };
+          registerCustomFlows(c.customFlows);
+          hydratedRef.current = true;
+          setForked(true); // editingCode stays null — the first save creates a new link
+          const flowIdR =
+            (getFlow(c.flowId) ? c.flowId : undefined) ??
+            c.variants?.find((v) => !!getFlow(v.flowId))?.flowId ??
+            c.flowId;
+          setConfig({
+            ...defaultConfig(flowIdR, "Your Client"),
+            ...c,
+            flowId: flowIdR,
+            variants: undefined,
+            customFlows: undefined,
+            pricing: undefined,
+            // new client attribution starts blank — Step 2 asks for it
+            clientName: "Your Client",
+            clientRep: undefined,
+            clientLogoUrl: undefined,
+            clientLogoPlate: undefined,
+            brandColor: undefined,
+          } as FlowConfig);
+          setProposalFlows(c.variants ?? [{ flowId: flowIdR, name: getFlow(flowIdR)?.title ?? "Flow" }]);
+          setPricing(normalizePricing(c.pricing, c.proposalType ?? "standard"));
+          setIncludePricing(!!c.pricing);
+          setSandbox(!!c.sandbox);
+          setSetup({
+            proposalType: c.proposalType ?? "standard",
+            date: defaultProposalDate(), // a fork is a new proposal — fresh date
+            traceRepId: c.traceRepId,
+            company: "",
           });
           return; // skip the /new setup hydration below
         }
@@ -888,6 +943,7 @@ export default function BuildPage() {
         sandbox={sandbox}
         onSandboxChange={setSandbox}
         editingCode={editingCode}
+        forked={forked}
         onSaved={(code, savedConfig) => {
           // Lock onto this link so the next save updates it in place, and
           // refresh the edit stash + URL so reloading or re-editing keeps the
