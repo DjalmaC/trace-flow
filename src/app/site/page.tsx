@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { GlassPanel, SilkBackdrop } from "@/flow-tool/components/Glass";
 import { ASSETS, TRACE_LOGO_AR } from "@/flow-tool/components/tokens";
+import { CYAN, CheckIcon, EASE, Eyebrow, GhostBtn, GlassPanel, MINT, PrimaryBtn, Reveal, Scene, SiteShell } from "./_ui";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // tracefinance.com, recreated one-for-one in the BRLT glass family
@@ -11,66 +11,6 @@ import { ASSETS, TRACE_LOGO_AR } from "@/flow-tool/components/tokens";
 // hero globe's dots are soft WHITE (with sparse cyan accents) instead of the
 // original's background-green, so they no longer clash.
 // ─────────────────────────────────────────────────────────────────────────────
-
-const EASE = "cubic-bezier(.4,0,.2,1)";
-const MINT = "#00f2b1";
-const CYAN = "#2be8d6";
-
-// ── shared atoms ─────────────────────────────────────────────────────────────
-
-function Eyebrow({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="flex items-center gap-3 font-jbmono text-[11px] font-medium uppercase tracking-[0.34em] text-[#6f8a7f]">
-      <span aria-hidden className="h-px w-6 bg-mint/70" />
-      {children}
-    </p>
-  );
-}
-
-function ArrowIcon({ size = 14 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M5 12h14M13 6l6 6-6 6" />
-    </svg>
-  );
-}
-
-function PrimaryBtn({ children, href }: { children: React.ReactNode; href: string }) {
-  return (
-    <a
-      href={href}
-      className="inline-flex items-center gap-2 rounded-[12px] bg-mint px-5 py-3 text-[14px] font-semibold text-mint-on transition duration-200 hover:bg-mint-hover"
-      style={{ boxShadow: "0 12px 32px rgba(0,242,177,.22)" }}
-    >
-      {children}
-      <ArrowIcon />
-    </a>
-  );
-}
-
-function GhostBtn({ children, href }: { children: React.ReactNode; href: string }) {
-  return (
-    <a
-      href={href}
-      className="inline-flex items-center gap-2 rounded-[12px] border border-white/[.16] px-5 py-3 text-[14px] font-semibold text-title transition duration-200 hover:border-white/30 hover:bg-white/[.05]"
-      style={{
-        background: "linear-gradient(160deg, rgba(10,15,19,.42), rgba(10,15,19,.28) 45%, rgba(10,15,19,.38))",
-        backdropFilter: "blur(18px) saturate(1.3)",
-        WebkitBackdropFilter: "blur(18px) saturate(1.3)",
-      }}
-    >
-      {children}
-    </a>
-  );
-}
-
-function CheckIcon() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={MINT} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
-  );
-}
 
 // ── the dotted globe: the mapa-mundi (recolored: white land, cyan accents) ───
 // 240x120 equirectangular land bitmask (1 bit per 1.5° cell), packed row-major
@@ -266,112 +206,13 @@ function RotatingCountry() {
 }
 
 
-// ── sectioning: scenes + chapter rules ───────────────────────────────────────
-// Chapters open with a numbered mono chip on a fading hairline; alternate
-// chapters sit in full-bleed darker bands; content rises in on arrival.
-
-/** Rises in on first viewport entry (reduced-motion: shown immediately). */
-function Reveal({ children }: { children: React.ReactNode }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [on, setOn] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      setOn(true);
-      return;
-    }
-    const io = new IntersectionObserver(
-      (es) => es.forEach((e) => { if (e.isIntersecting) { setOn(true); io.disconnect(); } }),
-      { threshold: 0.08, rootMargin: "0px 0px -6% 0px" },
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
-  return (
-    <div ref={ref} style={{ opacity: on ? 1 : 0, transform: on ? "none" : "translateY(28px)", transition: `opacity .75s ${EASE}, transform .75s ${EASE}` }}>
-      {children}
-    </div>
-  );
-}
-
-/** A chapter: numbered rule on top, optional full-bleed darker band. */
-function Scene({ id, n, label, band = false, children }: { id: string; n: string; label: string; band?: boolean; children: React.ReactNode }) {
-  return (
-    <section
-      id={id}
-      className={`relative z-10 scroll-mt-28 ${band ? "border-y border-white/[.08]" : ""}`}
-      style={band ? { background: "linear-gradient(rgba(3,6,5,.6), rgba(3,6,5,.42))" } : undefined}
-    >
-      <div className="mx-auto max-w-[1200px] px-5 pt-14">
-        <div className="flex items-center gap-4">
-          <span className="flex items-center gap-2.5 rounded-full border border-white/12 bg-[#0a0f0d]/70 px-3.5 py-1.5 font-jbmono text-[10px] font-medium uppercase tracking-[0.3em]">
-            <span className="text-mint">{n}</span>
-            <span className="text-[#6f8a7f]">{label}</span>
-          </span>
-          <span aria-hidden className="h-px flex-1" style={{ background: "linear-gradient(90deg, rgba(255,255,255,.16), transparent)" }} />
-        </div>
-      </div>
-      <Reveal>{children}</Reveal>
-    </section>
-  );
-}
-
 // ── page ─────────────────────────────────────────────────────────────────────
 
 export default function SitePage() {
-  const [banner, setBanner] = useState(true);
   const [waitlist, setWaitlist] = useState<"idle" | "done">("idle");
 
   return (
-    <main className="relative min-h-screen text-title" style={{ fontFamily: "var(--font-inter), system-ui, sans-serif" }}>
-      <SilkBackdrop />
-      <div aria-hidden className="pointer-events-none fixed inset-x-0 top-0 z-[70] h-[3px]" style={{ background: `linear-gradient(90deg,${CYAN},${MINT})` }} />
-
-      {/* ── announcement banner + nav: one sticky unit, like the original ── */}
-      <div className="sticky top-0 z-30">
-      {banner && (
-        <div className="relative border-b border-white/10 bg-[#0a120e]/80 backdrop-blur-xl">
-          <div className="mx-auto flex max-w-[1200px] items-center justify-center gap-3 px-5 py-2.5 text-[12.5px]">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-mint" />
-            <span className="text-subtitle">
-              <strong className="font-semibold text-mint">New</strong> — Trace raises a $32M Series A led by CoinFund.
-            </span>
-            <a href="https://www.tracefinance.com/series-a" className="font-semibold text-mint hover:text-mint-hover">
-              Read the announcement →
-            </a>
-            <button onClick={() => setBanner(false)} aria-label="Dismiss" className="absolute right-4 text-muted transition hover:text-title">
-              ×
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ── nav ── */}
-      <header className="border-b border-white/10 bg-[#07090b]/70 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-[1200px] items-center justify-between px-5 py-3.5">
-          <a href="#" className="flex items-center">
-            {/* the official lockup (mark + wordmark in the brand font) */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/assets/site-trace-logo.svg" alt="Trace" className="h-[24px] w-auto" />
-          </a>
-          <nav className="hidden items-center gap-7 text-[13.5px] text-subtitle md:flex">
-            <a href="#product" className="font-semibold text-title">Product</a>
-            <a href="#use-cases" className="transition hover:text-title">Use cases</a>
-            <a href="#developers" className="transition hover:text-title">Developers</a>
-            <a href="#contact" className="transition hover:text-title">Contact</a>
-          </nav>
-          <div className="flex items-center gap-4">
-            <div className="hidden items-center overflow-hidden rounded-[9px] border border-white/12 font-jbmono text-[11px] md:flex">
-              <button className="bg-white/10 px-2.5 py-1.5 font-semibold text-title">EN</button>
-              <button className="px-2.5 py-1.5 text-muted transition hover:text-subtitle">PT</button>
-            </div>
-            <PrimaryBtn href="#contact">Request a demo</PrimaryBtn>
-          </div>
-        </div>
-      </header>
-      </div>
-
+    <SiteShell>
       {/* ── hero ── */}
       <section id="top" className="relative z-10 scroll-mt-28 overflow-hidden">
         <div className="mx-auto grid max-w-[1200px] items-center gap-12 px-5 pb-24 pt-16 md:grid-cols-[1.05fr_1fr] md:pt-24">
@@ -389,8 +230,8 @@ export default function SitePage() {
               cross-border payments 24/7 — all through one compliant API.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3.5">
-              <PrimaryBtn href="#contact">Request a demo</PrimaryBtn>
-              <GhostBtn href="#developers">Read the docs</GhostBtn>
+              <PrimaryBtn href="/site/contact">Request a demo</PrimaryBtn>
+              <GhostBtn href="/site/developers">Read the docs</GhostBtn>
             </div>
             <div className="mt-7 flex flex-wrap gap-6 text-[12.5px] text-subtitle">
               <span className="flex items-center gap-2"><CheckIcon /> No local entity required</span>
@@ -463,7 +304,7 @@ export default function SitePage() {
                   Accounts, conversion and payments — three primitives that compose into complete payment infrastructure.
                 </p>
               </div>
-              <PrimaryBtn href="https://www.tracefinance.com/product">Explore the product</PrimaryBtn>
+              <PrimaryBtn href="/site/product">Explore the product</PrimaryBtn>
             </div>
             <div className="mt-9 grid gap-5 md:grid-cols-3">
               {[
@@ -518,7 +359,7 @@ export default function SitePage() {
                 From exchanges processing millions in daily volume to fintechs launching in new markets.
               </p>
             </div>
-            <PrimaryBtn href="https://www.tracefinance.com/use-cases">See use cases</PrimaryBtn>
+            <PrimaryBtn href="/site/use-cases">See use cases</PrimaryBtn>
           </GlassPanel>
         </div>
       </Scene>
@@ -708,71 +549,12 @@ export default function SitePage() {
             Talk to our team about volumes, corridors and integration. Most clients go live in days, not months.
           </p>
           <div className="mt-9 flex justify-center gap-3.5">
-            <PrimaryBtn href="https://www.tracefinance.com/contact">Request a demo</PrimaryBtn>
-            <GhostBtn href="https://tracefinance.mintlify.app/">Read the docs</GhostBtn>
+            <PrimaryBtn href="/site/contact">Request a demo</PrimaryBtn>
+            <GhostBtn href="/site/developers">Read the docs</GhostBtn>
           </div>
         </div>
       </Scene>
 
-      {/* ── footer ── */}
-      <footer className="relative z-10 border-t border-white/10 bg-[#07090b]/60 backdrop-blur-xl">
-        <div className="mx-auto grid max-w-[1200px] gap-10 px-5 py-14 md:grid-cols-[1.3fr_1fr_1fr_1fr]">
-          <div>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/assets/site-trace-logo.svg" alt="Trace" className="h-[20px] w-auto" />
-            <p className="mt-3 max-w-[260px] text-[12.5px] leading-relaxed text-subtitle">
-              Payments and stablecoin infrastructure for Brazil and Latin America.
-            </p>
-          </div>
-          {[
-            {
-              h: "Product",
-              links: [
-                ["Multi-currency accounts", "https://www.tracefinance.com/product"],
-                ["Stablecoin on/off-ramp", "https://www.tracefinance.com/product"],
-                ["Cross-border payments", "https://www.tracefinance.com/product"],
-                ["Use cases", "https://www.tracefinance.com/use-cases"],
-              ],
-            },
-            {
-              h: "Developers",
-              links: [
-                ["Documentation", "https://tracefinance.mintlify.app/"],
-                ["API reference", "https://tracefinance.mintlify.app/api-reference"],
-                ["API status", "https://status.tracefinance.com/"],
-              ],
-            },
-            {
-              h: "Company",
-              links: [
-                ["Contact", "https://www.tracefinance.com/contact"],
-                ["Terms of service", "https://www.tracefinance.com/terms-of-service"],
-                ["Privacy policy", "https://www.tracefinance.com/privacy-policy"],
-                ["Ethics channel", "https://tracefinance.becompliance.com/canal-etica/canal-denuncias"],
-                ["Code of ethics and conduct", "https://www.tracefinance.com/code-of-conduct"],
-              ],
-            },
-          ].map((col) => (
-            <div key={col.h}>
-              <h4 className="font-jbmono text-[10px] font-semibold uppercase tracking-[0.28em] text-[#6f8a7f]">{col.h}</h4>
-              <ul className="mt-4 flex flex-col gap-2.5 text-[13px] text-subtitle">
-                {col.links.map(([t, href]) => (
-                  <li key={t}>
-                    <a href={href} className="transition hover:text-title">{t}</a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-        <div className="border-t border-white/[.07]">
-          <div className="mx-auto max-w-[1200px] px-5 py-6 text-[11.5px] leading-relaxed text-muted">
-            © 2026 Trace Finance. All rights reserved. Trace Finance acts as a banking correspondent in partnership with
-            financial institutions duly authorized by the Central Bank of Brazil, providing intermediation between clients
-            and authorized institutions for foreign exchange and PIX operations.
-          </div>
-        </div>
-      </footer>
-    </main>
+    </SiteShell>
   );
 }
