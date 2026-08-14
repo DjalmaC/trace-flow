@@ -20,10 +20,15 @@ export const metadata: Metadata = {
   description:
     "Describe the deal, and the right Trace Finance flow appears — animated and branded for the client.",
   // Without an explicit icon the browser probes /favicon.ico, which doesn't
-  // exist here and logged a 404 on every proposal open. Point at the SQUARE
-  // mark (trace_icon.png) — the wordmark-width trace_logo.png got squished into
-  // the browser's square tab slot and looked stretched.
-  icons: { icon: "/assets/trace_icon.png" },
+  // exist here and logged a 404 on every proposal open. Use the SQUARE mark
+  // (the wordmark-width trace_logo.png looked stretched in the tab slot).
+  //
+  // The DEFAULT is the colorless (gray) mark: every rep-facing / editor surface
+  // (sign-in, dashboard, /build, /new, /gate, /logo-lab, ...) reads as an
+  // internal tab at a glance. CUSTOMER-facing routes opt back into the
+  // full-color mark: shared links via share-meta.ts, the public site via
+  // site/layout.tsx.
+  icons: { icon: "/assets/trace_icon_gray.png" },
 };
 
 // Without this, phones default to a ~980px layout viewport (content overflows /

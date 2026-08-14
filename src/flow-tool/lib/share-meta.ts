@@ -46,6 +46,9 @@ export async function sharedLinkMetadata(key: string): Promise<Metadata> {
   return {
     title,
     description,
+    // Client links are the customer-facing surface: they carry the full-color
+    // tab mark, overriding the root layout's gray internal-tab default.
+    icons: { icon: "/assets/trace_icon.png" },
     openGraph: { title, description, siteName: "Trace Finance", type: "website", images: [image] },
     twitter: { card: "summary_large_image", title, description, images: [image.url] },
   };
