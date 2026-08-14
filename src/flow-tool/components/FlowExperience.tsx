@@ -23,7 +23,7 @@ export function useIsMobile() {
   return mobile;
 }
 import type { FlowConfig, SettlementOption } from "../data/schema";
-import { applySettlement, clientFlowName, directionLabel, directionOptions, fundingChoices, isPlatformFlow, settlementChoices } from "../data/schema";
+import { applySettlement, directionLabel, directionOptions, displayFlowTitle, fundingChoices, isPlatformFlow, settlementChoices } from "../data/schema";
 import { getFlow } from "../data";
 import { computeLayout, CONT_Y, CONT_H } from "./layout";
 import { Defs, displayCurrency } from "./FlowSvg";
@@ -330,7 +330,7 @@ export function FlowExperience({
         <h2 className="font-display text-2xl font-semibold tracking-[-0.01em] text-title md:text-4xl">
           How Trace makes it happen
         </h2>
-        <p className="mt-2.5 text-sm font-medium text-mint md:text-base">{clientFlowName(flow.title)}</p>
+        <p data-flow-title className="mt-2.5 text-sm font-medium text-mint md:text-base">{displayFlowTitle(config, flow)}</p>
       </div>
       {(flowComment || editable) && (
         <div data-flow-comment className="mt-3 max-h-[26vh] w-full overflow-y-auto text-[13.5px] leading-relaxed text-subtitle">
@@ -424,7 +424,7 @@ export function FlowExperience({
   // (globals.css .tf-panel/.tf-rail rules, mirroring the mock).
   if (architecture === "panels") {
     const goHow = () => howRef.current?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
-    const eyebrow = `${clientFlowName(flow.title)} · ${directionLabel(config.direction, config, config.flowId)}`;
+    const eyebrow = `${displayFlowTitle(config, flow)} · ${directionLabel(config.direction, config, config.flowId)}`;
     const rail = panelSlots?.rail;
     const railBelow = panelSlots?.railPosition === "below";
     // Tiny tailored flows don't earn a second panel. A 2-station machinery IS
@@ -503,7 +503,7 @@ export function FlowExperience({
             <SpecularEdge />
             <div className="font-jbmono text-[11px] font-medium uppercase tracking-[0.34em] text-[#6f8a7f]">Beneath the surface</div>
             <h2 className="mt-3 font-display text-[26px] font-semibold tracking-[-0.01em] text-[#eef1ee]">How Trace makes it happen</h2>
-            <p className="mt-2 text-sm font-medium text-mint">{clientFlowName(flow.title)}</p>
+            <p data-flow-title className="mt-2 text-sm font-medium text-mint">{displayFlowTitle(config, flow)}</p>
             {flowComment && (
               <div data-flow-comment className="mt-2.5 max-w-[640px] text-[13.5px] leading-relaxed text-subtitle">
                 <NoteBody text={flowComment} />

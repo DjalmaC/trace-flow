@@ -8,7 +8,7 @@ import { LogoDrop } from "@/components/LogoDrop";
 import { normalizeLogo, removeBackground } from "@/flow-tool/lib/logo";
 import { defaultConfig, getFlow } from "@/flow-tool/data";
 import { registerCustomFlows } from "@/flow-tool/data/custom-flows";
-import { deckPricing, normalizePricing, type Flow, type FlowConfig, type ProposalPricing, type ProposalSetup } from "@/flow-tool/data/schema";
+import { clientFlowName, deckPricing, normalizePricing, type Flow, type FlowConfig, type ProposalPricing, type ProposalSetup } from "@/flow-tool/data/schema";
 import { defaultProposalDate, loadSetup } from "@/flow-tool/lib/setup";
 
 /** Stash written by the dashboard's Edit action: the stored proposal's config
@@ -52,7 +52,7 @@ export default function BuildPage() {
   const [forked, setForked] = useState(false);
   // Double-click rename overlay for the flow boxes / lane names / hero
   // subtitle on the canvas.
-  const [rename, setRename] = useState<{ key: string; lane?: "brazil" | "abroad"; hero?: boolean; platformCaption?: boolean; comment?: boolean; node?: boolean; entity?: string; entityOn?: boolean; branded?: boolean; partner?: boolean; bankBrand?: boolean; bankOn?: boolean; bankLabel?: string; bankBold?: boolean; bankLogoUrl?: string; bankLogoPlate?: "light" | "none"; original: string; value: string; left: number; top: number; width: number } | null>(null);
+  const [rename, setRename] = useState<{ key: string; lane?: "brazil" | "abroad"; hero?: boolean; platformCaption?: boolean; comment?: boolean; flowTitle?: boolean; node?: boolean; entity?: string; entityOn?: boolean; branded?: boolean; partner?: boolean; bankBrand?: boolean; bankOn?: boolean; bankLabel?: string; bankBold?: boolean; bankLogoUrl?: string; bankLogoPlate?: "light" | "none"; original: string; value: string; left: number; top: number; width: number } | null>(null);
   const renameRef = useRef<HTMLInputElement>(null);
   // Set while the bank-logo file picker is open: its focus theft would
   // otherwise blur (and commit/close) the node card before a file is chosen.
@@ -254,6 +254,25 @@ export default function BuildPage() {
       });
       return;
     }
+    // The mint flow-name line ("Kast MX — …") — the flow definition's title.
+    // Renaming stores a per-proposal override (config.flowTitles), so forked
+    // tailored flows shed the previous client's name without a flow editor.
+    const titleEl = (e.target as Element).closest?.("[data-flow-title]");
+    if (titleEl) {
+      const original = clientFlowName(getFlow(config.flowId)?.title ?? "");
+      const r = titleEl.getBoundingClientRect();
+      const width = Math.min(560, Math.max(r.width + 90, 340));
+      setRename({
+        key: config.flowId,
+        flowTitle: true,
+        original,
+        value: config.flowTitles?.[config.flowId] ?? original,
+        left: r.left + r.width / 2 - width / 2,
+        top: r.top + r.height / 2 - 17,
+        width,
+      });
+      return;
+    }
     const commentEl = (e.target as Element).closest?.("[data-flow-comment]");
     if (commentEl) {
       const key = config.flowId;
@@ -389,6 +408,16 @@ export default function BuildPage() {
         ...c,
         platform: c.platform ? { ...c.platform, caption: !v || v === rename.original ? undefined : v } : c.platform,
       }));
+      setRename(null);
+      return;
+    }
+    if (rename.flowTitle) {
+      setConfig((c) => {
+        const m = { ...(c.flowTitles ?? {}) };
+        if (!v || v === rename.original) delete m[rename.key]; // empty = back to the flow's own title
+        else m[rename.key] = v;
+        return { ...c, flowTitles: Object.keys(m).length ? m : undefined };
+      });
       setRename(null);
       return;
     }

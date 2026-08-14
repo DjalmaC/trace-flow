@@ -439,6 +439,13 @@ export interface FlowConfig {
    *  client link, mobile and the PDF all inherit them — works on library
    *  flows without forking them. */
   nodeLabels?: Record<string, string>;
+  /** Per-proposal flow-title renames (double-click the mint flow-name line on
+   *  the build canvas), keyed by flowId. Overrides the flow definition's own
+   *  title everywhere it's shown to the client — the hero line, the "Beneath
+   *  the surface" heading, panel eyebrows and exports — without editing the
+   *  flow itself. Essential for forked proposals whose tailored flows carry
+   *  another client's name baked into the title. */
+  flowTitles?: Record<string, string>;
   /** Per-proposal entity annotations (double-click a box → "Specify entity"),
    *  keyed "<flowId>:<nodeId>". Rendered in parentheses just under the box —
    *  e.g. "(Brazilian VASP)" to name which of a client's entities a box is —
@@ -558,6 +565,16 @@ export function platformSuppressesClient(config: FlowConfig, flowId: string): bo
 /** Client-facing flow name: the rep-side " · tailored" marker never ships. */
 export function clientFlowName(name: string): string {
   return name.replace(/\s*·\s*tailored\s*$/i, "").trim();
+}
+
+/** The flow title the client sees: the per-proposal rename when one is set
+ *  (config.flowTitles, double-click the mint line on the build canvas), else
+ *  the flow definition's own title. */
+export function displayFlowTitle(
+  config: { flowTitles?: Record<string, string> },
+  flow: { id: string; title: string },
+): string {
+  return clientFlowName(config.flowTitles?.[flow.id] ?? flow.title);
 }
 
 // ── Pay-in / Pay-out labelling ────────────────────────────────────────────
