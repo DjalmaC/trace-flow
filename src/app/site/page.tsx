@@ -239,6 +239,119 @@ function RotatingCountry() {
   );
 }
 
+
+// ── sectioning: scenes, chapter rules, the station-rail navigator ────────────
+// The page reads as a FLOW: each chapter is a station. Chapters open with a
+// numbered mono chip on a fading hairline; alternate chapters sit in full-bleed
+// darker bands; a fixed right-edge rail shows every station with a mint token
+// that travels to wherever you are — the product metaphor applied to the page.
+
+const SECTIONS = [
+  { id: "top", label: "Overview" },
+  { id: "product", label: "Product" },
+  { id: "why", label: "Why Trace" },
+  { id: "use-cases", label: "Use cases" },
+  { id: "developers", label: "Trace API" },
+  { id: "dashboard", label: "Dashboard" },
+  { id: "coming-soon", label: "Coming soon" },
+  { id: "contact", label: "Contact" },
+];
+
+/** Rises in on first viewport entry (reduced-motion: shown immediately). */
+function Reveal({ children }: { children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setOn(true);
+      return;
+    }
+    const io = new IntersectionObserver(
+      (es) => es.forEach((e) => { if (e.isIntersecting) { setOn(true); io.disconnect(); } }),
+      { threshold: 0.08, rootMargin: "0px 0px -6% 0px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  return (
+    <div ref={ref} style={{ opacity: on ? 1 : 0, transform: on ? "none" : "translateY(28px)", transition: `opacity .75s ${EASE}, transform .75s ${EASE}` }}>
+      {children}
+    </div>
+  );
+}
+
+/** A chapter: numbered rule on top, optional full-bleed darker band. */
+function Scene({ id, n, label, band = false, children }: { id: string; n: string; label: string; band?: boolean; children: React.ReactNode }) {
+  return (
+    <section
+      id={id}
+      className={`relative z-10 scroll-mt-28 ${band ? "border-y border-white/[.08]" : ""}`}
+      style={band ? { background: "linear-gradient(rgba(3,6,5,.6), rgba(3,6,5,.42))" } : undefined}
+    >
+      <div className="mx-auto max-w-[1200px] px-5 pt-14">
+        <div className="flex items-center gap-4">
+          <span className="flex items-center gap-2.5 rounded-full border border-white/12 bg-[#0a0f0d]/70 px-3.5 py-1.5 font-jbmono text-[10px] font-medium uppercase tracking-[0.3em]">
+            <span className="text-mint">{n}</span>
+            <span className="text-[#6f8a7f]">{label}</span>
+          </span>
+          <span aria-hidden className="h-px flex-1" style={{ background: "linear-gradient(90deg, rgba(255,255,255,.16), transparent)" }} />
+        </div>
+      </div>
+      <Reveal>{children}</Reveal>
+    </section>
+  );
+}
+
+/** The station rail: one dot per section, a glowing mint token travels to the
+ *  station you're reading. Click a station to jump. Hidden below xl. */
+function RailNav() {
+  const [active, setActive] = useState(0);
+  useEffect(() => {
+    const onScroll = () => {
+      const mid = window.scrollY + window.innerHeight * 0.38;
+      let a = 0;
+      SECTIONS.forEach((sec, i) => {
+        const el = document.getElementById(sec.id);
+        if (el && el.offsetTop <= mid) a = i;
+      });
+      setActive(a);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, []);
+  const STEP = 34;
+  return (
+    <nav aria-label="Page sections" className="fixed right-5 top-1/2 z-40 hidden -translate-y-1/2 xl:block">
+      <div className="relative" style={{ height: (SECTIONS.length - 1) * STEP + 10 }}>
+        <span aria-hidden className="absolute right-[4.5px] top-[5px] w-px" style={{ height: (SECTIONS.length - 1) * STEP, background: "rgba(255,255,255,.14)" }} />
+        <span
+          aria-hidden
+          className="absolute right-[1.5px] h-[7px] w-[7px] rounded-full bg-mint"
+          style={{ top: active * STEP + 1.5, boxShadow: "0 0 10px rgba(0,242,177,.8)", transition: `top .5s ${EASE}` }}
+        />
+        {SECTIONS.map((sec, i) => (
+          <a key={sec.id} href={`#${sec.id}`} aria-label={sec.label} className="group absolute right-0 flex items-center gap-3" style={{ top: i * STEP }}>
+            <span className={`whitespace-nowrap font-jbmono text-[9px] uppercase tracking-[0.24em] transition duration-200 ${i === active ? "text-mint opacity-100" : "text-muted opacity-0 group-hover:opacity-100"}`}>
+              {sec.label}
+            </span>
+            <span
+              className={`h-[10px] w-[10px] rounded-full border transition duration-200 ${i === active ? "border-mint/70" : "border-white/25 group-hover:border-white/60"}`}
+              style={{ background: "rgba(7,9,11,.8)" }}
+            />
+          </a>
+        ))}
+      </div>
+    </nav>
+  );
+}
+
 // ── page ─────────────────────────────────────────────────────────────────────
 
 export default function SitePage() {
@@ -294,8 +407,10 @@ export default function SitePage() {
       </header>
       </div>
 
+      <RailNav />
+
       {/* ── hero ── */}
-      <section className="relative z-10 overflow-hidden">
+      <section id="top" className="relative z-10 scroll-mt-28 overflow-hidden">
         <div className="mx-auto grid max-w-[1200px] items-center gap-12 px-5 pb-24 pt-16 md:grid-cols-[1.05fr_1fr] md:pt-24">
           <div className="tf-rise">
             <Eyebrow>Payments &amp; stablecoin infrastructure</Eyebrow>
@@ -329,9 +444,10 @@ export default function SitePage() {
         </div>
       </section>
 
-      {/* ── trusted by ── */}
-      <section className="relative z-10 border-y border-white/[.07] bg-[#07090b]/40">
-        <div className="mx-auto max-w-[1200px] px-5 py-9 text-center">
+      {/* ── proof band: trusted-by + the stats, one full-bleed shelf ── */}
+      <section className="relative z-10 border-y border-white/[.08]" style={{ background: "linear-gradient(rgba(3,6,5,.6), rgba(3,6,5,.42))" }}>
+        <Reveal>
+        <div className="mx-auto max-w-[1200px] px-5 pt-10 text-center">
           <p className="font-jbmono text-[10.5px] font-medium uppercase tracking-[0.34em] text-[#6f8a7f]">
             Trusted by exchanges, fintechs and global businesses
           </p>
@@ -342,11 +458,7 @@ export default function SitePage() {
             <span>BVNK</span>
           </div>
         </div>
-      </section>
-
-      {/* ── stats ── */}
-      <section className="relative z-10">
-        <div className="mx-auto grid max-w-[1200px] gap-5 px-5 py-16 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mx-auto grid max-w-[1200px] gap-5 px-5 pb-12 pt-9 sm:grid-cols-2 lg:grid-cols-4">
           {[
             { big: <>US$<em className="not-italic text-mint">12</em>B</>, sub: "transacted" },
             { big: <>&lt; 60<em className="not-italic text-mint">s</em></>, sub: "PIX → stablecoin settlement" },
@@ -359,15 +471,15 @@ export default function SitePage() {
             </div>
           ))}
         </div>
+        </Reveal>
       </section>
 
       {/* ── product ── */}
-      <section id="product" className="relative z-10">
-        <div className="mx-auto max-w-[1200px] px-5 py-16">
+      <Scene id="product" n="01" label="Product">
+        <div className="mx-auto max-w-[1200px] px-5 pb-16 pt-9">
           <GlassPanel className="px-8 py-10 md:px-12">
             <div className="flex flex-wrap items-end justify-between gap-8">
               <div className="max-w-[560px]">
-                <Eyebrow>Product</Eyebrow>
                 <h2 className="mt-4 font-display text-[32px] font-semibold leading-[1.1] tracking-[-0.015em] text-title md:text-[40px]">
                   Everything you need to operate in LatAm
                 </h2>
@@ -391,12 +503,11 @@ export default function SitePage() {
             </div>
           </GlassPanel>
         </div>
-      </section>
+      </Scene>
 
       {/* ── why trace ── */}
-      <section className="relative z-10">
-        <div className="mx-auto max-w-[1200px] px-5 py-10">
-          <Eyebrow>Why Trace</Eyebrow>
+      <Scene id="why" n="02" label="Why Trace" band>
+        <div className="mx-auto max-w-[1200px] px-5 pb-14 pt-9">
           <h2 className="mt-4 max-w-[620px] font-display text-[32px] font-semibold leading-[1.1] tracking-[-0.015em] text-title md:text-[40px]">
             We&apos;re removing the barriers
           </h2>
@@ -417,14 +528,13 @@ export default function SitePage() {
             ))}
           </div>
         </div>
-      </section>
+      </Scene>
 
       {/* ── use cases ── */}
-      <section id="use-cases" className="relative z-10">
-        <div className="mx-auto max-w-[1200px] px-5 py-16">
+      <Scene id="use-cases" n="03" label="Use cases">
+        <div className="mx-auto max-w-[1200px] px-5 pb-16 pt-9">
           <GlassPanel className="flex flex-wrap items-end justify-between gap-8 px-8 py-10 md:px-12">
             <div className="max-w-[600px]">
-              <Eyebrow>Use cases</Eyebrow>
               <h2 className="mt-4 font-display text-[32px] font-semibold leading-[1.1] tracking-[-0.015em] text-title md:text-[40px]">
                 Built for the companies moving money into LatAm
               </h2>
@@ -435,13 +545,12 @@ export default function SitePage() {
             <PrimaryBtn href="https://www.tracefinance.com/use-cases">See use cases</PrimaryBtn>
           </GlassPanel>
         </div>
-      </section>
+      </Scene>
 
       {/* ── api ── */}
-      <section id="developers" className="relative z-10">
-        <div className="mx-auto grid max-w-[1200px] items-start gap-12 px-5 py-12 md:grid-cols-[1fr_1.1fr]">
+      <Scene id="developers" n="04" label="Trace API" band>
+        <div className="mx-auto grid max-w-[1200px] items-start gap-12 px-5 pb-16 pt-9 md:grid-cols-[1fr_1.1fr]">
           <div>
-            <Eyebrow>Trace API</Eyebrow>
             <h2 className="mt-4 font-display text-[32px] font-semibold leading-[1.1] tracking-[-0.015em] text-title md:text-[40px]">
               One integration. Every rail.
             </h2>
@@ -488,12 +597,11 @@ export default function SitePage() {
             </pre>
           </GlassPanel>
         </div>
-      </section>
+      </Scene>
 
       {/* ── dashboard ── */}
-      <section className="relative z-10">
-        <div className="mx-auto max-w-[1200px] px-5 py-16">
-          <Eyebrow>Dashboard</Eyebrow>
+      <Scene id="dashboard" n="05" label="Dashboard">
+        <div className="mx-auto max-w-[1200px] px-5 pb-16 pt-9">
           <h2 className="mt-4 max-w-[560px] font-display text-[32px] font-semibold leading-[1.1] tracking-[-0.015em] text-title md:text-[40px]">
             Manage everything from one place
           </h2>
@@ -575,14 +683,13 @@ export default function SitePage() {
             </div>
           </GlassPanel>
         </div>
-      </section>
+      </Scene>
 
       {/* ── coming soon / waitlist ── */}
-      <section className="relative z-10">
-        <div className="mx-auto max-w-[1200px] px-5 py-8">
+      <Scene id="coming-soon" n="06" label="Coming soon">
+        <div className="mx-auto max-w-[1200px] px-5 pb-10 pt-9">
           <GlassPanel className="flex flex-wrap items-center justify-between gap-8 px-8 py-10 md:px-12">
             <div className="max-w-[560px]">
-              <Eyebrow>Coming soon</Eyebrow>
               <h2 className="mt-4 font-display text-[26px] font-semibold leading-[1.15] tracking-[-0.015em] text-title md:text-[32px]">
                 We&apos;re building the future of cross-border settlement
               </h2>
@@ -613,11 +720,11 @@ export default function SitePage() {
             )}
           </GlassPanel>
         </div>
-      </section>
+      </Scene>
 
       {/* ── closing cta ── */}
-      <section id="contact" className="relative z-10">
-        <div className="mx-auto max-w-[760px] px-5 py-24 text-center">
+      <Scene id="contact" n="07" label="Contact">
+        <div className="mx-auto max-w-[760px] px-5 pb-24 pt-16 text-center">
           <h2 className="font-display text-[36px] font-semibold leading-[1.08] tracking-[-0.02em] text-title md:text-[48px]">
             Ready to remove the barriers?
           </h2>
@@ -629,7 +736,7 @@ export default function SitePage() {
             <GhostBtn href="https://tracefinance.mintlify.app/">Read the docs</GhostBtn>
           </div>
         </div>
-      </section>
+      </Scene>
 
       {/* ── footer ── */}
       <footer className="relative z-10 border-t border-white/10 bg-[#07090b]/60 backdrop-blur-xl">
