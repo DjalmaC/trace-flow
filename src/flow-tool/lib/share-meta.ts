@@ -8,7 +8,7 @@ import { admin, findShareRow } from "./supabase-server";
 // the slug's name part ("meta-z99mee" -> "Meta"). Unknown or unresolvable keys
 // keep a generic preview - the crawler never learns whether a link exists.
 
-function nameFromSlug(key: string | null): string | null {
+export function nameFromSlug(key: string | null): string | null {
   const m = key?.match(/^([a-z0-9-]+)-[a-z0-9]{4,12}$/);
   if (!m) return null;
   const words = m[1].split("-").filter(Boolean);
@@ -36,10 +36,17 @@ export async function sharedLinkMetadata(key: string): Promise<Metadata> {
     ? `Trace Flow - A funds flow presentation tailored to ${name}`
     : "Trace Flow - A funds flow presentation";
   const description = "Prepared by Trace Finance.";
+  // The preview card (/api/og/<key>): Trace × client on the site's silk-dark
+  // backdrop. Crawlers need an absolute URL; the branded origin wins, then
+  // the deployment's own host, then local dev.
+  const origin =
+    process.env.NEXT_PUBLIC_SHARE_ORIGIN?.replace(/\/$/, "") ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+  const image = { url: `${origin}/api/og/${encodeURIComponent(key)}`, width: 1200, height: 630, alt: title };
   return {
     title,
     description,
-    openGraph: { title, description, siteName: "Trace Finance", type: "website" },
-    twitter: { card: "summary", title, description },
+    openGraph: { title, description, siteName: "Trace Finance", type: "website", images: [image] },
+    twitter: { card: "summary_large_image", title, description, images: [image.url] },
   };
 }

@@ -415,9 +415,15 @@ export default function SitePage() {
             Trusted by exchanges, fintechs and global businesses
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-x-11 gap-y-5">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/assets/site-customers/dlocal.png" alt="dLocal" className="h-6 w-auto max-w-[150px] object-contain opacity-65 md:h-7" />
+            {/* Mercado Bitcoin: knockout shield mark (letters see through) + name */}
+            <span className="flex items-center gap-2.5 opacity-65">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/assets/site-customers/mercado-mark.png" alt="" className="h-6 w-auto md:h-7" />
+              <span className="whitespace-nowrap text-[14.5px] font-semibold text-[#c3c3c3] md:text-[15.5px]">Mercado Bitcoin</span>
+            </span>
             {[
-              ["dlocal.png", "dLocal"],
-              ["mercado.png", "Mercado Bitcoin"],
               ["enigma.png", "Enigma"],
               ["bcb.png", "BCB Group"],
               ["BVNK.png", "BVNK"],

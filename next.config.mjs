@@ -5,6 +5,13 @@ const nextConfig = {
   // /api/asset serverless function bundle so readFile() can find them at runtime.
   outputFileTracingIncludes: {
     "/api/asset/[name]": ["./private-assets/**"],
+    // The OG preview card reads its backdrop, wordmark and fonts off disk.
+    "/api/og/[key]": [
+      "./public/assets/bg/silk.jpg",
+      "./public/assets/trace-logo-white.svg",
+      "./public/fonts/inter-600.ttf",
+      "./public/fonts/inter-700.ttf",
+    ],
   },
   webpack: (config, { isServer, webpack }) => {
     // pptxgenjs (used client-side for the PowerPoint export) references Node
