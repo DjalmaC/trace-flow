@@ -113,20 +113,64 @@ function DottedGlobe() {
 // ── hero conversion widget ───────────────────────────────────────────────────
 
 function ConversionWidget() {
-  const [secs, setSecs] = useState(42);
+  // The live site's choreography, reverse-engineered by sampling it at 400ms:
+  // a ~6.3s loop — reset to USD 0.00 / 00:00 (chip hidden), "Processing" holds
+  // at zero, then the received amount eases UP to 49,151.64 while the elapsed
+  // timer climbs in lockstep to 00:42 (the settled-in-under-a-minute story)
+  // and the progress track fills; "Cleared" holds, then it loops.
+  const TARGET = 49151.64;
+  const SECS = 42;
+  const [phase, setPhase] = useState<"reset" | "processing" | "counting" | "cleared">("cleared");
+  const [p, setP] = useState(1); // 0..1 transfer progress
   useEffect(() => {
-    const id = setInterval(() => setSecs((s) => (s <= 1 ? 42 : s - 1)), 1000);
-    return () => clearInterval(id);
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return; // rest at Cleared
+    let raf = 0;
+    const T_RESET = 1200, T_HOLD = 900, T_COUNT = 1900, T_CLEARED = 2400;
+    const TOTAL = T_RESET + T_HOLD + T_COUNT + T_CLEARED;
+    const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
+    const start = performance.now();
+    const tick = (now: number) => {
+      const t = (now - start) % TOTAL;
+      if (t < T_RESET) {
+        setPhase("reset");
+        setP(0);
+      } else if (t < T_RESET + T_HOLD) {
+        setPhase("processing");
+        setP(0);
+      } else if (t < T_RESET + T_HOLD + T_COUNT) {
+        setPhase("counting");
+        setP(easeOut((t - T_RESET - T_HOLD) / T_COUNT));
+      } else {
+        setPhase("cleared");
+        setP(1);
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
   }, []);
+
+  const amount = TARGET * p;
+  const secs = Math.round(SECS * p);
+  const cleared = phase === "cleared";
+  const amountStr = amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const pixActive = p > 0 && (p < 0.5 || cleared);
+  const fedActive = p >= 0.5;
+
   return (
     <GlassPanel className="w-full max-w-[460px] px-6 py-6" style={{ borderRadius: 20 }}>
       <div className="flex items-center justify-between">
         <span className="text-[13px] font-semibold text-title">
           Conversion · BRL <span className="text-mint">→</span> USD
         </span>
-        <span className="flex items-center gap-1.5 rounded-full border border-white/12 bg-[#0a0f0d]/70 px-2.5 py-1 text-[11px] text-subtitle">
-          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-mint" />
-          Processing
+        <span
+          className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] transition-all duration-300 ${
+            cleared ? "border-mint/50 text-mint" : "border-white/12 text-subtitle"
+          }`}
+          style={{ background: "rgba(10,15,13,.7)", opacity: phase === "reset" ? 0 : 1 }}
+        >
+          <span className={`h-1.5 w-1.5 rounded-full bg-mint ${cleared ? "" : "animate-pulse"}`} />
+          {cleared ? "Cleared" : "Processing"}
         </span>
       </div>
 
@@ -144,17 +188,23 @@ function ConversionWidget() {
         </div>
       </div>
 
+      {/* the rails: chips light up as the transfer crosses them; the track fills */}
       <div className="relative mx-2 my-3 flex items-center justify-center gap-16">
         <span aria-hidden className="absolute left-0 right-0 top-1/2 h-px bg-white/12" />
-        <span className="relative flex items-center gap-1.5 rounded-full border border-mint/40 bg-[#0e1410] px-3 py-1 font-jbmono text-[10.5px] font-semibold text-mint">
-          <span className="h-1 w-1 rounded-full bg-mint" /> PIX
+        <span
+          aria-hidden
+          className="absolute left-0 top-1/2 h-px bg-mint"
+          style={{ width: `${p * 100}%`, boxShadow: p > 0 ? "0 0 8px rgba(0,242,177,.6)" : "none", transition: phase === "reset" ? "none" : "width .12s linear" }}
+        />
+        <span className={`relative flex items-center gap-1.5 rounded-full border px-3 py-1 font-jbmono text-[10.5px] font-semibold transition-colors duration-300 ${pixActive ? "border-mint/60 bg-[#0e1410] text-mint" : "border-white/15 bg-[#0e1410] text-muted"}`}>
+          <span className={`h-1 w-1 rounded-full ${pixActive ? "bg-mint" : "bg-white/30"}`} /> PIX
         </span>
-        <span className="relative flex items-center gap-1.5 rounded-full border border-cyan2/40 bg-[#0e1410] px-3 py-1 font-jbmono text-[10.5px] font-semibold text-cyan2">
-          <span className="h-1 w-1 rounded-full bg-cyan2" /> FedNow
+        <span className={`relative flex items-center gap-1.5 rounded-full border px-3 py-1 font-jbmono text-[10.5px] font-semibold transition-colors duration-300 ${fedActive ? "border-cyan2/60 bg-[#0e1410] text-cyan2" : "border-white/15 bg-[#0e1410] text-muted"}`}>
+          <span className={`h-1 w-1 rounded-full ${fedActive ? "bg-cyan2" : "bg-white/30"}`} /> FedNow
         </span>
       </div>
 
-      <div className="flex items-center justify-between rounded-[14px] border border-mint/25 bg-[#0c1410]/70 px-4 py-3.5">
+      <div className={`flex items-center justify-between rounded-[14px] border px-4 py-3.5 transition-colors duration-300 ${cleared ? "border-mint/40 bg-[#0c1410]/70" : "border-mint/20 bg-[#0c1410]/60"}`}>
         <div className="flex items-center gap-3">
           <span className="flex h-9 w-9 items-center justify-center rounded-full border border-mint/40 bg-[#0e1a14] font-jbmono text-[12px] font-bold text-mint">$</span>
           <div className="leading-tight">
@@ -163,7 +213,7 @@ function ConversionWidget() {
           </div>
         </div>
         <div className="text-right leading-tight">
-          <div className="font-jbmono text-[15px] font-bold text-mint">USD 49,151.64</div>
+          <div className="font-jbmono text-[15px] font-bold text-mint tabular-nums">USD {amountStr}</div>
           <small className="font-jbmono text-[10.5px] text-muted">via FedNow</small>
         </div>
       </div>
@@ -172,7 +222,7 @@ function ConversionWidget() {
         <span>
           Rate locked · <span className="font-jbmono text-subtitle">1 USD = 5.0863 BRL</span>
         </span>
-        <span className="font-jbmono text-mint">00:{String(secs).padStart(2, "0")}</span>
+        <span className="font-jbmono text-mint tabular-nums">00:{String(secs).padStart(2, "0")}</span>
       </div>
     </GlassPanel>
   );
