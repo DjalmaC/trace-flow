@@ -72,7 +72,27 @@ function CheckIcon() {
   );
 }
 
-// ── the dotted globe (recolored: white dots, sparse cyan accents) ────────────
+// ── the dotted globe: the mapa-mundi (recolored: white land, cyan accents) ───
+// 240x120 equirectangular land bitmask (1 bit per 1.5° cell), packed row-major
+// from public-domain world GeoJSON. Dots on land render bright; ocean dots stay
+// faint so the sphere keeps its volume while the continents read clearly.
+const LAND_W = 240;
+const LAND_H = 120;
+const LAND_B64 =
+  "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAID+fwD//wcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP////////8AAAAAAAAAAMAAAAAAAAAAAAAAAAAAgP///////z8AwP8H4AcAAPAHAAAAAAAAAAAAAABw/v///////w8AgP8AAAAAAMB/AAAAAAAAAAAAAID34Pcf/////w8AAP4BAAAwAAD8BwAAAAAAAAAAAMD/+/8H/v///wcAAAAAAOA/APz/HwD4HwAAAAAAAPB34/8PAP7//w8AAAAAAHgA4P///xzwDQAAAAAAAPD///8/APj//wcAAAAAADzA/////3/wDwAAA+AXAPD/5/f/B/z//wMAAAAHAHzw/////////wOAAPj/7///////D/j//wMAAPD/AQD////////////+A//////////zH/D/PwAAAP7/9///////////////P//////////zf/D/A2sAAP7////////////////////////////5P+D/gH8AAH//////////////////8Pz////////3H+AfAH8A4P//////////////////QP7//////w//H8APAAAA+M//////////////////AP///////wPwE4APAAAA+N////////////////0HAP8//f///wP4PwAAAAAw+I///////////////3wCAOAH8P///w/wfwAAAABw8N////////////8fAB8AAPADgP///3/w/wAAAAB44Nf///////////8PgB8AABwAgP///////wMAAAD84P//////////////gB8AAAAAgP7////7/wcAAAD++///////////////gAcAAAAAAP3//////w8AAAD+////////////////AAMAAAAAAPz//////w4AAADw////////////////AAAAAAAAAPD/////fx8AAADw////////////////AQAAAAAAAOD/////vx8AAADg///////////////fAAAAAAAAAOD//////wEAAACA//////3////////fAAAAAAAAAOD/////PwAAAACc///P/v7////////HAQAAAAAAAPD/////AwAAAAD+//vH/Pz////////jAwAAAAAAAOD/////AwAAAAD+Z/////v//////3/gAAAAAAAAAOD///9/AAAAAAD+Yf7///v//////39gAAAAAAAAAOD///9/AAAAAAD+Ie////n//////zkwAAAAAAAAAMD///8/AAAAAAD8/8b8/////////3M4AAAAAAAAAID///8/AAAAAAD4/4Lj//////////A/AAAAAAAAAID///8PAAAAAAD8/wCA/////////9EHAAAAAAAAAAD+//8HEAAAAAD+/+fT/////////8MBAAAAAAAAAAD8//8DAAAAAAD+/////////////8MAAAAAAAAAAAD8/58HAAAAAAD//////////////wMAAAAAAAAAAAD4/wAXAAAAAID///////3//////wMAAAAAAAAAAADw/wAeAAAAAMD///9//////////wAAAAAAAAAAAADgfwAeAAAAAOD//////7///////wMAAAAAAAAAAADAf4AfAAAAAOD//////v/w////fwEAAAAAAOAAAAAA/vA/AAAAAPD//////f/A////HwEAAAAAAIABAAAA/nj4AwAAAPD//////X/A/+f/BwAAAAAAAAABAAAA/D/4HwAAAOD/////+38A/8F/AwMAAAAAAAAAAAAA+D8wGQAAAPD/////+z8A/4D/AAMAAAAAAAAAAAAAwP8BAAAAAPD/////9wcAfsD/gQMAAAAAAAAAAAAAAPwBAAAAAPD//////wMAPgD+AQcAAAAAAAAAAAAAAPABAwAAAPD//////wYAPgD+AQ8AAAAAAAAAAAAAAMDh7wAAAOD//////wcAPAD2gQ4AAAAAAAAAAAAAAMDv/wAAAMD//////wMAPADmwB4AAAAAAAAAAAAAAAD//wEAAID//////wMAeABGQB4AAAAAAAAAAAAAAAD0/wsAAID//////wEAYAAcYB4AAAAAAAAAAAAAAADw/z8AAAD++f///wEAIIAd8AgAAAAAAAAAAAAAAADw/z8AAAAE+P///wAAAAAf+AAAAAAAAAAAAAAAAAD4/38AAAAAwP///wAAAAA+figAAAAAAAAAAAAAAAD8/38AAAAAwP//PwAAAAA+/z8AAAAAAAAAAAAAAAD8//8BAAAA4P//HwAAAAA8/6cDAAAAAAAAAAAAAAD8//8/AAAAwP//DwAAAAB4vuN/MAAAAAAAAAAAAAD+//9/AAAAgP//BwAAAABwvPv/cQAAAAAAAAAAAAD+////AQAAgP//BwAAAADggAf+vwAAAAAAAAAAAAD+////AQAAAP//BwAAAADADwDynwMAAAAAAAAAAAD4////AQAAAP//BwAAAAAA/xv4Bw4AAAAAAAAAAAD4////AQAAAP//BwAAAAAA4A3AHBwAAAAAAAAAAADw////AAAAAP7/BwAAAAAAAIDHEBgAAAAAAAAAAADw//9/AAAAAP//DwMAAAAAAMDPAAAAAAAAAAAAAADg//9/AAAAAP//jwMAAAAAAPjHAYAAAQAAAAAAAADg//9/AAAAgP//5wMAAAAAAPzPAYCAAQAAAAAAAAAA//8/AAAAgP//5wMAAAAAAP7/A4DAAAAAAAAAAAAA/v8/AAAAgP//4QEAAAAAAP//BwDAAAAAAAAAAAAA/v8/AAAAAP//4AEAAAAA4P//D2AAAAAAAAAAAAAA/v8fAAAAAP7/8AAAAAAA+P//H+AAAAAAAAAAAAAA/v8fAAAAAP7/8AAAAAAA+P//HwAAAAAAAAAAAAAA/v8DAAAAAP7/4AAAAAAA+P//PwAAAAAAAAAAAAAA//8AAAAAAP4/QAAAAAAA+P//fwAAAAAAAAAAAAAA//8AAAAAAPw/AAAAAAAA8P//fwAAAAAAAAAAAAAA//8AAAAAAPwxAAAAAAAA8P//fwAAAAAAAAAAAAAA/38AAAAAAPgTAAAAAAAA8P//fwAAAAAAAAAAAAAA/z8AAAAAAPgPAAAAAAAA4H//PwAAAAAAAAAAAAAA/x8AAAAAAPAHAAAAAAAA8Af+PwAIAAAAAAAAAACA/w8AAAAAACAAAAAAAAAA4AD8HwAYAAAAAAAAAADA/wcAAAAAAAAAAAAAAAAAAADgHwA4AAAAAAAAAADA/wMAAAAAAAAAAAAAAAAAAADgDwDwAAAAAAAAAADAfwAAAAAAAAAAAAAAAAAAAAAAAgB4AAAAAAAAAADAfwAAAAAAAAAAAAAAAAAAAAAABwA8AAAAAAAAAADAPwAAAAAAAAAAAAAAAAAAAAAABwAOAAAAAAAAAADAHwAAAAAAAAAAAAAAAAAAAAAAAgAPAAAAAAAAAADAHwAAAAAAAAAAAAAAAAAAAAAAAIADAAAAAAAAAADgHwAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAADgHwAAAAAAAAAAAADgAAAAAAAAAAAAAAAAAAAAAADgBwAAAAAAAAAAAABgAAAAAAAAAAAAAAAAAAAAAADghwMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADABwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAHwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8AAAAAAAAAAAADgAAAAwCAAEAAAAAAAAAAAAAAAAfAAAAAAAAAAAAP8EwP//////AwAAAAAAAAAAAAAAPgAAAAAAAADA+P9/8P///////wAAAAAAAAAAAAAAfwAAAAAAcH////9//////////w8AAAAAAAAA+ADgfwAAAAD///////////////////8HAAAAAFgB/P/U/wAAAOD///////////////////8HAAAA+P///P///wAAAPD///////////////////8BAADA////////PwAA4P///////////////////z8AAMD/////////AQAB/v///////////////////z8AAPz///////9/AMAP//////////////////////8AABDg////////+fkP/v///////////////////w8AAID///////////H//////////////////////z8AQAD+//////////////////////////////////8B////////////////////////////////////////AAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+let _landBits: Uint8Array | null = null;
+function landAt(latDeg: number, lonDeg: number): boolean {
+  if (!_landBits) {
+    const bin = atob(LAND_B64);
+    _landBits = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) _landBits[i] = bin.charCodeAt(i);
+  }
+  const u = Math.min(LAND_W - 1, Math.max(0, Math.floor(((lonDeg + 180) / 360) * LAND_W)));
+  const v = Math.min(LAND_H - 1, Math.max(0, Math.floor(((90 - latDeg) / 180) * LAND_H)));
+  const i = v * LAND_W + u;
+  return (_landBits[i >> 3] & (1 << (i & 7))) !== 0;
+}
+
 
 function DottedGlobe() {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -87,15 +107,21 @@ function DottedGlobe() {
     canvas.height = SIZE * dpr;
     ctx.scale(dpr, dpr);
 
-    // fibonacci sphere — stable, even coverage
-    const N = 780;
-    const pts: { x: number; y: number; z: number; accent: boolean }[] = [];
+    // fibonacci sphere — stable, even coverage; each dot knows whether it sits
+    // on LAND (lat/lon are fixed to the sphere, so the flag survives rotation)
+    const N = 2600;
+    const pts: { x: number; y: number; z: number; land: boolean; accent: boolean }[] = [];
     const GA = Math.PI * (3 - Math.sqrt(5));
     for (let i = 0; i < N; i++) {
       const y = 1 - (i / (N - 1)) * 2;
       const r = Math.sqrt(1 - y * y);
       const t = GA * i;
-      pts.push({ x: Math.cos(t) * r, y, z: Math.sin(t) * r, accent: i % 19 === 0 });
+      const x = Math.cos(t) * r;
+      const z = Math.sin(t) * r;
+      const lat = (Math.asin(-y) * 180) / Math.PI; // canvas y points down
+      const lon = (Math.atan2(x, z) * 180) / Math.PI;
+      const land = landAt(lat, lon);
+      pts.push({ x, y, z, land, accent: land && i % 23 === 0 });
     }
     const R = SIZE * 0.42;
     const cx = SIZE / 2;
@@ -112,13 +138,13 @@ function DottedGlobe() {
         const depth = (z + 1) / 2; // 0 back → 1 front
         const px = cx + x * R;
         const py = cy + p.y * R;
-        const size = 0.9 + depth * 1.7;
-        // WHITE dots (the one sanctioned change): quiet at the back, bright at
-        // the front; every 19th dot carries a cyan brand accent.
-        const alpha = 0.06 + depth * 0.5;
+        // The mapa-mundi: land dots are the bright ones (white, cyan accents);
+        // ocean dots are barely-there, keeping the sphere's volume readable.
+        const size = p.land ? 1.05 + depth * 1.75 : 0.65 + depth * 0.85;
+        const alpha = p.land ? 0.1 + depth * 0.62 : (0.03 + depth * 0.12);
         ctx.beginPath();
         ctx.arc(px, py, size, 0, Math.PI * 2);
-        ctx.fillStyle = p.accent ? `rgba(43,232,214,${(alpha * 0.9).toFixed(3)})` : `rgba(255,255,255,${alpha.toFixed(3)})`;
+        ctx.fillStyle = p.accent ? `rgba(43,232,214,${(alpha * 0.95).toFixed(3)})` : `rgba(255,255,255,${alpha.toFixed(3)})`;
         ctx.fill();
       }
       if (!reduced) raf = requestAnimationFrame(draw);
