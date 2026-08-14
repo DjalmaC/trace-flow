@@ -240,22 +240,9 @@ function RotatingCountry() {
 }
 
 
-// ── sectioning: scenes, chapter rules, the station-rail navigator ────────────
-// The page reads as a FLOW: each chapter is a station. Chapters open with a
-// numbered mono chip on a fading hairline; alternate chapters sit in full-bleed
-// darker bands; a fixed right-edge rail shows every station with a mint token
-// that travels to wherever you are — the product metaphor applied to the page.
-
-const SECTIONS = [
-  { id: "top", label: "Overview" },
-  { id: "product", label: "Product" },
-  { id: "why", label: "Why Trace" },
-  { id: "use-cases", label: "Use cases" },
-  { id: "developers", label: "Trace API" },
-  { id: "dashboard", label: "Dashboard" },
-  { id: "coming-soon", label: "Coming soon" },
-  { id: "contact", label: "Contact" },
-];
+// ── sectioning: scenes + chapter rules ───────────────────────────────────────
+// Chapters open with a numbered mono chip on a fading hairline; alternate
+// chapters sit in full-bleed darker bands; content rises in on arrival.
 
 /** Rises in on first viewport entry (reduced-motion: shown immediately). */
 function Reveal({ children }: { children: React.ReactNode }) {
@@ -304,54 +291,6 @@ function Scene({ id, n, label, band = false, children }: { id: string; n: string
   );
 }
 
-/** The station rail: one dot per section, a glowing mint token travels to the
- *  station you're reading. Click a station to jump. Hidden below xl. */
-function RailNav() {
-  const [active, setActive] = useState(0);
-  useEffect(() => {
-    const onScroll = () => {
-      const mid = window.scrollY + window.innerHeight * 0.38;
-      let a = 0;
-      SECTIONS.forEach((sec, i) => {
-        const el = document.getElementById(sec.id);
-        if (el && el.offsetTop <= mid) a = i;
-      });
-      setActive(a);
-    };
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
-    };
-  }, []);
-  const STEP = 34;
-  return (
-    <nav aria-label="Page sections" className="fixed right-5 top-1/2 z-40 hidden -translate-y-1/2 xl:block">
-      <div className="relative" style={{ height: (SECTIONS.length - 1) * STEP + 10 }}>
-        <span aria-hidden className="absolute right-[4.5px] top-[5px] w-px" style={{ height: (SECTIONS.length - 1) * STEP, background: "rgba(255,255,255,.14)" }} />
-        <span
-          aria-hidden
-          className="absolute right-[1.5px] h-[7px] w-[7px] rounded-full bg-mint"
-          style={{ top: active * STEP + 1.5, boxShadow: "0 0 10px rgba(0,242,177,.8)", transition: `top .5s ${EASE}` }}
-        />
-        {SECTIONS.map((sec, i) => (
-          <a key={sec.id} href={`#${sec.id}`} aria-label={sec.label} className="group absolute right-0 flex items-center gap-3" style={{ top: i * STEP }}>
-            <span className={`whitespace-nowrap font-jbmono text-[9px] uppercase tracking-[0.24em] transition duration-200 ${i === active ? "text-mint opacity-100" : "text-muted opacity-0 group-hover:opacity-100"}`}>
-              {sec.label}
-            </span>
-            <span
-              className={`h-[10px] w-[10px] rounded-full border transition duration-200 ${i === active ? "border-mint/70" : "border-white/25 group-hover:border-white/60"}`}
-              style={{ background: "rgba(7,9,11,.8)" }}
-            />
-          </a>
-        ))}
-      </div>
-    </nav>
-  );
-}
-
 // ── page ─────────────────────────────────────────────────────────────────────
 
 export default function SitePage() {
@@ -385,10 +324,10 @@ export default function SitePage() {
       {/* ── nav ── */}
       <header className="border-b border-white/10 bg-[#07090b]/70 backdrop-blur-xl">
         <div className="mx-auto flex max-w-[1200px] items-center justify-between px-5 py-3.5">
-          <a href="#" className="flex items-center gap-[9px]">
+          <a href="#" className="flex items-center">
+            {/* the official lockup (mark + wordmark in the brand font) */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={ASSETS.traceLogo} alt="" style={{ height: 22, width: 22 * TRACE_LOGO_AR }} />
-            <span className="text-[15px] font-semibold text-title">trace finance</span>
+            <img src="/assets/site-trace-logo.svg" alt="Trace" className="h-[24px] w-auto" />
           </a>
           <nav className="hidden items-center gap-7 text-[13.5px] text-subtitle md:flex">
             <a href="#product" className="font-semibold text-title">Product</a>
@@ -406,8 +345,6 @@ export default function SitePage() {
         </div>
       </header>
       </div>
-
-      <RailNav />
 
       {/* ── hero ── */}
       <section id="top" className="relative z-10 scroll-mt-28 overflow-hidden">
@@ -451,11 +388,18 @@ export default function SitePage() {
           <p className="font-jbmono text-[10.5px] font-medium uppercase tracking-[0.34em] text-[#6f8a7f]">
             Trusted by exchanges, fintechs and global businesses
           </p>
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-x-12 gap-y-3 text-[15px] font-semibold text-muted/70">
-            <span>d·local</span>
-            <span>ENIGMA</span>
-            <span>BCB GROUP</span>
-            <span>BVNK</span>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-x-11 gap-y-5">
+            {[
+              ["dlocal.png", "dLocal"],
+              ["mercado.png", "Mercado Bitcoin"],
+              ["enigma.png", "Enigma"],
+              ["bcb.png", "BCB Group"],
+              ["BVNK.png", "BVNK"],
+              ["ARQ.png", "Arq"],
+            ].map(([f, alt]) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img key={f} src={`/assets/site-customers/${f}`} alt={alt} className="h-6 w-auto max-w-[150px] object-contain opacity-65 md:h-7" />
+            ))}
           </div>
         </div>
         <div className="mx-auto grid max-w-[1200px] gap-5 px-5 pb-12 pt-9 sm:grid-cols-2 lg:grid-cols-4">
@@ -742,11 +686,8 @@ export default function SitePage() {
       <footer className="relative z-10 border-t border-white/10 bg-[#07090b]/60 backdrop-blur-xl">
         <div className="mx-auto grid max-w-[1200px] gap-10 px-5 py-14 md:grid-cols-[1.3fr_1fr_1fr_1fr]">
           <div>
-            <div className="flex items-center gap-[9px]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={ASSETS.traceLogo} alt="" style={{ height: 20, width: 20 * TRACE_LOGO_AR }} />
-              <span className="text-[14.5px] font-semibold text-title">trace finance</span>
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/assets/site-trace-logo.svg" alt="Trace" className="h-[20px] w-auto" />
             <p className="mt-3 max-w-[260px] text-[12.5px] leading-relaxed text-subtitle">
               Payments and stablecoin infrastructure for Brazil and Latin America.
             </p>
