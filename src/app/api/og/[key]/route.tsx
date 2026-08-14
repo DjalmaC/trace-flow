@@ -36,6 +36,51 @@ function nameFontSize(name: string): number {
   return 36;
 }
 
+// Intrinsic pixel size of a stored logo (PNG / JPEG / SVG data URIs — what
+// LogoDrop and logo-fetch produce), so the logo's slot can match its true
+// aspect ratio: wide wordmarks fill the width, square marks stay square, and
+// the white plate hugs the logo instead of letterboxing it. Unknown formats
+// return null and fall back to a generic contain box.
+function imageDims(url: string): { w: number; h: number } | null {
+  const m = url.match(/^data:image\/([a-z0-9+.-]+);base64,(.+)$/i);
+  if (!m) return null;
+  try {
+    const kind = m[1].toLowerCase();
+    const buf = Buffer.from(m[2], "base64");
+    if (kind === "png" && buf.length > 24) return { w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) };
+    if (kind === "jpeg" || kind === "jpg") {
+      let i = 2;
+      while (i + 9 < buf.length) {
+        if (buf[i] !== 0xff) break;
+        const marker = buf[i + 1];
+        if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc)
+          return { h: buf.readUInt16BE(i + 5), w: buf.readUInt16BE(i + 7) };
+        i += 2 + buf.readUInt16BE(i + 2);
+      }
+      return null;
+    }
+    if (kind === "svg+xml") {
+      const svg = buf.toString("utf8");
+      const vb = svg.match(/viewBox\s*=\s*["']\s*[\d.-]+[\s,]+[\d.-]+[\s,]+([\d.]+)[\s,]+([\d.]+)/i);
+      if (vb) return { w: parseFloat(vb[1]), h: parseFloat(vb[2]) };
+      const wm = svg.match(/\bwidth\s*=\s*["']([\d.]+)/i);
+      const hm = svg.match(/\bheight\s*=\s*["']([\d.]+)/i);
+      if (wm && hm) return { w: parseFloat(wm[1]), h: parseFloat(hm[1]) };
+    }
+  } catch {
+    /* fall through */
+  }
+  return null;
+}
+
+// Scale intrinsic dims to fit a max box, never upscaling past 2.5× (a tiny
+// favicon-sized logo blown up to 700px would only showcase its pixels).
+function fitBox(dims: { w: number; h: number } | null, maxW: number, maxH: number): { w: number; h: number } {
+  if (!dims || dims.w <= 0 || dims.h <= 0) return { w: maxW, h: maxH };
+  const scale = Math.min(maxW / dims.w, maxH / dims.h, 2.5);
+  return { w: Math.round(dims.w * scale), h: Math.round(dims.h * scale) };
+}
+
 export async function GET(req: Request, ctx: { params: Promise<{ key: string }> }) {
   const { key } = await ctx.params;
 
@@ -108,15 +153,16 @@ export async function GET(req: Request, ctx: { params: Promise<{ key: string }> 
         {hasClient && (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 760, height: 190 }}>
             {logoUrl && logoPlate === "light" ? (
-              // dark-on-light logo: the same white plate the deck uses
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", background: "#ffffff", borderRadius: 20, padding: "26px 46px", maxWidth: 700, maxHeight: 190 }}>
+              // dark-on-light logo: the same white plate the deck uses,
+              // hugging the logo's true aspect ratio
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", background: "#ffffff", borderRadius: 20, padding: "24px 40px" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={logoUrl} width={560} height={118} style={{ objectFit: "contain" }} alt="" />
+                <img src={logoUrl} {...fitBox(imageDims(logoUrl), 540, 116)} style={{ objectFit: "contain" }} alt="" />
               </div>
             ) : logoUrl ? (
               // treated (white / transparent) logo straight on the silk
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={logoUrl} width={700} height={180} style={{ objectFit: "contain" }} alt="" />
+              <img src={logoUrl} {...fitBox(imageDims(logoUrl), 680, 180)} style={{ objectFit: "contain" }} alt="" />
             ) : (
               <div style={{ display: "flex", fontSize: nameFontSize(clientName!), fontWeight: 700, color: "#eef1ee", letterSpacing: "-0.01em", textAlign: "center" }}>
                 {clientName}
@@ -140,17 +186,28 @@ export async function GET(req: Request, ctx: { params: Promise<{ key: string }> 
     </div>
   );
 
-  return new ImageResponse(card, {
+  const png = new ImageResponse(card, {
     width: W,
     height: H,
     fonts: [
       { name: "Inter", data: inter600, weight: 600, style: "normal" },
       { name: "Inter", data: inter700, weight: 700, style: "normal" },
     ],
-    headers: {
-      // WhatsApp/Slack cache previews on their side anyway; let our CDN keep
-      // it for a day and serve stale while re-rendering.
-      "cache-control": "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800",
-    },
   });
+
+  // WhatsApp is picky about preview weight (~300KB guidance); the satori PNG
+  // of the silk backdrop runs 350-470KB, so recompress to JPEG (~10× smaller,
+  // and the card is opaque anyway). If sharp ever fails, ship the PNG.
+  const cache = "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800";
+  try {
+    const { default: sharp } = await import("sharp");
+    const jpeg = await sharp(Buffer.from(await png.arrayBuffer())).jpeg({ quality: 86, mozjpeg: true }).toBuffer();
+    return new Response(new Uint8Array(jpeg), {
+      headers: { "content-type": "image/jpeg", "cache-control": cache },
+    });
+  } catch {
+    return new Response(await png.arrayBuffer(), {
+      headers: { "content-type": "image/png", "cache-control": cache },
+    });
+  }
 }

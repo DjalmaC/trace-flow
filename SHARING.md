@@ -85,3 +85,14 @@ gracefully.
   logos render on the shared view without a separate storage bucket.
 - Every URL from a stored row that becomes an `href`/`src` on the public `/f/`
   page is scheme-checked (data:/https:/same-origin only) before rendering.
+
+## Link previews (WhatsApp / iMessage / Slack)
+
+Every share link ships an `og:image` card rendered live at `/api/og/<key>`
+(code or slug): the site's silk-dark backdrop with the Trace wordmark, an ×
+divider, and the client's logo — contain-fit to its true aspect ratio (white
+plate when the logo is plate-"light", client name in Inter when the row has no
+logo, generic Trace card for unknown keys). Output is a ~30KB JPEG (satori PNG
+recompressed via sharp) to stay under WhatsApp's preview weight limits.
+Crawlers cache previews aggressively; to force a fresh card on an
+already-shared URL, append a query string (e.g. `?v=2`) when re-sending.
