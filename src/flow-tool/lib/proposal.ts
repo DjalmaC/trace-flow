@@ -8,7 +8,7 @@ import type {
   Stablecoin,
   TraceRep,
 } from "../data/schema";
-import { cardEqualsDeck, normalizePricing, pricingEqualsDeck, templatePricing } from "../data/schema";
+import { cardEqualsDeck, normalizePricing, pricingEqualsDeck, proposalPdfFilename, templatePricing } from "../data/schema";
 import { getFlow } from "../data";
 import { displayCurrency } from "../components/FlowSvg/Tokens";
 import { renderBrazilCardPagePng, renderPricingPagePng, renderProposalFlowPngs } from "./pptx";
@@ -680,10 +680,5 @@ function triggerDownload(bytes: Uint8Array, filename: string) {
 /** Build + download the proposal PDF. */
 export async function downloadProposalPdf(opts: ProposalBuildOpts): Promise<void> {
   const bytes = await buildProposalPdf(opts);
-  triggerDownload(
-    bytes,
-    opts.company.trim()
-      ? `Trace Finance - ${opts.company.trim()} - Proposal.pdf`
-      : "Trace Finance - Proposal.pdf",
-  );
+  triggerDownload(bytes, proposalPdfFilename(opts.company));
 }

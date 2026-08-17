@@ -7,7 +7,7 @@ import { NotesDrawer } from "@/components/NotesDrawer";
 import { ASSETS, C, TRACE_LOGO_AR } from "@/flow-tool/components/tokens";
 import { loadSharedFlowGated } from "@/flow-tool/lib/share";
 import { getRep } from "@/flow-tool/data/reps";
-import { clientFlowName, deckPricing, directionOptions, flatRowText, normalizePricing, tierText } from "@/flow-tool/data/schema";
+import { clientFlowName, deckPricing, directionOptions, flatRowText, normalizePricing, proposalPdfFilename, tierText } from "@/flow-tool/data/schema";
 import type { Direction, Flow, FlowConfig, PriceCard, ProposalPricing, ProposalType } from "@/flow-tool/data/schema";
 import { registerCustomFlows } from "@/flow-tool/data/custom-flows";
 import { getFlow } from "@/flow-tool/data";
@@ -158,17 +158,19 @@ export function SharedFlowView({ code }: { code: string }) {
   async function onProposal() {
     if (!config) return;
     if (config.proposalUrl) {
-      const href = resolveProposalHref(config.proposalUrl, code);
+      let href = resolveProposalHref(config.proposalUrl, code);
       if (!href) {
         setPdf("error");
         setTimeout(() => setPdf("idle"), 3000);
         return;
       }
+      const fname = proposalPdfFilename(config.clientName);
+      // The asset route's Content-Disposition filename would override the
+      // anchor's download attribute, so ask it to serve the client-facing name.
+      if (href.startsWith("/api/asset/")) href += `${href.includes("?") ? "&" : "?"}dl=${encodeURIComponent(fname)}`;
       const a = document.createElement("a");
       a.href = href;
-      a.download = config.clientName.trim()
-        ? `Trace Finance - ${config.clientName.trim()} - Proposal.pdf`
-        : "Trace Finance - Proposal.pdf";
+      a.download = fname;
       document.body.appendChild(a);
       a.click();
       a.remove();

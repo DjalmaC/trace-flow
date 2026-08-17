@@ -40,10 +40,16 @@ export async function GET(req: Request, ctx: { params: Promise<{ name: string }>
     return NextResponse.json({ error: "missing asset" }, { status: 404 });
   }
 
+  // Optional client-facing download name (`dl`) — the shared link passes
+  // "Trace Finance Funds Flow Proposal - <Client>.pdf" so the saved file never
+  // exposes the internal asset name. Sanitized: header-safe, no path play.
+  const dlRaw = new URL(req.url).searchParams.get("dl") ?? "";
+  const dl = dlRaw.replace(/[\r\n\\/":;]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 120);
+  const filename = dl || name;
   return new NextResponse(new Uint8Array(bytes), {
     headers: {
       "content-type": "application/pdf",
-      "content-disposition": `inline; filename="${name}"`,
+      "content-disposition": `inline; filename="${filename}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
       "cache-control": "private, no-store",
     },
   });

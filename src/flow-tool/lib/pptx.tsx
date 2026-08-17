@@ -5,7 +5,7 @@ import { HubStage } from "../components/HubStage";
 import { NettingStage } from "../components/NettingStage";
 import { ASSETS } from "../components/tokens";
 import { getFlow, defaultConfig } from "../data";
-import { tierText, flatRowText, settlementChoices, fundingChoices, clientFlowName } from "../data/schema";
+import { tierText, flatRowText, settlementChoices, fundingChoices, clientFlowName, proposalPdfFilename } from "../data/schema";
 import { displayCurrency } from "../components/FlowSvg/Tokens";
 import type { Flow, FlowConfig, PriceCard, ProposalPricing } from "../data/schema";
 
@@ -682,7 +682,7 @@ export async function downloadFlowDeckPdf(config: FlowConfig, variants?: Variant
     page.drawImage(png, { x: 0, y: 0, width: DW, height: DH });
   }
   const bytes = await pdf.save();
-  triggerDownload(bytes, `Trace Finance - ${config.clientName} - flows.pdf`, "application/pdf");
+  triggerDownload(bytes, proposalPdfFilename(config.clientName), "application/pdf");
 }
 
 /** Build a personalised deck (title slide + one slide per flow) and download it. */

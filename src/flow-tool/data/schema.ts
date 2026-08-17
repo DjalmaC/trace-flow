@@ -567,6 +567,14 @@ export function clientFlowName(name: string): string {
   return name.replace(/\s*·\s*tailored\s*$/i, "").trim();
 }
 
+/** The ONE filename every client-bound PDF downloads as, whichever path
+ *  produced it (curated upload, assembled proposal, live flow deck):
+ *  "Trace Finance Funds Flow Proposal - <Client>.pdf". */
+export function proposalPdfFilename(clientName?: string): string {
+  const name = clientName?.trim();
+  return name ? `Trace Finance Funds Flow Proposal - ${name}.pdf` : "Trace Finance Funds Flow Proposal.pdf";
+}
+
 /** The flow title the client sees: the per-proposal rename when one is set
  *  (config.flowTitles, double-click the mint line on the build canvas), else
  *  the flow definition's own title. */
