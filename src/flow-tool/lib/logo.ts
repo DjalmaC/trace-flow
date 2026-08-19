@@ -80,7 +80,11 @@ function borderStats(d: Uint8ClampedArray, w: number, h: number, ring = 2) {
 }
 
 /** Edge-connected flood fill: clear background that touches a border AND is
- *  within tolerance, with a feathered ramp. Returns kept-pixel count. */
+ *  within tolerance, with a feathered ramp. Enclosed pockets of the SAME
+ *  background colour — letter counters (the holes in O/P/A/e), donut holes —
+ *  are keyed too, at a tighter tolerance, so a wordmark's counters stay
+ *  see-through instead of being repainted into solid blobs by the recolor
+ *  pass. Returns kept-pixel count. */
 function floodCutout(d: Uint8ClampedArray, w: number, h: number, bg: [number, number, number], tol: number) {
   const TOL_NEAR = tol;
   const TOL_FAR = tol * 2.3;
@@ -105,12 +109,23 @@ function floodCutout(d: Uint8ClampedArray, w: number, h: number, bg: [number, nu
     pushIf(x - 1, y); pushIf(x + 1, y); pushIf(x, y - 1); pushIf(x, y + 1);
   }
   let kept = 0;
+  const TOL_HOLE = TOL_NEAR; // enclosed pockets: strict match only, no FAR band
+  const HOLE_SOLID = TOL_HOLE * 0.65; // fully clear below this; feather up to TOL_HOLE
   for (let p = 0; p < w * h; p++) {
     const i = p * 4;
     if (mask[p]) {
       const dd = d[i + 3] < 24 ? 0 : dist(i);
       const t = dd <= TOL_NEAR ? 0 : (dd - TOL_NEAR) / (TOL_FAR - TOL_NEAR);
       d[i + 3] = Math.round(d[i + 3] * Math.min(1, t));
+    } else if (d[i + 3] >= 24) {
+      // Not reachable from the border → inside the mark. If it still reads as
+      // the keyed background colour, it's a counter: clear it (feathered so
+      // the counter edge keeps the letter's anti-aliasing).
+      const dd = dist(i);
+      if (dd < TOL_HOLE) {
+        const t = dd <= HOLE_SOLID ? 0 : (dd - HOLE_SOLID) / (TOL_HOLE - HOLE_SOLID);
+        d[i + 3] = Math.round(d[i + 3] * t);
+      }
     }
     if (d[i + 3] > 16) kept++;
   }
