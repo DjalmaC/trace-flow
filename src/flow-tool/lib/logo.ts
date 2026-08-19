@@ -395,12 +395,22 @@ export async function removeBackground(src: string): Promise<string | null> {
         // clear the flooded background with a soft edge; track the kept bounds
         let kept = 0;
         let minX = w, minY = h, maxX = -1, maxY = -1;
+        const HOLE_SOLID = TOL_NEAR * 0.65;
         for (let p = 0; p < w * h; p++) {
           const i = p * 4;
           if (mask[p]) {
             const dd = d[i + 3] < 24 ? 0 : dist(i);
             const t = dd <= TOL_NEAR ? 0 : (dd - TOL_NEAR) / (TOL_FAR - TOL_NEAR);
             d[i + 3] = Math.round(d[i + 3] * Math.min(1, t));
+          } else if (d[i + 3] >= 24) {
+            // Enclosed background the border flood can't reach — letter
+            // counters (the O/P/A holes). Key them at the strict tolerance
+            // only, feathered, same as floodCutout above.
+            const dd = dist(i);
+            if (dd < TOL_NEAR) {
+              const t = dd <= HOLE_SOLID ? 0 : (dd - HOLE_SOLID) / (TOL_NEAR - HOLE_SOLID);
+              d[i + 3] = Math.round(d[i + 3] * t);
+            }
           }
           if (d[i + 3] > 16) {
             kept++;
