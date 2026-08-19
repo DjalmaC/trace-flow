@@ -113,13 +113,20 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
   // The beneficiary box can be branded as a client entity too (a second logo) —
   // e.g. a "Client -> Client" desired transaction with the logo both ends.
   const brandedB = !suppressClient && !!ovb(config.nodeBranded, flow.headline.partyB) && !!config.clientLogoUrl;
-  // ...or carry the COUNTERPARTY's logo ("Client ⇄ Trace ⇄ Merchant", both
-  // logos). A partner logo shows here by default the moment it's uploaded;
-  // an explicit client branding of this box wins.
-  const partnerB = !brandedB && !!config.partnerLogoUrl;
+  // The ORIGINATING station can carry the counterparty's logo instead — flag
+  // its box ("Show counterparty logo") for flows that open on the merchant's
+  // side ("Merchant → Trace → Client"). Explicit only, and it wins over the
+  // client mark on that station, same as on the machinery canvas.
+  const partnerA = !!config.partnerLogoUrl && !!ovb(config.nodePartner, flow.headline.partyA);
+  // ...or the BENEFICIARY station carries it ("Client ⇄ Trace ⇄ Merchant",
+  // both logos). A partner logo shows here by default the moment it's
+  // uploaded — unless the originating station claimed it (then only an
+  // explicit flag keeps it on both ends). Explicit client branding wins.
+  const partnerB = !brandedB && !!config.partnerLogoUrl && (!partnerA || !!ovb(config.nodePartner, flow.headline.partyB));
   const merchantName = sentenceCase(labelB);
   // the beneficiary isn't always abroad (the Foreigner-to-BR flow settles in Brazil)
   const merchantWhere = partyB?.lane === "brazil" ? "in Brazil" : "abroad";
+  const clientWhere = partyA?.lane === "brazil" ? "in Brazil" : "abroad";
 
   useEffect(() => {
     const a = aRef.current, b = bRef.current, hub = hubRef.current, pulse = pulseRef.current;
@@ -258,7 +265,24 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
           data-hero-node + pointer-events lets the build page double-click it. */}
       <g data-hero-node={flow.headline.partyA} style={{ pointerEvents: "auto" }}>
       <ElevatedNode x={196} w={300} green>
-        {heroClientLogo ? (
+        {partnerA ? (
+          config.partnerLogoPlate === "light" ? (
+            <>
+              <rect x={206} y={407} width={280} height={100} rx={16} fill="#ffffff" />
+              <image href={config.partnerLogoUrl} x={236} y={429} width={220} height={44} preserveAspectRatio="xMidYMid meet" />
+              <text x={346} y={498} textAnchor="middle" fontSize={11} fontWeight={400} fill="#5c6b65">
+                {clientSub} · {clientWhere}
+              </text>
+            </>
+          ) : (
+            <>
+              <image href={config.partnerLogoUrl} x={236} y={421} width={220} height={52} preserveAspectRatio="xMidYMid meet" />
+              <text x={346} y={498} textAnchor="middle" fontSize={11} fontWeight={400} fill="#6f857b">
+                {clientSub} · {clientWhere}
+              </text>
+            </>
+          )
+        ) : heroClientLogo ? (
           config.clientLogoPlate === "light" ? (
             <>
               {/* card + logo centered on the node (cx 346, cy 457), with

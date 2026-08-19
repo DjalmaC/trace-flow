@@ -28,11 +28,18 @@ export function MobileFlow({ flow, config }: { flow: Flow; config: FlowConfig })
   const semanticDown = config.direction === "collection";
   const travelDown = config.direction === "collection";
   const nodes = layout.nodes; // authored order (abroad/top -> Brazil/bottom)
+  // "Show counterparty logo" on a HERO station is stored under the __hero__
+  // key; this stack renders machinery nodes, so translate those flags onto the
+  // matching card. Explicit flags win over client branding, like the canvas.
+  const heroPartner = (id: string) =>
+    !!config.partnerLogoUrl && !!(config.nodePartner?.[`${flow.id}:__hero__:${id}`] ?? config.nodePartner?.[`${flow.id}:${id}`]);
+  const partnerForceIds = new Set([flow.headline.partyA, flow.headline.partyB].filter(heroPartner));
   // The desktop hero's beneficiary station carries the counterparty logo by
   // default the moment one is uploaded ("Client ⇄ Trace ⇄ Merchant", both
-  // marks). This stack replaces the hero on phones, so the same station
-  // inherits that default here.
-  const partnerDefaultId = config.partnerLogoUrl ? flow.headline.partyB : undefined;
+  // marks) — unless the originating station explicitly claimed the mark.
+  // This stack replaces the hero on phones, so the same rules apply here.
+  const partnerDefaultId =
+    config.partnerLogoUrl && !heroPartner(flow.headline.partyA) ? flow.headline.partyB : undefined;
 
   // Group by topological column: parallel origins (two payers into the same
   // account) sit side-by-side in one row instead of reading as a sequence.
@@ -233,12 +240,12 @@ export function MobileFlow({ flow, config }: { flow: Flow; config: FlowConfig })
             transition={{ duration: 0.5, delay: gi * 0.08, ease: [0.4, 0, 0.2, 1] }}
           >
             {g.length === 1 ? (
-              <BankedCard node={g[0]} primary={g[0].id === layout.primaryClientId} config={cardConfig} laneOverrides={laneOverrides} partnerDefault={(g[0].srcId ?? g[0].id) === partnerDefaultId} />
+              <BankedCard node={g[0]} primary={g[0].id === layout.primaryClientId} config={cardConfig} laneOverrides={laneOverrides} partnerDefault={(g[0].srcId ?? g[0].id) === partnerDefaultId} partnerForce={partnerForceIds.has(g[0].srcId ?? g[0].id)} />
             ) : (
               // parallel origins: side-by-side, both feeding the row below
               <div className="grid grid-cols-2 gap-2">
                 {g.map((n) => (
-                  <BankedCard key={n.id} node={n} primary={n.id === layout.primaryClientId} config={cardConfig} laneOverrides={laneOverrides} partnerDefault={(n.srcId ?? n.id) === partnerDefaultId} />
+                  <BankedCard key={n.id} node={n} primary={n.id === layout.primaryClientId} config={cardConfig} laneOverrides={laneOverrides} partnerDefault={(n.srcId ?? n.id) === partnerDefaultId} partnerForce={partnerForceIds.has(n.srcId ?? n.id)} />
                 ))}
               </div>
             )}
@@ -268,8 +275,8 @@ export function MobileFlow({ flow, config }: { flow: Flow; config: FlowConfig })
 // counterpart of the canvas's dotted perimeter. The card keeps its own label
 // (the account holder) while the enclosure carries the bank's name and
 // optional logo above it, reading top-down as "[Bank] ( account holder )".
-function BankedCard({ node, primary, config, laneOverrides, partnerDefault }: { node: NodeLayout; primary: boolean; config: FlowConfig; laneOverrides?: Record<string, string | undefined>; partnerDefault?: boolean }) {
-  const card = <NodeCard node={node} primary={primary} config={config} laneOverrides={laneOverrides} partnerDefault={partnerDefault} />;
+function BankedCard({ node, primary, config, laneOverrides, partnerDefault, partnerForce }: { node: NodeLayout; primary: boolean; config: FlowConfig; laneOverrides?: Record<string, string | undefined>; partnerDefault?: boolean; partnerForce?: boolean }) {
+  const card = <NodeCard node={node} primary={primary} config={config} laneOverrides={laneOverrides} partnerDefault={partnerDefault} partnerForce={partnerForce} />;
   const bank = node.kind === "engine" ? undefined : config.nodeBank?.[`${config.flowId}:${node.srcId ?? node.id}`];
   if (!bank || (!bank.label?.trim() && !bank.logoUrl)) return card;
   const label = bank.label?.trim() ?? "";
@@ -302,15 +309,16 @@ function BankedCard({ node, primary, config, laneOverrides, partnerDefault }: { 
   );
 }
 
-function NodeCard({ node, primary, config, laneOverrides, partnerDefault }: { node: NodeLayout; primary: boolean; config: FlowConfig; laneOverrides?: Record<string, string | undefined>; partnerDefault?: boolean }) {
+function NodeCard({ node, primary, config, laneOverrides, partnerDefault, partnerForce }: { node: NodeLayout; primary: boolean; config: FlowConfig; laneOverrides?: Record<string, string | undefined>; partnerDefault?: boolean; partnerForce?: boolean }) {
   const lane = laneOverrides?.[node.lane] ?? (node.lane === "brazil" ? "Brasil" : "Abroad");
   // The primary client and any branded-client node (e.g. the client's own
   // in-country entity) carry the uploaded client logo.
   const hasLogo = (primary || node.brandedClient) && !!config.clientLogoUrl;
-  // Counterparty mark: an explicit nodePartner flag is the more specific
+  // Counterparty mark: an explicit nodePartner flag (on the machinery box —
+  // node.partnerLogo — or a hero station, partnerForce) is the more specific
   // instruction and wins over client branding; the hero's beneficiary carries
   // it by default (partnerDefault) unless the box is client-branded.
-  const hasPartnerLogo = !!config.partnerLogoUrl && (node.partnerLogo || (partnerDefault && !hasLogo));
+  const hasPartnerLogo = !!config.partnerLogoUrl && (node.partnerLogo || partnerForce || (partnerDefault && !hasLogo));
   // The third in-box brand mark (FlowConfig.bankLogoUrl + nodeBankLogo flag) —
   // distinct from the nodeBank dotted enclosure. Ordered like FlowNodeShape:
   // partner, then bank, then client.
