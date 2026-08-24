@@ -694,7 +694,7 @@ function GateScreen({ wrong, onSubmit }: { wrong: boolean; onSubmit: (pw: string
         >
           {busy ? "Checking…" : "View proposal"}
         </button>
-        <p className="mt-3.5 text-[11px] text-[#4a5651]">Link expires 30 days after sending.</p>
+        <p className="mt-3.5 text-[11px] text-[#4a5651]">Link expires 60 days after sending.</p>
       </form>
       </GlassPanel>
     </div>

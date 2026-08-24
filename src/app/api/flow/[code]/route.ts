@@ -7,7 +7,7 @@ import { hasRepKey } from "@/flow-tool/lib/api-auth";
 // stored config, addressed by its unguessable share code.
 //
 // Design handoff 2c adds a gate and 1b adds analytics:
-//  • 30-day expiry — links older than 30 days return 410;
+//  • 60-day expiry — links older than 60 days return 410;
 //    (the former password gate is retired — links are open to anyone holding
 //    the unguessable code; stored gatePassword values are ignored/stripped)
 //  • view logging — successful client opens (not rep opens) record a row in
@@ -15,7 +15,7 @@ import { hasRepKey } from "@/flow-tool/lib/api-auth";
 //    Vercel's request headers. Logging must never break the read path.
 export const dynamic = "force-dynamic";
 
-const EXPIRY_DAYS = 30;
+const EXPIRY_DAYS = 60;
 
 export async function GET(req: Request, ctx: { params: Promise<{ code: string }> }) {
   const { code } = await ctx.params;
@@ -32,7 +32,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ code: string }>
   const isRep = hasRepKey(req);
   const config = (data.config ?? {}) as Record<string, unknown>;
 
-  // 30-day expiry (rep access bypasses so the dashboard can still open/manage)
+  // 60-day expiry (rep access bypasses so the dashboard can still open/manage)
   if (!isRep && data.created_at) {
     const age = Date.now() - new Date(data.created_at).getTime();
     if (age > EXPIRY_DAYS * 24 * 60 * 60 * 1000) {
