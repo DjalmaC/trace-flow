@@ -204,7 +204,10 @@ export function FlowLibrary({
         initial={{ y: 12, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: D(0.26), ease: EASE, delay: D(0.05) }}
-        className="flex min-h-0 flex-1 flex-col"
+        // relative, like the strip above: SilkBackdrop is a fixed z-0 layer, so
+        // unpositioned content paints UNDER it once the entry animation's
+        // transform/opacity stacking context resolves.
+        className="relative z-10 flex min-h-0 flex-1 flex-col"
       >
       {/* header */}
       <div className="flex flex-wrap items-center gap-3 border-b border-hairline-row px-6 py-4">
