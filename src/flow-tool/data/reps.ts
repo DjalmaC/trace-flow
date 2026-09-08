@@ -44,6 +44,14 @@ export const TRACE_REPS: TraceRep[] = [
     email: "bmello@trace.finance",
     slidePage: 3,
   },
+  {
+    // No slidePage yet — proposals use the stamped fallback closing slide.
+    // When his slide lands in private-assets/sales-slides.pdf, add its index.
+    id: "gregorio-rheingantz",
+    name: "Gregorio Rheingantz",
+    title: "Business Development Manager",
+    email: "grheingantz@trace.finance",
+  },
 ];
 
 export function getRep(id: string | undefined): TraceRep | undefined {
