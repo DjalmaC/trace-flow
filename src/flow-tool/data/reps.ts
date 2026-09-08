@@ -49,7 +49,7 @@ export const TRACE_REPS: TraceRep[] = [
     // When his slide lands in private-assets/sales-slides.pdf, add its index.
     id: "gregorio-rheingantz",
     name: "Gregorio Rheingantz",
-    title: "Business Development Manager",
+    title: "Senior Sales Manager",
     email: "grheingantz@trace.finance",
   },
 ];
