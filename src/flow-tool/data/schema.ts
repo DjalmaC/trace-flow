@@ -12,7 +12,9 @@
 // "USD" / "EUR" via FlowConfig.delivered.
 // "USD/USDT" is a combined cash-or-stablecoin token used by the Foreigner-to-BR
 // flow (foreign value funded as USD or USDT); it renders as a labelled pill.
-export type Currency = "BRL" | "USD" | "EUR" | "USD/EUR" | "USDC/USDT" | "USD/USDT";
+// "BRLT" is Trace's BRL-pegged token — offered as a settlement/funding option;
+// it renders as its coin mark (like the stablecoins), not a text pill.
+export type Currency = "BRL" | "USD" | "EUR" | "USD/EUR" | "USDC/USDT" | "USD/USDT" | "BRLT";
 export type Stablecoin = "USDC" | "USDT" | "both";
 export type Lane = "brazil" | "abroad";
 export type NodeKind = "client" | "trace" | "operational" | "merchant";

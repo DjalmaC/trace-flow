@@ -439,11 +439,12 @@ export async function renderPricingPagePng(
 async function renderDeckPng(node: React.ReactElement, scale = SCALE): Promise<string> {
   const { renderToStaticMarkup } = await import("react-dom/server");
   let markup = renderToStaticMarkup(node);
-  const [trace, lockup, usdc, usdt, deckBg, style] = await Promise.all([
+  const [trace, lockup, usdc, usdt, brlt, deckBg, style] = await Promise.all([
     dataUri(ASSETS.traceLogo),
     dataUri(ASSETS.traceLockupMark),
     dataUri(ASSETS.usdc),
     dataUri(ASSETS.usdt),
+    dataUri(ASSETS.brlt),
     dataUri(ASSETS.deckBg),
     interStyle(),
   ]);
@@ -452,6 +453,7 @@ async function renderDeckPng(node: React.ReactElement, scale = SCALE): Promise<s
     .split(ASSETS.traceLogo).join(trace)
     .split(ASSETS.usdc).join(usdc)
     .split(ASSETS.usdt).join(usdt)
+    .split(ASSETS.brlt).join(brlt)
     .split(ASSETS.deckBg).join(deckBg)
     .replace(/(<svg[^>]*>)/, `$1${style}`);
   return rasterize(markup, DW, DH);

@@ -474,8 +474,8 @@ function VArrow({ direction, accent }: { direction: FlowConfig["direction"]; acc
 // The travelling money: a bright accent pill (or the stablecoin) that reads as
 // the value in motion, distinct from the dim static leg labels.
 function CoinChip({ currency, config, accent }: { currency: Currency; config: FlowConfig; accent: string }) {
-  if (currency === "USDC/USDT") {
-    const coin = config.stablecoin === "USDC" ? ASSETS.usdc : ASSETS.usdt;
+  if (currency === "USDC/USDT" || currency === "BRLT") {
+    const coin = currency === "BRLT" ? ASSETS.brlt : config.stablecoin === "USDC" ? ASSETS.usdc : ASSETS.usdt;
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img src={coin} alt="" className="h-5 w-5 rounded-full" style={{ boxShadow: `0 0 14px 2px ${accent}` }} />
@@ -492,6 +492,12 @@ function CoinChip({ currency, config, accent }: { currency: Currency; config: Fl
 }
 
 function CurChip({ currency, config }: { currency: Currency; config: FlowConfig }) {
+  if (currency === "BRLT") {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={ASSETS.brlt} alt="BRLT" className="h-4 w-4" />
+    );
+  }
   if (currency === "USDC/USDT") {
     const coin = config.stablecoin;
     return (

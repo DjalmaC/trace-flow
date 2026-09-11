@@ -52,7 +52,7 @@ const P = {
   danger: "#b4544a",
 };
 
-const CURRENCIES: Currency[] = ["BRL", "USD", "EUR", "USD/EUR", "USDC/USDT", "USD/USDT"];
+const CURRENCIES: Currency[] = ["BRL", "USD", "EUR", "USD/EUR", "USDC/USDT", "USD/USDT", "BRLT"];
 
 /** Free-text currency chip: any code (MXN, COP, GBP...) becomes a first-class
  *  currency — the deck renders unknown codes as labelled pills everywhere, so

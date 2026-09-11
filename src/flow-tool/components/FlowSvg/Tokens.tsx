@@ -19,6 +19,7 @@ export function displayCurrency(c: Currency, config: FlowConfig): Currency {
 /** Pixel width of a token, for centering / capsule sizing. */
 export function tokenWidth(c: Currency, coin: Stablecoin = "both"): number {
   if (c === "USDC/USDT") return coin === "both" ? 38 : 22;
+  if (c === "BRLT") return 22;
   return Math.max(38, c.length * 7 + 16);
 }
 
@@ -60,7 +61,11 @@ function Coins({ coin }: { coin: Stablecoin }) {
 /** A single currency token (pill or coin), centered at origin. `accent` lifts a
  *  pill to the brighter direction-tinted "moving value" style. */
 export function CurrencyToken({ currency, coin = "both", accent }: { currency: Currency; coin?: Stablecoin; accent?: string }) {
-  return currency === "USDC/USDT" ? <Coins coin={coin} /> : <Pill text={currency} accent={accent} />;
+  if (currency === "USDC/USDT") return <Coins coin={coin} />;
+  // drawn 2px over the nominal slot: the coin art's tilted face otherwise
+  // reads optically smaller than the flat USDC/USDT marks
+  if (currency === "BRLT") return <image href={ASSETS.brlt} x={-12} y={-12} width={24} height={24} />;
+  return <Pill text={currency} accent={accent} />;
 }
 
 /** A conversion capsule: leftToken ⇄ rightToken, centered at origin. */

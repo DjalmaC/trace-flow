@@ -81,6 +81,7 @@ export const ASSETS = {
   traceLockupMark: "/assets/trace_lockup_mark.png",
   usdc: "/assets/usdc.png",
   usdt: "/assets/usdt.png",
+  brlt: "/assets/brlt.png",
 } as const;
 
 export const TRACE_LOGO_AR = 1.576; // width / height of the extracted mark
