@@ -89,6 +89,8 @@ export interface ProposalBuildOpts {
   flows: { flowId: string; name: string }[];
   direction?: Direction;
   stablecoin?: Stablecoin;
+  /** Offer BRLT on the BRL side (FlowConfig.brlt) — the flow pages note it. */
+  brlt?: boolean;
   collected?: Currency;
   delivered?: Currency;
   /** Trace salesperson — fills (or, via slidePage, replaces) the contact slide. */
@@ -593,6 +595,7 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
     delivered: opts.delivered ?? "USD/EUR",
     direction: opts.direction ?? "collection",
     stablecoin: opts.stablecoin ?? "both",
+    brlt: opts.brlt,
     partnerLogoUrl: opts.partnerLogoUrl,
     partnerLogoPlate: opts.partnerLogoPlate,
     nodePartner: opts.nodePartner,

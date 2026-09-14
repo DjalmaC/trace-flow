@@ -244,6 +244,7 @@ export function Dashboard({ rep, onSwitch }: { rep: TraceRep; onSwitch: () => vo
         brandColor: cfg.brandColor as string | undefined,
         direction: cfg.direction as never,
         stablecoin: cfg.stablecoin as never,
+        brlt: cfg.brlt as boolean | undefined,
         collected: cfg.collected as never,
         delivered: cfg.delivered as never,
         rep: getRep(cfg.traceRepId as string | undefined),

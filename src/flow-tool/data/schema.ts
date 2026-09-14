@@ -537,6 +537,12 @@ export interface FlowConfig {
    *  selects `collection` for that flow — the token flow and lanes are
    *  unchanged, only which scenario each label names. */
   swapDirections?: Record<string, boolean>;
+  /** Offer BRLT (Trace's BRL token) as a settlement/funding option on the
+   *  flow's BRL side. Library flows get a BRL | BRLT toggle injected at render
+   *  time (withBrltOption); tailored flows that already declare their own
+   *  options are left alone. Unset on links shared before this existed, so
+   *  those keep rendering exactly as they did. */
+  brlt?: boolean;
 }
 
 export interface PlatformFraming {
@@ -735,6 +741,34 @@ export function applySettlement(flow: Flow, i: number, f = 0, coin: Stablecoin =
     ? flow.nodes.map((n) => (relabels[n.id]?.trim() ? { ...n, label: relabels[n.id].trim() } : n))
     : flow.nodes;
   return { ...flow, legs, nodes, headline };
+}
+
+/** The flow with BRLT offered on its BRL side, as a pure flow→flow transform
+ *  (so layout and every renderer stay untouched — same idea as applySettlement).
+ *  BRL delivered by a conversion (Foreigner-to-BR: USD → BRL) becomes a
+ *  settlement option; BRL carried INTO a conversion (the Brazil-origin flows)
+ *  becomes a funding option — which the deck captions "Starts in" on Pay-in
+ *  and "Settle in" on Pay-out, so the client sees BRLT as a way to settle
+ *  either way. Flows that already declare options, or already move BRLT,
+ *  are returned unchanged. */
+export function withBrltOption(flow: Flow): Flow {
+  const mentions = (o?: SettlementOption[]) => !!o?.some((x) => x.out === "BRLT" || x.label?.trim().toUpperCase() === "BRLT");
+  if (flow.legs.some((l) => l.carries === "BRLT" || l.convertsTo === "BRLT" || mentions(l.settlements) || mentions(l.funding))) return flow;
+  const hasSettle = flow.legs.some((l) => l.convertsTo && l.settlements?.length);
+  const hasFund = flow.legs.some((l) => l.funding?.length);
+  const brlt: SettlementOption = { out: "BRLT" };
+  // BRL arrives out of a conversion → offer BRLT as the delivered currency
+  const deliverIdx = flow.legs.findIndex((l) => l.convertsTo === "BRL");
+  if (deliverIdx >= 0 && !hasSettle) {
+    return { ...flow, legs: flow.legs.map((l, i) => (i === deliverIdx ? { ...l, settlements: [brlt] } : l)) };
+  }
+  // BRL is carried (into a conversion, or across a netting desk) → offer BRLT
+  // as the carried currency of that whole BRL segment
+  if (hasFund) return flow;
+  let carryIdx = flow.legs.findIndex((l) => l.carries === "BRL" && l.convertsTo);
+  if (carryIdx < 0) carryIdx = flow.legs.findIndex((l) => l.carries === "BRL");
+  if (carryIdx < 0) return flow;
+  return { ...flow, legs: flow.legs.map((l, i) => (i === carryIdx ? { ...l, funding: [brlt] } : l)) };
 }
 
 // ── Computed-field rules (spec §2.1), kept here so they're auditable ──────────

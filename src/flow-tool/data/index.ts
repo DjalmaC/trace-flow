@@ -1,4 +1,5 @@
 import type { Flow, FlowConfig } from "./schema";
+import { withBrltOption } from "./schema";
 import { getCustomFlow } from "./custom-flows";
 import { flow01 } from "./flows/flow-01";
 import { flow02 } from "./flows/flow-02";
@@ -48,6 +49,15 @@ export function getFlow(id: string): Flow | undefined {
   return FLOW_BY_ID[id] ?? getCustomFlow(id);
 }
 
+/** The flow a proposal renders: the library/tailored flow, with BRLT offered
+ *  on its BRL side when the proposal opts in (FlowConfig.brlt). Use this
+ *  wherever a flow is rendered FOR a config (deck, exports); getFlow() alone
+ *  is the raw definition. */
+export function flowFor(config: Pick<FlowConfig, "flowId" | "brlt">): Flow | undefined {
+  const flow = getFlow(config.flowId);
+  return flow && config.brlt ? withBrltOption(flow) : flow;
+}
+
 /** Default config for a flow — used by the manual picker and as intake prefill. */
 export function defaultConfig(flowId: string, clientName = "Your Client"): FlowConfig {
   const flow = FLOW_BY_ID[flowId] ?? flow01;
@@ -58,5 +68,6 @@ export function defaultConfig(flowId: string, clientName = "Your Client"): FlowC
     delivered: "USD",
     direction: "collection",
     stablecoin: "USDT",
+    brlt: true,
   };
 }

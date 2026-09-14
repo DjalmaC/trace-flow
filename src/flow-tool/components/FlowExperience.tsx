@@ -24,7 +24,7 @@ export function useIsMobile() {
 }
 import type { FlowConfig, SettlementOption } from "../data/schema";
 import { applySettlement, directionLabel, directionOptions, displayFlowTitle, fundingChoices, isPlatformFlow, settlementChoices } from "../data/schema";
-import { getFlow } from "../data";
+import { flowFor } from "../data";
 import { computeLayout, CONT_Y, CONT_H } from "./layout";
 import { Defs, displayCurrency } from "./FlowSvg";
 import { HeroFlow } from "./HeroFlow";
@@ -83,7 +83,10 @@ export function FlowExperience({
   panelSlots?: { controls?: React.ReactNode; rail?: React.ReactNode; railPosition?: "beside" | "below"; closing?: React.ReactNode };
 }) {
   const glass = skin === "glass";
-  const baseFlow = getFlow(config.flowId);
+  // the flow this proposal renders: library/tailored definition, with the
+  // BRL | BRLT option injected when the proposal offers BRLT
+  const { flowId: baseFlowId, brlt: offerBrlt } = config;
+  const baseFlow = useMemo(() => flowFor({ flowId: baseFlowId, brlt: offerBrlt }), [baseFlowId, offerBrlt]);
 
   // ── settlement toggle: one rail, more than one settlement ────────────────
   // A flow can offer settlement options (Leg.settlements). The active option

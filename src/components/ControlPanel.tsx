@@ -15,6 +15,7 @@ import { clientFlowName, directionOptions } from "@/flow-tool/data/schema";
 import { deleteTailoredFlow, listTailoredFlows } from "@/flow-tool/data/custom-flows";
 import { NewTailoredFlowModal, TailoredFlowEditor } from "@/components/TailoredFlowEditor";
 import { LogoDrop } from "@/components/LogoDrop";
+import { ASSETS } from "@/flow-tool/components/tokens";
 import { TRACE_REPS, getRep } from "@/flow-tool/data/reps";
 import type { IntakeAnswers } from "@/flow-tool/intake/questions";
 import { resolve } from "@/flow-tool/intake/resolver";
@@ -321,6 +322,7 @@ export function ControlPanel({
         flows: proposalFlowList(),
         direction: config.direction,
         stablecoin: config.stablecoin,
+        brlt: config.brlt,
         collected: config.collected,
         delivered: config.delivered,
         rep: getRep(traceRepId),
@@ -916,6 +918,32 @@ export function ControlPanel({
                       </button>
                     </div>
                   )}
+                </Field>
+
+                <Field label="BRLT">
+                  <div className="flex items-center justify-between rounded-[9px] border border-hairline-control bg-surface-input px-3 py-2">
+                    <span className="flex items-center gap-2 text-[11px] text-muted">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={ASSETS.brlt} alt="" className="h-4 w-4" />
+                      Offer BRLT as a settlement option
+                    </span>
+                    <button
+                      role="switch"
+                      aria-checked={!!config.brlt}
+                      aria-label="Offer BRLT as a settlement option"
+                      onClick={() => patch({ brlt: config.brlt ? undefined : true })}
+                      className="relative h-[18px] w-[32px] shrink-0 rounded-full transition duration-150 ease-ds"
+                      style={{ background: config.brlt ? "#00f2b1" : "#2a332e" }}
+                    >
+                      <span
+                        className="absolute top-[2px] h-[14px] w-[14px] rounded-full bg-white transition-all duration-150 ease-ds"
+                        style={{ left: config.brlt ? 16 : 2 }}
+                      />
+                    </button>
+                  </div>
+                  <p className="mt-1.5 px-1 text-[10.5px] leading-snug text-muted/80">
+                    Adds a BRL | BRLT switch to the flow, so the client sees BRLT as a way to fund or settle the Brazil side.
+                  </p>
                 </Field>
 
                 {usesStablecoin(config.flowId) && (

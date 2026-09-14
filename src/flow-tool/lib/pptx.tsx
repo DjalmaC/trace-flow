@@ -4,7 +4,7 @@ import { MachineryStage } from "../components/MachineryStage";
 import { HubStage } from "../components/HubStage";
 import { NettingStage } from "../components/NettingStage";
 import { ASSETS } from "../components/tokens";
-import { getFlow, defaultConfig } from "../data";
+import { getFlow, flowFor, defaultConfig } from "../data";
 import { tierText, flatRowText, settlementChoices, fundingChoices, clientFlowName, proposalPdfFilename } from "../data/schema";
 import { displayCurrency } from "../components/FlowSvg/Tokens";
 import type { Flow, FlowConfig, PriceCard, ProposalPricing } from "../data/schema";
@@ -474,7 +474,7 @@ export async function renderProposalFlowPngs(
   for (let i = 0; i < valid.length; i++) {
     const it = valid[i];
     const flowConfig = { ...config, flowId: it.flowId };
-    const flow = getFlow(it.flowId)!;
+    const flow = flowFor({ ...config, flowId: it.flowId })!;
     const support = supportFor(config, flow);
     const label = deckFlowLabel(i, valid.length, config.flowsLabel);
     out.push(await renderDeckPng(flowSlide(flowConfig, flow, it.name, label, support)));
@@ -629,8 +629,8 @@ function contextSlide(page: BandPage, both: boolean, LH: number, fs: number, nam
 
 /** QA hook: render one deck slide to a PNG data URL. */
 export async function previewDeckPng(flowId: string, kind: "title" | "flow"): Promise<string> {
-  const flow = getFlow(flowId)!;
   const config: FlowConfig = { ...defaultConfig(flowId, "Acme"), clientRep: "Jane Doe", clientLogoPlate: "none" };
+  const flow = flowFor(config)!;
   return renderDeckPng(kind === "title" ? titleSlide(config) : flowSlide(config, flow, flow.title, deckFlowLabel(0, 1), supportFor(config, flow, "collection")));
 }
 
@@ -666,7 +666,7 @@ async function renderDeckSlides(config: FlowConfig, variants?: Variant[]): Promi
   const slides = [await renderDeckPng(titleSlide(config))];
   for (let i = 0; i < valid.length; i++) {
     const it = valid[i];
-    const flow = getFlow(it.flowId)!;
+    const flow = flowFor({ ...config, flowId: it.flowId })!;
     const support = supportFor(config, flow);
     slides.push(await renderDeckPng(flowSlide({ ...config, flowId: it.flowId }, flow, it.name, deckFlowLabel(i, valid.length, config.flowsLabel), support)));
   }
@@ -701,7 +701,7 @@ export async function downloadFlowPptx(config: FlowConfig, variants?: Variant[])
   const flowPngs: string[] = [];
   for (let i = 0; i < valid.length; i++) {
     const it = valid[i];
-    const flow = getFlow(it.flowId)!;
+    const flow = flowFor({ ...config, flowId: it.flowId })!;
     const support = supportFor(config, flow);
     flowPngs.push(await renderDeckPng(flowSlide({ ...config, flowId: it.flowId }, flow, it.name, deckFlowLabel(i, valid.length), support)));
   }

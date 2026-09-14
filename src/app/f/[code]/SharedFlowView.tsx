@@ -190,6 +190,7 @@ export function SharedFlowView({ code }: { code: string }) {
           flows: variants ?? [{ flowId, name: "Flow" }],
           direction,
           stablecoin: config.stablecoin,
+          brlt: config.brlt,
           collected: config.collected,
           delivered: config.delivered,
           rep: getRep(config.traceRepId),
