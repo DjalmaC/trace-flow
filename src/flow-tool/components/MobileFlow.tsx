@@ -6,7 +6,7 @@ import { displayCurrency } from "./FlowSvg/Tokens";
 import { TraceArrow } from "./FlowSvg/TraceArrow";
 import { ASSETS, C, TRACE_LOGO_AR, accentFor } from "./tokens";
 import type { Currency, Flow, FlowConfig } from "../data/schema";
-import { isPlatformFlow } from "../data/schema";
+import { isPlatformFlow, platformSuppressesClient } from "../data/schema";
 
 // Phone-native VERTICAL flow: the chain reads top -> bottom as full-width cards
 // with the currency on each connector and the conversion / border crossing as a
@@ -18,10 +18,11 @@ import { isPlatformFlow } from "../data/schema";
 export function MobileFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
   const reduced = useReducedMotion();
   const layout = computeLayout(flow, config);
-  // Technology-provider framing: no client logo inside the flow; the branded
+  // Technology-provider framing: no client logo inside the flow when the client
+  // is the provider (unless they opted to stay in the flow); the branded
   // wrapper (rendered by FlowExperience) carries their presence instead.
   const platform = isPlatformFlow(config, flow.id);
-  const cardConfig = platform ? { ...config, clientLogoUrl: undefined } : config;
+  const cardConfig = platform && platformSuppressesClient(config, flow.id) ? { ...config, clientLogoUrl: undefined } : config;
   const accent = accentFor(config.direction);
   // Currency/conversion semantics follow the real direction; on-screen the coin
   // travels DOWN for Pay-in (collection) and UP for Pay-out (disbursement).

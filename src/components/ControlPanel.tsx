@@ -784,6 +784,21 @@ export function ControlPanel({
                           onChange={(v) => patch({ platform: { ...(config.platform ?? { enabled: true }), enabled: true, provider: v as "client" | "trace" } })}
                         />
                       </div>
+                      {(config.platform.provider ?? "client") === "client" && (
+                        <div className="mt-2">
+                          <div className="mb-1 text-[10.5px] font-medium uppercase tracking-[0.08em] text-muted">
+                            {config.clientName || "Client"} inside the flow
+                          </div>
+                          <Segmented
+                            value={config.platform.showClient ? "shown" : "hidden"}
+                            options={[
+                              { value: "hidden", label: "Hidden" },
+                              { value: "shown", label: "Shown" },
+                            ]}
+                            onChange={(v) => patch({ platform: { ...(config.platform ?? { enabled: true }), enabled: true, showClient: v === "shown" } })}
+                          />
+                        </div>
+                      )}
                       <div className="mt-2 flex items-center gap-2.5">
                         {(config.platform.provider ?? "client") === "client" && (
                           <input
@@ -797,7 +812,9 @@ export function ControlPanel({
                         <p className="text-[10.5px] leading-normal text-muted">
                           {(config.platform.provider ?? "client") === "trace"
                             ? "Trace wraps the flow as the technology provider — the client stays a party inside a Trace-branded frame."
-                            : `${config.clientName || "The client"} wraps the flow instead of appearing in it. The deck frames every flow in their brand; the caption on the canvas is double-click editable.`}
+                            : config.platform.showClient
+                              ? `${config.clientName || "The client"} wraps the flow and stays a party inside it, so their box and logo remain. The deck frames every flow in their brand; the caption on the canvas is double-click editable.`
+                              : `${config.clientName || "The client"} wraps the flow instead of appearing in it. The deck frames every flow in their brand; the caption on the canvas is double-click editable.`}
                         </p>
                       </div>
                     </>

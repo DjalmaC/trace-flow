@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useReducedMotion } from "framer-motion";
 import type { Currency, FlowConfig } from "../data/schema";
+import { platformSuppressesClient } from "../data/schema";
 import { ASSETS, C, TRACE_LOGO_AR, accentFor, tubeTint, GLASS_CARD } from "./tokens";
 import { RAIL_IN, type FlowLayout, type NodeLayout } from "./layout";
 import {
@@ -394,8 +395,9 @@ export function MachineryStage({
 
   const platformOn = !!layout.platformFrame;
   // The client's name/logo are stripped from the boxes only when the CLIENT is
-  // the provider; with Trace as provider the client stays a branded party.
-  const clientSuppressed = platformOn && (config.platform?.provider ?? "client") === "client";
+  // the provider and hasn't opted to stay in the flow; with Trace as provider
+  // the client stays a branded party.
+  const clientSuppressed = platformOn && platformSuppressesClient(config, config.flowId);
   const frame = layout.platformFrame;
   const traceProvider = config.platform?.provider === "trace";
   const frameColor = config.platform?.color?.trim() || (traceProvider ? C.green : config.brandColor) || C.green;

@@ -22,15 +22,8 @@ const Y = 457;
 const HUB = { cx: 680, cy: Y, r: 34 };
 const VIEWBOX = "150 384 1060 168";
 
-const ACRONYMS = new Set(["eFX", "NRA", "LP", "IP", "Pix", "Inc", "USDC", "USDT", "USDC/USDT", "USD/USDT", "BRL", "USD", "EUR", "USD/EUR", "BR", "A", "B"]);
-function sentenceCase(label: string): string {
-  const words = label.split(" ").map((w, i) => {
-    if (ACRONYMS.has(w) || w === "/") return w;
-    const lower = w.toLowerCase();
-    return i === 0 ? lower.charAt(0).toUpperCase() + lower.slice(1) : lower;
-  });
-  return words.join(" ");
-}
+// Station labels render exactly as authored (flow data or a rep's rename) —
+// an earlier sentence-casing pass lowercased brand names like "VIX" to "Vix".
 
 function TokenContent({ currency, coin, accent }: { currency: Currency; coin: FlowConfig["stablecoin"]; accent: string }) {
   if (currency === "USDC/USDT") {
@@ -101,7 +94,7 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
   const labelB = ov(config.nodeLabels, flow.headline.partyB) ?? partyB?.label ?? "Beneficiary";
   const entityA = ov(config.nodeEntities, flow.headline.partyA)?.trim();
   const entityB = ov(config.nodeEntities, flow.headline.partyB)?.trim();
-  const clientSub = sentenceCase(labelA);
+  const clientSub = labelA.trim();
   // Technology-provider framing. `platform` draws the frame; `suppressClient`
   // removes the client from the flow (only when the CLIENT is the provider —
   // with Trace as provider the client still shows as the originating party).
@@ -123,7 +116,7 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
   // uploaded — unless the originating station claimed it (then only an
   // explicit flag keeps it on both ends). Explicit client branding wins.
   const partnerB = !brandedB && !!config.partnerLogoUrl && (!partnerA || !!ovb(config.nodePartner, flow.headline.partyB));
-  const merchantName = sentenceCase(labelB);
+  const merchantName = labelB.trim();
   // the beneficiary isn't always abroad (the Foreigner-to-BR flow settles in Brazil)
   const merchantWhere = partyB?.lane === "brazil" ? "in Brazil" : "abroad";
   const clientWhere = partyA?.lane === "brazil" ? "in Brazil" : "abroad";
