@@ -75,10 +75,13 @@ function imageDims(url: string): { w: number; h: number } | null {
 
 // Scale intrinsic dims to fit a max box, never upscaling past 2.5× (a tiny
 // favicon-sized logo blown up to 700px would only showcase its pixels).
-function fitBox(dims: { w: number; h: number } | null, maxW: number, maxH: number): { w: number; h: number } {
-  if (!dims || dims.w <= 0 || dims.h <= 0) return { w: maxW, h: maxH };
+// Returned as `width`/`height` because that is what satori reads off an
+// <img>: any other prop is ignored and the image lands at its intrinsic size,
+// which for a 900px Mastercard mark meant a logo taller than the whole card.
+function fitBox(dims: { w: number; h: number } | null, maxW: number, maxH: number): { width: number; height: number } {
+  if (!dims || dims.w <= 0 || dims.h <= 0) return { width: maxW, height: maxH };
   const scale = Math.min(maxW / dims.w, maxH / dims.h, 2.5);
-  return { w: Math.round(dims.w * scale), h: Math.round(dims.h * scale) };
+  return { width: Math.round(dims.w * scale), height: Math.round(dims.h * scale) };
 }
 
 export async function GET(req: Request, ctx: { params: Promise<{ key: string }> }) {

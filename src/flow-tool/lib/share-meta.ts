@@ -42,7 +42,9 @@ export async function sharedLinkMetadata(key: string): Promise<Metadata> {
   const origin =
     process.env.NEXT_PUBLIC_SHARE_ORIGIN?.replace(/\/$/, "") ||
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
-  const image = { url: `${origin}/api/og/${encodeURIComponent(key)}`, width: 1200, height: 630, alt: title };
+  // `v` busts crawler caches (WhatsApp keeps a preview for days) whenever the
+  // card's rendering changes; bump it with the card, not per request.
+  const image = { url: `${origin}/api/og/${encodeURIComponent(key)}?v=2`, width: 1200, height: 630, alt: title };
   return {
     title,
     description,
