@@ -928,7 +928,7 @@ export default function BuildPage() {
         {editControls}
         {dragChrome}
         <NotesDrawer
-          notes={config.proposalNotes?.[config.flowId]}
+          notes={config.proposalNotes?.[config.flowId] ?? getFlow(config.flowId)?.notes}
           editable
           onChange={(v) =>
             setConfig((c) => {
@@ -990,7 +990,7 @@ export default function BuildPage() {
       {editControls}
       {dragChrome}
       <NotesDrawer
-        notes={config.proposalNotes?.[config.flowId]}
+        notes={config.proposalNotes?.[config.flowId] ?? getFlow(config.flowId)?.notes}
         editable
         onChange={(v) =>
           setConfig((c) => {

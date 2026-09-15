@@ -390,6 +390,11 @@ export function FlowLibrary({
                       {f.displayId}
                     </span>
                     <span className="font-mono text-[10px] uppercase tracking-[.08em] text-muted">{f.dials.model}</span>
+                    {(f.proposed || f.mechanism) && (
+                      <span className="rounded-md border border-[#e6b566]/40 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide text-[#e6c98a]" title={f.mechanism ? "A supplementary explanatory mechanism, not a payment flow" : "A proposed design, not a confirmed production arrangement"}>
+                        {f.mechanism ? "supplementary" : "proposed"}
+                      </span>
+                    )}
                     {f.traceRole.length > 0 && (
                       <span className="ml-auto flex gap-1">
                         {f.traceRole.map((r) => (

@@ -196,6 +196,8 @@ export function SharedFlowView({ code }: { code: string }) {
           rep: getRep(config.traceRepId),
           pricing: config.pricing && isProposalPricing(config.pricing) ? config.pricing : undefined,
           partnerLogoUrl: config.partnerLogoUrl,
+          authLogoUrl: config.authLogoUrl,
+          authLogoPlate: config.authLogoPlate,
           partnerLogoPlate: config.partnerLogoPlate,
           nodePartner: config.nodePartner,
           nodeBank: config.nodeBank,
@@ -581,7 +583,7 @@ export function SharedFlowView({ code }: { code: string }) {
         )}
 
         {/* proposal-level notes — a slide-out drawer, once the intro has settled */}
-        {showChrome && config && <NotesDrawer notes={config.proposalNotes?.[flowId]} />}
+        {showChrome && config && <NotesDrawer notes={config.proposalNotes?.[flowId] ?? getFlow(flowId)?.notes} />}
 
         {/* 2c client gate — or the intro overlay for every other state */}
         {state.status === "locked" ? (

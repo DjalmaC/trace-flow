@@ -329,6 +329,8 @@ export function ControlPanel({
         // pricing off => the PDF ships no pricing pages, matching the link
         pricing: includePricing ? pricing : undefined,
         partnerLogoUrl: config.partnerLogoUrl,
+        authLogoUrl: config.authLogoUrl,
+        authLogoPlate: config.authLogoPlate,
         partnerLogoPlate: config.partnerLogoPlate,
         nodePartner: config.nodePartner,
         nodeBank: config.nodeBank,
@@ -413,6 +415,15 @@ export function ControlPanel({
     setOrigPartnerLogo(cut);
     await applyPartnerTreatment("auto", cut);
   }
+  // Card network / issuer logo (card-connected flows): fills the authorization
+  // layer's box and the hero hub's "authorized" swap. Same cut + treatment as
+  // the counterparty logo.
+  async function onAuthLogoData(raw: string) {
+    const cut = (await removeBackground(raw).catch(() => null)) ?? raw;
+    const r = await normalizeLogo(cut, { mark: "auto" });
+    patch({ authLogoUrl: r.url, authLogoPlate: r.plate });
+  }
+  const hasAuthorizer = !!getFlow(config.flowId)?.nodes.some((n) => n.authorizer);
 
   // A THIRD in-box brand mark (a bank), so a flow can show the company, the
   // counterparty AND a bank logo across its boxes. Cut the background (the
@@ -689,6 +700,26 @@ export function ControlPanel({
                 <Field label="Logo">
                   <LogoDrop compact hasLogo={!!config.clientLogoUrl} onImage={onLogoData} />
                 </Field>
+
+                {hasAuthorizer && (
+                  <Field label="Card network / issuer logo · the authorization layer of this flow">
+                    <LogoDrop compact hasLogo={!!config.authLogoUrl} onImage={onAuthLogoData} />
+                    {config.authLogoUrl && (
+                      <div className="mt-2 flex items-center justify-between rounded-[9px] border border-hairline-control bg-surface-input px-3 py-2">
+                        <span className={`flex h-9 items-center rounded-md px-2 ${config.authLogoPlate === "light" ? "bg-white" : ""}`}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={config.authLogoUrl} alt="card network logo" className="h-6 w-auto max-w-[140px] object-contain" />
+                        </span>
+                        <button onClick={() => patch({ authLogoUrl: undefined, authLogoPlate: undefined })} className="text-[11px] font-medium text-muted transition-colors duration-150 ease-ds hover:text-title">
+                          Remove
+                        </button>
+                      </div>
+                    )}
+                    <p className="mt-1.5 px-1 text-[10.5px] leading-snug text-muted">
+                      Shown in the authorization box and on the FX hub once the transaction is authorized. Without a logo the box keeps its name.
+                    </p>
+                  </Field>
+                )}
 
                 <Field label="Counterparty logo · optional, the merchant/partner they settle with">
                   <LogoDrop compact hasLogo={!!config.partnerLogoUrl} onImage={onPartnerLogoData} />

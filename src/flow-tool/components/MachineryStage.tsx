@@ -212,8 +212,25 @@ export function MachineryStage({
   const tokenRef = useRef<SVGGElement>(null);
   const curRefs = useRef<Record<string, SVGGElement | null>>({});
   const hubMarkRefs = useRef<Record<number, SVGGElement | null>>({});
+  const hubAuthRefs = useRef<Record<number, SVGGElement | null>>({});
   const pulseRefs = useRef<Record<number, SVGCircleElement | null>>({});
   const rippleRefs = useRef<Record<string, SVGGElement | null>>({});
+  const authRefs = useRef<Record<string, SVGGElement | null>>({});
+  // Boxes the authorization layer reports into (the target of an instruction
+  // arrow that leaves an authorizer box): they show the "authorized" mark as
+  // value lands, i.e. the layer's participation becomes visible where the
+  // funds arrive (Trace's bank in F01).
+  const authorizedNodes = useMemo(() => {
+    const auth = new Set(nodes.filter((n) => n.authorizer).map((n) => n.id));
+    const targets = layout.legs.filter((l) => l.kind === "instruction" && auth.has(l.from)).map((l) => l.to);
+    // the participation shows where the funds ARRIVE: the last instructed box along the rail
+    const byX = new Map(nodes.map((n) => [n.id, n.cx] as const));
+    const last = targets.sort((a, b) => (byX.get(b) ?? 0) - (byX.get(a) ?? 0))[0];
+    return new Set(last ? [last] : []);
+  }, [nodes, layout.legs]);
+  // the authorizer's short name: the orchestration scope's owner when the
+  // flow declares one ("Mastercard · …"), else the authorizer box's label
+  const authorizerLabel = layout.scopeFrame?.label.split(/\s*[·:]\s*/)[0] ?? nodes.find((n) => n.authorizer)?.label;
 
   // QA hook: ?frame=<ms> freezes the relay at a fixed point in the cycle so a
   // deterministic frame can be captured (the loop is rAF-driven otherwise).
@@ -288,6 +305,20 @@ export function MachineryStage({
       // box ripple: each station fires a single quick green ripple as value
       // lands on it — the same impact-ring gesture the FX hub makes when money
       // goes in. A fast expand-and-fade from the box border, then gone.
+      // the "authorized" chip fades in as value lands and holds for a beat
+      nodes.forEach((n) => {
+        const g = authRefs.current[n.id];
+        if (!g) return;
+        const land = landings[n.id];
+        if (land == null) {
+          g.style.opacity = "0";
+          return;
+        }
+        const dt = (((e - land) % total) + total) % total;
+        const IN = 220, HOLD = 1300, OUT = 380;
+        const op = dt < IN ? dt / IN : dt < IN + HOLD ? 1 : dt < IN + HOLD + OUT ? 1 - (dt - IN - HOLD) / OUT : 0;
+        g.style.opacity = op.toFixed(3);
+      });
       nodes.forEach((n) => {
         const g = rippleRefs.current[n.id];
         if (!g) return;
@@ -318,6 +349,23 @@ export function MachineryStage({
         if (pc) {
           pc.setAttribute("r", (on ? pulseR : HUB_R).toFixed(1));
           pc.style.opacity = on ? pulse.toFixed(2) : "0";
+        }
+        // the authorizer's mark overimposes the hub once the FX engine has
+        // done its work: fades in over the second half of the spin, holds
+        // while the converted value leaves, then hands the hub back
+        const au = hubAuthRefs.current[hb.key];
+        if (au) {
+          const conv = timeline.phases.find((ph) => ph.kind === "conv" && ph.hub === hb.key);
+          let op = 0;
+          if (conv) {
+            if (e >= conv.s && e < conv.s + conv.dur) op = clamp01(((e - conv.s) / conv.dur - 0.5) / 0.3);
+            else {
+              const dt = (((e - (conv.s + conv.dur)) % total) + total) % total;
+              op = dt < 1000 ? 1 : dt < 1450 ? 1 - (dt - 1000) / 450 : 0;
+            }
+          }
+          au.style.opacity = op.toFixed(3);
+          if (m) m.style.opacity = (1 - 0.85 * op).toFixed(3);
         }
       });
     };
@@ -458,6 +506,52 @@ export function MachineryStage({
       )}
       <MachineryContainer layout={layout} showHeading={showHeading} />
 
+      {/* ── proposed coordination boundary (Flow.scope): a quiet dashed
+          enclosure around the boxes an orchestrator coordinates, with its chip
+          (the card network logo when uploaded) on the top edge and the
+          "not ownership or custody" caption. A boundary, never a party. ── */}
+      {layout.scopeFrame && (() => {
+        const f = layout.scopeFrame;
+        const tone = "#e6b566";
+        const logo = config.authLogoUrl;
+        const logoW = logo ? 34 : 0;
+        const FS = 9.5;
+        // uppercase Inter with 0.08em tracking runs about 0.8em per character
+        const CH = FS * 0.8;
+        const oneLineW = f.label.length * CH + 28 + logoW;
+        // the chip breaks at the " · " when the whole label would run past the frame
+        const parts = oneLineW > f.w - 36 ? f.label.split(/\s*·\s*/) : [f.label];
+        const lineW = Math.max(...parts.map((p) => p.length)) * CH;
+        const chipW = lineW + 28 + logoW;
+        const chipH = parts.length > 1 ? 36 : 26;
+        const chipX = f.x + 18;
+        const chipY = f.y - chipH / 2;
+        return (
+          <g>
+            <rect x={f.x} y={f.y} width={f.w} height={f.h} rx={18} fill={tone} fillOpacity={0.035} stroke={tone} strokeOpacity={0.5} strokeWidth={1.2} strokeDasharray="7 5" />
+            <rect x={chipX - 8} y={chipY - 3} width={chipW + 16} height={chipH + 6} rx={11} fill={C.base} />
+            <rect x={chipX} y={chipY} width={chipW} height={chipH} rx={9} fill="#0c1210" stroke={tone} strokeOpacity={0.6} />
+            {logo && (
+              <>
+                {config.authLogoPlate === "light" && <rect x={chipX + 6} y={chipY + 4} width={logoW - 4} height={chipH - 8} rx={4} fill="#ffffff" />}
+                <image href={logo} x={chipX + 8} y={chipY + 5} width={logoW - 8} height={chipH - 10} preserveAspectRatio="xMidYMid meet" />
+              </>
+            )}
+            {parts.map((p, i) => (
+              <text key={i} x={chipX + 14 + logoW} y={chipY + (parts.length > 1 ? 15 + i * 12 : 17)} fontSize={FS} fontWeight={600} fill="#e6c98a" letterSpacing="0.08em">
+                {p.toUpperCase()}
+              </text>
+            ))}
+            {f.caption && (
+              // the caption sits on the frame's bottom edge, inside, right-aligned
+              <text x={f.x + f.w - 16} y={f.y + f.h - 12} fontSize={9} fill={C.muted} textAnchor="end" letterSpacing="0.12em">
+                {f.caption.toUpperCase()}
+              </text>
+            )}
+          </g>
+        );
+      })()}
+
       {/* "account held within a bank" enclosures — a dotted container drawn
           BEHIND the rail and boxes, so the rail/resting pills and the box sit
           cleanly over the dotted border (it reads as the bank perimeter the
@@ -471,12 +565,22 @@ export function MachineryStage({
           recessed-channel material as the rail, drawn as a curve: a soft wide
           channel plus a hairline spine. Behind everything, like the rail. */}
       {layout.legs
-        .filter((l) => l.offTrunk)
+        .filter((l) => l.offTrunk && l.kind !== "instruction")
         .map((l) => (
           <g key={`trib-${l.index}`}>
             <path d={l.dShow ?? l.d} fill="none" stroke={tubeTint(config.direction)} strokeWidth={30} strokeLinecap={l.dShow ? "butt" : "round"} style={{ transition: railTransition }} />
             <path d={l.dShow ?? l.d} fill="none" stroke={accent} strokeOpacity={0.3} strokeWidth={1} style={{ transition: railTransition }} />
+            {/* a return link states its direction: it ends where it lands */}
+            {(l.back || l.exchange) && <path d={l.dShow ?? l.d} fill="none" stroke={accent} strokeOpacity={0.7} strokeWidth={1.2} markerEnd="url(#tf-leg)" />}
           </g>
+        ))}
+
+      {/* instruction arrows — dashed messages alongside the funds path (a
+          payment request, routing, coordination): no tube, no token, no hub */}
+      {layout.legs
+        .filter((l) => l.kind === "instruction")
+        .map((l) => (
+          <path key={`instr-${l.index}`} d={l.dShow ?? l.d} fill="none" stroke={C.leg} strokeOpacity={0.85} strokeWidth={1.4} strokeDasharray="6 6" strokeLinecap="round" markerEnd="url(#tf-leg)" />
         ))}
 
       {/* rail pipe segments — one per trunk gap. The VISIBLE pipe spans only
@@ -528,7 +632,7 @@ export function MachineryStage({
             </g>
           ))}
           {layout.legs
-            .filter((l) => l.offTrunk && !l.convertsTo)
+            .filter((l) => l.offTrunk && !l.convertsTo && l.kind !== "instruction" && !l.exchange)
             .map((l) => (
               <g key={`rest-trib-${l.index}`} transform={`translate(${l.mid.x},${l.mid.y})`}>
                 <CurrencyToken currency={displayCurrency(l.carries, config)} coin={config.stablecoin} />
@@ -541,7 +645,7 @@ export function MachineryStage({
           leg shows its currency resting mid-conduit (reduced-motion vocabulary) */}
       {run &&
         layout.legs
-          .filter((l) => l.offTrunk && !l.convertsTo)
+          .filter((l) => l.offTrunk && !l.convertsTo && l.kind !== "instruction" && !l.exchange)
           .map((l) => (
             <g key={`trib-token-${l.index}`} transform={`translate(${l.mid.x},${l.mid.y})`}>
               <CurrencyToken currency={displayCurrency(l.carries, config)} coin={config.stablecoin} />
@@ -571,11 +675,21 @@ export function MachineryStage({
               partnerLogoPlate={config.partnerLogoPlate}
               bankLogoUrl={config.bankLogoUrl}
               bankLogoPlate={config.bankLogoPlate}
+              authLogoUrl={config.authLogoUrl}
+              authLogoPlate={config.authLogoPlate}
             />
             {entity && (
               <text x={node.x + node.w / 2} y={entityY} textAnchor="middle" fontSize={11} fill={C.subtitle}>
                 ({entity})
               </text>
+            )}
+            {authorizedNodes.has(node.id) && (
+              // "authorized" chip above the box: the card network / issuer mark
+              // (or its name) with a check. Animated: appears as value lands.
+              // Static (PDF / reduced motion): always shown.
+              <g ref={(el) => { authRefs.current[node.id] = el; }} style={{ opacity: run ? 0 : 1, willChange: "opacity" }}>
+                <AuthorizedChip cx={node.cx} y={node.y - 14} logoUrl={config.authLogoUrl} plate={config.authLogoPlate} label={authorizerLabel} />
+              </g>
             )}
           </g>
         );
@@ -599,6 +713,20 @@ export function MachineryStage({
             <g ref={(el) => { hubMarkRefs.current[hb.key] = el; }} style={{ willChange: "transform" }}>
               <image href={ASSETS.traceLogo} x={-markW / 2} y={-markH / 2} width={markW} height={markH} />
             </g>
+            {/* card-connected flows: the authorizer's mark overimposes the hub
+                when value is converted (animated), or sits as a badge on the
+                hub's shoulder (static exports) */}
+            {authorizerLabel && !hb.offTrunk && (run ? (
+              <g ref={(el) => { hubAuthRefs.current[hb.key] = el; }} style={{ opacity: 0, willChange: "opacity" }}>
+                <circle r={HUB_R - 1} fill="#0b110d" stroke={C.green} strokeOpacity={0.55} />
+                <AuthorizerMark logoUrl={config.authLogoUrl} plate={config.authLogoPlate} label={authorizerLabel} r={HUB_R} />
+              </g>
+            ) : (
+              <g transform={`translate(${HUB_R * 0.72},${-HUB_R * 0.72})`}>
+                <circle r={11} fill="#0b110d" stroke={C.green} strokeOpacity={0.6} />
+                <AuthorizerMark logoUrl={config.authLogoUrl} plate={config.authLogoPlate} label={authorizerLabel} r={11} />
+              </g>
+            ))}
           </g>
         </g>
       ))}
@@ -622,6 +750,35 @@ export function MachineryStage({
         : resting.arrowXs.map((x, i) => (
             <TraceArrow key={`ra-${i}`} cx={x} cy={railY} size={22} direction={config.direction} />
           ))}
+      {/* leg captions — the design's exact arrow labels, above the rail gap
+          (clear of the hub), above a curved tributary's resting token, or
+          under a return loop's corridor. Backed so they stay legible. */}
+      {layout.legs
+        .filter((l) => l.label)
+        .map((l) => {
+          const lines = wrapCaption(l.label!);
+          const at = l.labelAt ?? l.mid;
+          const vertical = l.kind === "instruction" && l.x1 === l.x2;
+          const loop = !!l.back && !l.exchange;
+          const w = Math.max(...lines.map((t) => t.length)) * 6.2 + 12;
+          const h = lines.length * 13 + 6;
+          // loops caption under their corridor; a vertical instruction line
+          // beside the line; exchange arcs at their precomputed anchor;
+          // curved tributaries above their anchor; rail legs above the gap
+          const x = loop ? (Math.min(l.x1, l.x2) + Math.max(l.x1, l.x2)) / 2 : vertical ? at.x + w / 2 + 4 : at.x;
+          const top = loop ? l.mid.y + 7 : vertical || l.exchange ? at.y - h / 2 : l.offTrunk ? at.y - 16 - h + 4 : railY - (l.convertsTo ? 38 : 28) - h + 4;
+          return (
+            <g key={`cap-${l.index}`} data-leg-label={l.id ?? l.index}>
+              <rect x={x - w / 2} y={top} width={w} height={h} rx={5} fill={C.base} opacity={0.82} />
+              {lines.map((t, i) => (
+                <text key={i} x={x} y={top + 13 + i * 13} fontSize={11.5} fontWeight={500} fill={l.kind === "instruction" ? C.muted : C.subtitle} textAnchor="middle" fontStyle={l.kind === "instruction" ? "italic" : undefined}>
+                  {t}
+                </text>
+              ))}
+            </g>
+          );
+        })}
+
       {/* branch lanes get the same arrows on their straight segments, so a
           branch reads with an explicit direction too */}
       {layout.legs
@@ -637,6 +794,71 @@ export function MachineryStage({
         ))}
     </g>
   );
+}
+
+/** The authorizer's mark inside a circle of radius r: the uploaded card
+ *  network / issuer logo, else a check with a short name. */
+function AuthorizerMark({ logoUrl, plate, label, r }: { logoUrl?: string; plate?: "light" | "none"; label?: string; r: number }) {
+  if (logoUrl) {
+    const s = r * 1.3;
+    return (
+      <>
+        {plate === "light" && <circle r={r - 3} fill="#ffffff" />}
+        <image href={logoUrl} x={-s / 2} y={-s / 2} width={s} height={s} preserveAspectRatio="xMidYMid meet" />
+      </>
+    );
+  }
+  const name = (label ?? "Authorized").split(" ")[0].toUpperCase().slice(0, 11);
+  return r >= 18 ? (
+    <>
+      <path d="M-6 0 l4 4 l8 -9" fill="none" stroke={C.green} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" transform="translate(0,-5)" />
+      <text y={12} textAnchor="middle" fontSize={6.5} fontWeight={700} fill="#bfe8d4" letterSpacing="0.06em">
+        {name}
+      </text>
+    </>
+  ) : (
+    <path d="M-4 0 l3 3 l6 -7" fill="none" stroke={C.green} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" transform="translate(0,1)" />
+  );
+}
+
+/** The "authorized" chip: a small glass pill with a check and the card
+ *  network / issuer logo (or a short name), centred above a box. */
+function AuthorizedChip({ cx, y, logoUrl, plate, label }: { cx: number; y: number; logoUrl?: string; plate?: "light" | "none"; label?: string }) {
+  const name = (label ?? "Authorized").split(" ")[0];
+  const w = logoUrl ? 118 : Math.min(150, name.length * 7 + 62);
+  const h = 24;
+  const x = cx - w / 2;
+  return (
+    <g>
+      <rect x={x} y={y - h} width={w} height={h} rx={12} fill="#0b110d" stroke={C.green} strokeOpacity={0.55} />
+      <path d={`M${x + 12} ${y - h / 2} l4 4 l7 -8`} fill="none" stroke={C.green} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+      {logoUrl ? (
+        <>
+          {plate === "light" && <rect x={x + 30} y={y - h + 4} width={w - 38} height={h - 8} rx={4} fill="#ffffff" />}
+          <image href={logoUrl} x={x + 33} y={y - h + 5} width={w - 44} height={h - 10} preserveAspectRatio="xMidYMid meet" />
+        </>
+      ) : (
+        <text x={x + 30} y={y - h / 2 + 4} fontSize={10.5} fontWeight={600} fill="#bfe8d4">
+          {name} authorized
+        </text>
+      )}
+    </g>
+  );
+}
+
+/** Wrap a leg caption at ~26 characters on a word boundary (at most 2 lines). */
+function wrapCaption(label: string): string[] {
+  if (label.length <= 26) return [label];
+  const words = label.split(" ");
+  let l1 = "";
+  let i = 0;
+  while (i < words.length && (l1 + " " + words[i]).trim().length <= 26) l1 = (l1 + " " + words[i++]).trim();
+  if (!l1) {
+    l1 = words[0];
+    i = 1;
+  }
+  const l2 = words.slice(i).join(" ");
+  return l2 ? [l1, l2] : [l1];
 }
 
 // A dotted container marking that a box is an account held WITHIN a bank. The

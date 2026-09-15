@@ -208,6 +208,7 @@ function flowSlide(config: FlowConfig, flow: Flow, name: string, label: string, 
   const areaBottom = band.hasContent ? bandTopBaseline - 24 : 474;
 
   const mw = layout.width;
+  const vbY = (layout.stageY ?? CONT_Y) - 12;
   const mh = (layout.stageH ?? CONT_H) + 30;
   const availW = DW - 80;
   const maxH = areaBottom - areaTop;
@@ -232,7 +233,7 @@ function flowSlide(config: FlowConfig, flow: Flow, name: string, label: string, 
           {support}
         </text>
       )}
-      <svg x={x2} y={y2} width={w2} height={h2} viewBox={`0 ${(layout.stageY ?? CONT_Y) - 12} ${mw} ${mh}`} preserveAspectRatio="xMidYMid meet">
+      <svg x={x2} y={y2} width={w2} height={h2} viewBox={`0 ${vbY} ${mw} ${mh}`} preserveAspectRatio="xMidYMid meet">
         {flow.archetype === "hub" ? (
           <HubStage layout={layout} config={config} animate={false} />
         ) : flow.archetype === "netting" ? (
@@ -477,7 +478,8 @@ export async function renderProposalFlowPngs(
     const flow = flowFor({ ...config, flowId: it.flowId })!;
     const support = supportFor(config, flow);
     const label = deckFlowLabel(i, valid.length, config.flowsLabel);
-    out.push(await renderDeckPng(flowSlide(flowConfig, flow, it.name, label, support)));
+    for (const sl of flowSlides(flowConfig, flow, it.name, label, support)) out.push(await renderDeckPng(sl));
+    for (const sl of notesSlides(flowConfig, flow, it.name, label)) out.push(await renderDeckPng(sl));
     // Only a note too long to fit the flow slide's band spills to a
     // continuation slide — the common case adds no extra page.
     const band = computeBand(flowConfig, flow, !!settleNoteFor(flowConfig, flow));
@@ -546,7 +548,10 @@ interface Band {
  *  pages. Pure — called by both flowSlide (page0) and the flow renderer
  *  (continuation slides). */
 function computeBand(config: FlowConfig, flow: Flow, hasSettle: boolean): Band {
-  const comment = config.comments?.[flow.id]?.trim() || "";
+  // the flow's written steps ("How it works") take the comment column when the
+  // proposal adds no comment of its own; the proposal's notes take the right
+  // column (a flow's default notes print on their own Notes page instead)
+  const comment = config.comments?.[flow.id]?.trim() || (flow.steps?.length ? flow.steps.map((st, i) => `${i + 1}. ${st}`).join("\n") : "");
   const notes = config.proposalNotes?.[flow.id]?.trim() || "";
   const both = !!comment && !!notes;
   const leftText = comment || notes; // a lone text always takes the left column
@@ -627,6 +632,59 @@ function contextSlide(page: BandPage, both: boolean, LH: number, fs: number, nam
   );
 }
 
+// ── Notes page ───────────────────────────────────────────────────────────────
+// A flow's Notes (the proposal's own, else the flow's default notes: status,
+// assumptions, open decisions, provider candidates) print on their own page
+// after the flow slide, never as a footer beneath the diagram. Long notes
+// paginate instead of shrinking below a readable size.
+
+const NOTES_TOP = 150;
+const NOTES_BOTTOM = 508;
+const NOTES_LH = 13;
+const NOTES_FS = 9.5;
+const NOTES_CHARS = 150;
+const NOTES_CAP = Math.floor((NOTES_BOTTOM - NOTES_TOP) / NOTES_LH) + 1;
+
+function notesSlide(title: string, lines: string[], part: number, parts: number): React.ReactElement {
+  return (
+    <Frame>
+      <text x={48} y={56} fontSize={11} fontWeight={600} fill={LABEL} letterSpacing={2}>
+        NOTES
+      </text>
+      <text x={48} y={86} fontSize={24} fontWeight={700} fill={TITLE}>
+        {title}
+        {parts > 1 ? `  (${part}/${parts})` : ""}
+      </text>
+      <text x={48} y={108} fontSize={12.5} fill={SUB}>
+        Assumptions, open decisions and provider candidates. Proposed designs, not confirmation of production support.
+      </text>
+      {lines.map((t, i) =>
+        t ? (
+          <text key={i} x={48} y={NOTES_TOP + i * NOTES_LH} fontSize={NOTES_FS} fill="#c2c9c5">
+            {t}
+          </text>
+        ) : null,
+      )}
+    </Frame>
+  );
+}
+
+/** The Notes page(s) for one flow, or none when it has no notes. */
+export function notesSlides(config: FlowConfig, flow: Flow, name: string, label: string): React.ReactElement[] {
+  const text = (config.proposalNotes?.[flow.id] ?? flow.notes ?? "").trim();
+  if (!text) return [];
+  const lines = proseToLines(text, NOTES_CHARS);
+  const pages: string[][] = [];
+  for (let i = 0; i < lines.length; i += NOTES_CAP) pages.push(lines.slice(i, i + NOTES_CAP));
+  const title = deckSlideTitle(label, name);
+  return pages.map((pg, i) => notesSlide(title, pg, i + 1, pages.length));
+}
+
+/** The diagram slides of one flow (one slide; kept as a list for callers). */
+function flowSlides(config: FlowConfig, flow: Flow, name: string, label: string, support?: string): React.ReactElement[] {
+  return [flowSlide(config, flow, name, label, support)];
+}
+
 /** QA hook: render one deck slide to a PNG data URL. */
 export async function previewDeckPng(flowId: string, kind: "title" | "flow"): Promise<string> {
   const config: FlowConfig = { ...defaultConfig(flowId, "Acme"), clientRep: "Jane Doe", clientLogoPlate: "none" };
@@ -668,7 +726,9 @@ async function renderDeckSlides(config: FlowConfig, variants?: Variant[]): Promi
     const it = valid[i];
     const flow = flowFor({ ...config, flowId: it.flowId })!;
     const support = supportFor(config, flow);
-    slides.push(await renderDeckPng(flowSlide({ ...config, flowId: it.flowId }, flow, it.name, deckFlowLabel(i, valid.length, config.flowsLabel), support)));
+    const lbl = deckFlowLabel(i, valid.length, config.flowsLabel);
+    for (const sl of flowSlides({ ...config, flowId: it.flowId }, flow, it.name, lbl, support)) slides.push(await renderDeckPng(sl));
+    for (const sl of notesSlides({ ...config, flowId: it.flowId }, flow, it.name, lbl)) slides.push(await renderDeckPng(sl));
   }
   return slides;
 }
@@ -703,7 +763,9 @@ export async function downloadFlowPptx(config: FlowConfig, variants?: Variant[])
     const it = valid[i];
     const flow = flowFor({ ...config, flowId: it.flowId })!;
     const support = supportFor(config, flow);
-    flowPngs.push(await renderDeckPng(flowSlide({ ...config, flowId: it.flowId }, flow, it.name, deckFlowLabel(i, valid.length), support)));
+    const lbl = deckFlowLabel(i, valid.length);
+    for (const sl of flowSlides({ ...config, flowId: it.flowId }, flow, it.name, lbl, support)) flowPngs.push(await renderDeckPng(sl));
+    for (const sl of notesSlides({ ...config, flowId: it.flowId }, flow, it.name, lbl)) flowPngs.push(await renderDeckPng(sl));
   }
 
   const pptx = new PptxGenJS();

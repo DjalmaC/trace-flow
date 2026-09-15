@@ -61,6 +61,11 @@ export interface NodeLayout extends Box {
   partnerLogo?: boolean;
   /** Render with the (in-box) bank logo instead. */
   bankLogo?: boolean;
+  /** The authorization layer of a card-connected flow (FlowNode.authorizer). */
+  authorizer?: boolean;
+  /** An authorizer no funds pass through (instruction arrows only): drawn as
+   *  a layer (dashed inner outline) rather than a station. */
+  layerOnly?: boolean;
 }
 
 export interface LegLayout {
@@ -86,6 +91,21 @@ export interface LegLayout {
   /** Not part of the relay rail — drawn as a curved tributary conduit with a
    *  resting token instead of the travelling one. */
   offTrunk?: boolean;
+  /** Stable edge id from the flow data (design-contract exports). */
+  id?: string;
+  /** Exact arrow caption from the flow data, drawn beside the leg. */
+  label?: string;
+  /** Dashed instruction arrow (no funds, no token, no hub) vs funds. */
+  kind?: "funds" | "instruction";
+  /** A return link closing a cycle (M01's later-cycle and redemption legs):
+   *  routed as a loop beneath the rows, excluded from depth and trunk. */
+  back?: boolean;
+  /** Where a curved leg's caption sits: towards its off-trunk end, clear of
+   *  the rail (straight legs and loops caption at `mid`). */
+  labelAt?: { x: number; y: number };
+  /** One of a two-way exchange pair (A → B and B → A): drawn as parallel arcs
+   *  anchored on the box edges, no resting token (the captions name the assets). */
+  exchange?: boolean;
 }
 
 export interface HeadlineLayout {
@@ -136,6 +156,8 @@ export interface FlowLayout {
   /** Technology-provider framing (FlowConfig.platform): the client's branded
    *  enclosure drawn around the whole machinery. */
   platformFrame?: { x: number; y: number; w: number; h: number };
+  /** Flow.scope: a proposed coordination boundary around some boxes. */
+  scopeFrame?: { x: number; y: number; w: number; h: number; label: string; caption?: string };
   /** Outer bounds of the stage — the platform frame when present, else the
    *  container. ViewBoxes frame on these. */
   stageY: number;
@@ -368,8 +390,8 @@ function wrapLabel(label: string): string[] {
   return l2 ? [l1, l2] : [l1];
 }
 
-type SrcNode = { id: string; srcId?: string; label: string; kind: NodeKindOrEngine; lane: Flow["nodes"][number]["lane"]; w: number; engineCount?: number; brandedClient?: boolean; partnerLogo?: boolean; bankLogo?: boolean };
-type SrcLeg = { from: string; to: string; carries: Currency; convertsTo?: Currency; hubAtEngine?: boolean };
+type SrcNode = { id: string; srcId?: string; label: string; kind: NodeKindOrEngine; lane: Flow["nodes"][number]["lane"]; w: number; engineCount?: number; brandedClient?: boolean; partnerLogo?: boolean; bankLogo?: boolean; authorizer?: boolean };
+type SrcLeg = { from: string; to: string; carries: Currency; convertsTo?: Currency; hubAtEngine?: boolean; id?: string; label?: string; kind?: "funds" | "instruction" };
 
 const ENGINE_W = 212;
 
@@ -496,9 +518,33 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
       else srcLegs.push({ from: l.from, to: l.to, carries: D(l.carries), convertsTo: l.convertsTo });
     });
   } else {
-    srcNodes = flow.nodes.map((n) => ({ id: n.id, srcId: n.srcId, label: labelOf(n), kind: n.kind, lane: n.lane, w: NODE_W, brandedClient: brandedOf(n), partnerLogo: partnerOf(n), bankLogo: bankOf(n) }));
-    srcLegs = flow.legs.map((l) => ({ from: l.from, to: l.to, carries: l.carries, convertsTo: l.convertsTo }));
+    srcNodes = flow.nodes.map((n) => ({ id: n.id, srcId: n.srcId, label: labelOf(n), kind: n.kind, lane: n.lane, w: NODE_W, brandedClient: brandedOf(n), partnerLogo: partnerOf(n), bankLogo: bankOf(n), authorizer: n.authorizer }));
+    srcLegs = flow.legs.map((l) => ({ from: l.from, to: l.to, carries: l.carries, convertsTo: l.convertsTo, id: l.id, label: l.label, kind: l.kind }));
   }
+
+  // ── cycle safety: a return link (M01's later-cycle and redemption legs)
+  // closes a cycle. DFS from the nodes in declaration order marks such back
+  // edges; they are excluded from depth and trunk and drawn as loops. ──
+  const nodeIdxAll = new Map(srcNodes.map((n, i) => [n.id, i]));
+  const backLegIdx = new Set<number>();
+  {
+    const outs = new Map<string, number[]>();
+    srcLegs.forEach((l, li) => outs.set(l.from, [...(outs.get(l.from) ?? []), li]));
+    const state = new Map<string, 0 | 1 | 2>();
+    const visit = (id: string) => {
+      state.set(id, 1);
+      for (const li of outs.get(id) ?? []) {
+        const to = srcLegs[li].to;
+        if (!nodeIdxAll.has(to)) continue;
+        const st = state.get(to) ?? 0;
+        if (st === 1) backLegIdx.add(li);
+        else if (st === 0) visit(to);
+      }
+      state.set(id, 2);
+    };
+    for (const n of srcNodes) if ((state.get(n.id) ?? 0) === 0) visit(n.id);
+  }
+  const instructionLeg = (l: SrcLeg) => l.kind === "instruction";
 
   // ── topological columns (fan-in support) ──
   // depth = longest path from any source. A chain degenerates to one node per
@@ -508,17 +554,41 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
   const depths = new Array<number>(srcNodes.length).fill(0);
   for (let pass = 0; pass < srcNodes.length; pass++) {
     let changed = false;
-    for (const l of srcLegs) {
+    srcLegs.forEach((l, li) => {
+      if (backLegIdx.has(li) || instructionLeg(l)) return; // return links and instructions never push their target right
       const a = nodeIdx.get(l.from);
       const b = nodeIdx.get(l.to);
-      if (a == null || b == null) continue;
+      if (a == null || b == null) return;
       if (depths[b] < depths[a] + 1) {
         depths[b] = depths[a] + 1;
         changed = true;
       }
-    }
+    });
     if (!changed) break;
   }
+  // an instruction-only node (the authorization layer) sits under the first
+  // box it instructs, so the layer visibly forks off right where the funds do
+  srcNodes.forEach((n, i) => {
+    const touches = srcLegs.filter((l) => l.from === n.id || l.to === n.id);
+    if (!touches.length || touches.some((l) => !instructionLeg(l))) return;
+    const targets = touches.filter((l) => l.from === n.id).map((l) => depths[nodeIdx.get(l.to) ?? -1]).filter((d) => d != null);
+    const sources = touches.filter((l) => l.to === n.id).map((l) => depths[nodeIdx.get(l.from) ?? -1]).filter((d) => d != null);
+    depths[i] = targets.length ? Math.min(...targets) : sources.length ? Math.max(...sources) + 1 : 0;
+  });
+  // an exchange partner (a box whose only funds legs are a two-way pair with
+  // one rail box) sits directly under that box: BRLT down, USD stablecoin up
+  const exchangeNodeIdx = new Set<number>();
+  srcNodes.forEach((n, i) => {
+    const funds = srcLegs.filter((l) => (l.from === n.id || l.to === n.id) && !instructionLeg(l));
+    if (funds.length !== 2) return;
+    const partner = funds[0].from === n.id ? funds[0].to : funds[0].from;
+    const other = funds[1].from === n.id ? funds[1].to : funds[1].from;
+    if (partner !== other || funds[0].from === funds[1].from) return;
+    const pi = nodeIdx.get(partner);
+    if (pi == null) return;
+    depths[i] = depths[pi];
+    exchangeNodeIdx.add(i);
+  });
   const colCount = srcNodes.length ? Math.max(...depths) + 1 : 0;
 
   // The trunk — the longest source→sink path — carries the relay; everything
@@ -530,6 +600,7 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
   for (const i of byDepthOrder) {
     srcLegs.forEach((l, li) => {
       if (nodeIdx.get(l.from) !== i) return;
+      if (backLegIdx.has(li) || instructionLeg(l)) return; // funds legs only carry the relay
       const j = nodeIdx.get(l.to);
       if (j == null) return;
       if (bestLen[j] < bestLen[i] + 1) {
@@ -620,7 +691,7 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
   }
   const rowsAbove = Math.max(0, ...[...rowOf.values()].map((r) => (r < 0 ? -r : 0)));
   const rowsBelow = Math.max(0, ...[...rowOf.values()].map((r) => (r > 0 ? r : 0)));
-  const cyFor = (i: number): number => (trunkNodeIdx.has(i) ? BAND_Y : BAND_Y + (rowOf.get(i) ?? 1) * STACK_OFF);
+  const cyFor = (i: number): number => (trunkNodeIdx.has(i) ? BAND_Y : BAND_Y + (rowOf.get(i) ?? 1) * STACK_OFF * (exchangeNodeIdx.has(i) ? 1.7 : 1));
 
   // The machinery container grows to hold extra rows (the classic single flow
   // and one-payer fan-ins keep the exact default frame). TINY flows — a short
@@ -632,6 +703,8 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
     srcNodes.length <= 3 && rowsAbove === 0 && rowsBelow === 0 && !srcNodes.some((n) => n.kind === "engine");
   const contY = compact ? BAND_Y - 146 : Math.min(CONT_Y, BAND_Y - rowsAbove * STACK_OFF - NODE_H / 2 - 44);
   const contH = compact ? 260 : Math.max(CONT_Y + CONT_H, BAND_Y + rowsBelow * STACK_OFF + NODE_H / 2 + 28) - contY;
+  let contHGrow = 0;
+  const contYv0 = () => contY;
 
   const nodes: NodeLayout[] = srcNodes.map((node, i) => {
     const c = depths[i];
@@ -651,6 +724,8 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
       brandedClient: node.brandedClient,
       partnerLogo: node.partnerLogo,
       bankLogo: node.bankLogo,
+      authorizer: node.authorizer,
+      layerOnly: node.authorizer && !srcLegs.some((l) => (l.from === node.id || l.to === node.id) && !instructionLeg(l)),
       x,
       y: cy - h / 2,
       w: node.w,
@@ -660,6 +735,50 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
     };
   });
   const byId = new Map(nodes.map((n) => [n.id, n]));
+  // The authorization layer is not a party in the sequence: it sits under the
+  // Trace FX hub (the first converting rail leg), where it authorizes, not at
+  // the start where it would read as an initiator.
+  {
+    const fxLeg = srcLegs.find((l, li) => l.convertsTo && trunkLegIdx.has(li) && !instructionLeg(l));
+    const fromN = fxLeg ? byId.get(fxLeg.from) : undefined;
+    const toN = fxLeg ? byId.get(fxLeg.to) : undefined;
+    if (fromN && toN) {
+      const hubX = (fromN.x + fromN.w - RAIL_IN + toN.x + RAIL_IN) / 2;
+      for (const n of nodes) {
+        if (!n.layerOnly) continue;
+        n.x = hubX - n.w / 2;
+        n.cx = hubX;
+      }
+    }
+  }
+  {
+    const deepest = Math.max(...nodes.map((n) => n.y + n.h)) + 28;
+    if (deepest > contYv0() + contH) contHGrow = deepest - contY - contH;
+  }
+
+  // A proposed coordination boundary around the boxes the flow names: bbox of
+  // those boxes with room for the chip on its top edge and the leg captions
+  // above the rail inside it.
+  const scopeFrame = flow.scope && flow.scope.nodes.length
+    ? (() => {
+        const members = nodes.filter((n) => flow.scope!.nodes.includes(n.srcId ?? n.id));
+        if (!members.length) return undefined;
+        let minX = Math.min(...members.map((n) => n.x)) - 30;
+        let maxX = Math.max(...members.map((n) => n.x + n.w)) + 30;
+        const minY = Math.min(...members.map((n) => n.y)) - 62;
+        const maxY = Math.max(...members.map((n) => n.y + n.h)) + 44; // room for the caption on the bottom edge
+        // the frame is never narrower than its chip: the chip breaks into two
+        // lines at the " · " and the frame widens to the longer line
+        const longest = Math.max(...flow.scope!.label.split(/\s*·\s*/).map((p) => p.length));
+        const minW = longest * 7.6 + 120;
+        if (maxX - minX < minW) {
+          const grow = (minW - (maxX - minX)) / 2;
+          minX -= grow;
+          maxX += grow;
+        }
+        return { x: minX, y: minY, w: maxX - minX, h: maxY - minY, label: flow.scope!.label, caption: flow.scope!.caption };
+      })()
+    : undefined;
 
   // The technology-provider frame hugs the payment flow ITSELF — the boxes
   // and rail — inside the machinery container, clear of the lane labels.
@@ -678,16 +797,25 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
   // "Abroad" inside the client's brand boundary. Grow the container upward
   // until the labels clear the frame.
   let contYv = contY;
-  let contHv = contH;
+  let contHv = contH + contHGrow;
   if (platformFrame && contYv + 56 > platformFrame.y - 16) {
     const newTop = platformFrame.y - 72;
     contHv += contYv - newTop;
     contYv = newTop;
   }
+  if (scopeFrame) {
+    // lane labels stay above the scope's chip; the container holds its bottom
+    if (contYv + 56 > scopeFrame.y - 20) {
+      const newTop = scopeFrame.y - 76;
+      contHv += contYv - newTop;
+      contYv = newTop;
+    }
+    if (scopeFrame.y + scopeFrame.h + 22 > contYv + contHv) contHv = scopeFrame.y + scopeFrame.h + 22 - contYv;
+  }
   // Stage bounds: the container, stretched only if the frame's chip/caption
   // need room (branch rows below can push the caption past the container).
   const stageYv = platformFrame ? Math.min(contYv, platformFrame.y - 26) : contYv;
-  const stageHv = (platformFrame ? Math.max(contYv + contHv, platformFrame.y + platformFrame.h + 46) : contYv + contHv) - stageYv;
+  let stageHv = (platformFrame ? Math.max(contYv + contHv, platformFrame.y + platformFrame.h + 46) : contYv + contHv) - stageYv;
 
   // ── divider between the Brazil lane and the Abroad lane ──
   // Sit it in the widest horizontal gap between two adjacent nodes of different
@@ -710,9 +838,126 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
   // ── legs: straight connectors along the rail; a tributary (off-trunk leg or
   // any leg whose ends sit at different heights) draws as a smooth S-curve
   // merging into its target. ──
+  // return links loop beneath the lowest row, one corridor lane each
+  const rowsBottom = Math.max(...nodes.map((n) => n.y + n.h));
+  let loopLane = 0;
   const legs: LegLayout[] = srcLegs.map((leg, index) => {
     const from = byId.get(leg.from)!;
     const to = byId.get(leg.to)!;
+    const twin = srcLegs.findIndex((l, li) => li !== index && l.from === leg.to && l.to === leg.from && !instructionLeg(l));
+    if (twin >= 0 && !instructionLeg(leg) && from.cy !== to.cy) {
+      // A two-way exchange (BRLT out, USD stablecoin back) between a rail box
+      // and a tributary box: two parallel S-curves anchored on the box edges,
+      // the outgoing one on the right, the return on the left, captions at
+      // opposite ends so nothing stacks. The return leg is the back edge.
+      const isBack = backLegIdx.has(index);
+      const upper = from.cy < to.cy ? from : to; // the rail box
+      const lower = from.cy < to.cy ? to : from; // the tributary box
+      const goingDown = from === upper;
+      if (Math.abs(upper.cx - lower.cx) < 12) {
+        // stacked: two vertical arrows, out on the right, back on the left
+        const x = upper.cx + (goingDown ? 26 : -26);
+        const y1 = goingDown ? upper.y + upper.h : lower.y;
+        const y2 = goingDown ? lower.y : upper.y + upper.h;
+        const d = `M${x} ${y1} L${x} ${y2}`;
+        const midY = (y1 + y2) / 2;
+        const lw = (leg.label ?? "").length * 6.2 + 12;
+        const labelAt = { x: x + (goingDown ? 1 : -1) * (lw / 2 + 12), y: midY + (leg.convertsTo ? 34 : 0) };
+        return { index, from: leg.from, to: leg.to, d, dShow: d, x1: x, y1, x2: x, y2, carries: leg.carries, convertsTo: leg.convertsTo, mid: { x, y: midY }, labelAt, offTrunk: true, back: isBack || undefined, exchange: true, id: leg.id, label: leg.label, kind: leg.kind };
+      }
+      const ux = goingDown ? upper.x + upper.w * 0.74 : upper.x + upper.w * 0.42;
+      const lx = goingDown ? lower.x + lower.w * 0.5 : lower.x + lower.w * 0.18;
+      const uy = upper.y + upper.h;
+      const ly = lower.y;
+      const sX = goingDown ? ux : lx;
+      const sY = goingDown ? uy : ly;
+      const eX = goingDown ? lx : ux;
+      const eY = goingDown ? ly : uy;
+      const lift = Math.max(40, (ly - uy) * 0.6);
+      const d = `M${sX} ${sY} C${sX} ${sY + (goingDown ? lift : -lift)} ${eX} ${eY - (goingDown ? lift : -lift)} ${eX} ${eY}`;
+      const bz = (t: number) => {
+        const u = 1 - t;
+        const p = (a: number, b: number, c: number, e: number) => u * u * u * a + 3 * u * u * t * b + 3 * u * t * t * c + t * t * t * e;
+        return { x: p(sX, sX, eX, eX), y: p(sY, sY + (goingDown ? lift : -lift), eY - (goingDown ? lift : -lift), eY) };
+      };
+      const mid = bz(0.5);
+      // outgoing caption near the top (right of the curve), return caption near the bottom (left)
+      const lab = goingDown ? bz(0.22) : bz(0.78);
+      const labelAt = { x: lab.x + (goingDown ? 84 : -84), y: lab.y };
+      return { index, from: leg.from, to: leg.to, d, dShow: d, x1: sX, y1: sY, x2: eX, y2: eY, carries: leg.carries, convertsTo: leg.convertsTo, mid, labelAt, offTrunk: true, back: isBack || undefined, exchange: true, id: leg.id, label: leg.label, kind: leg.kind };
+    }
+    if (backLegIdx.has(index)) {
+      const cy = rowsBottom + 36 + loopLane++ * 28;
+      const x1 = from.cx;
+      const y1 = from.y + from.h;
+      const x2 = to.cx;
+      const y2 = to.y + to.h;
+      const sgn = x2 > x1 ? 1 : -1;
+      const d = `M${x1} ${y1} L${x1} ${cy - 12} Q${x1} ${cy} ${x1 + 12 * sgn} ${cy} L${x2 - 12 * sgn} ${cy} Q${x2} ${cy} ${x2} ${cy - 12} L${x2} ${y2}`;
+      return { index, from: leg.from, to: leg.to, d, dShow: d, x1, y1, x2, y2, carries: leg.carries, convertsTo: leg.convertsTo, mid: { x: (x1 + x2) / 2, y: cy }, offTrunk: true, back: true, id: leg.id, label: leg.label, kind: leg.kind };
+    }
+    if (leg.kind === "instruction") {
+      // An instruction lane runs STRAIGHT: it leaves the rail box vertically,
+      // travels along the authorization row and enters its target vertically,
+      // so the layer visibly splits off the funds path and rejoins it. The
+      // off-rail end is the authorizer / instruction box; `sgn` says whether
+      // that row sits below (+1) or above (-1) the rail.
+      const fromOff = !trunkNodeIdx.has(nodeIdx.get(leg.from) ?? -1);
+      const offNode = fromOff ? from : to;
+      const railNode = fromOff ? to : from;
+      const sgn = offNode.cy > railNode.cy ? 1 : -1;
+      const rowY = offNode.cy;
+      const railEdgeY = sgn > 0 ? railNode.y + railNode.h : railNode.y;
+      let d: string;
+      let x1: number, y1: number, x2: number, y2: number;
+      if (Math.abs(offNode.cx - railNode.cx) < offNode.w / 2) {
+        // stacked in one column: a straight vertical between the two boxes
+        const offEdgeY = sgn > 0 ? offNode.y : offNode.y + offNode.h;
+        x1 = railNode.cx;
+        x2 = railNode.cx;
+        if (fromOff) {
+          y1 = offEdgeY;
+          y2 = railEdgeY;
+        } else {
+          y1 = railEdgeY;
+          y2 = offEdgeY;
+        }
+        d = `M${x1} ${y1} L${x2} ${y2}`;
+        const mid = { x: x1, y: (y1 + y2) / 2 };
+        return { index, from: leg.from, to: leg.to, d, dShow: d, x1, y1, x2, y2, carries: leg.carries, convertsTo: leg.convertsTo, mid, labelAt: { x: x1 + 12, y: mid.y }, offTrunk: true, id: leg.id, label: leg.label, kind: leg.kind };
+      }
+      const railFarY = sgn > 0 ? railNode.y + railNode.h + 24 : railNode.y - 24; // corridor between rail and row
+      if (fromOff && railNode.cx < offNode.x) {
+        // authorizer → a rail box BEHIND it: out of the top, along the corridor
+        // between the rail and the row, then up into the box
+        x1 = offNode.x + 26;
+        y1 = sgn > 0 ? offNode.y : offNode.y + offNode.h;
+        x2 = railNode.cx;
+        y2 = railEdgeY;
+        d = `M${x1} ${y1} L${x1} ${railFarY} L${x2} ${railFarY} L${x2} ${y2}`;
+        const mid = { x: (x1 + x2) / 2, y: railFarY };
+        return { index, from: leg.from, to: leg.to, d, dShow: d, x1, y1, x2, y2, carries: leg.carries, convertsTo: leg.convertsTo, mid, labelAt: mid, offTrunk: true, id: leg.id, label: leg.label, kind: leg.kind };
+      }
+      if (fromOff) {
+        // authorizer → rail box ahead: along the row, then up/down into the box
+        x1 = offNode.x + offNode.w;
+        y1 = rowY;
+        x2 = railNode.cx;
+        y2 = railEdgeY;
+        d = `M${x1} ${y1} L${x2} ${y1} L${x2} ${y2}`;
+      } else {
+        // rail box → authorizer: drop out of the box, then along the row
+        x1 = railNode.cx;
+        y1 = railEdgeY;
+        x2 = offNode.x;
+        y2 = rowY;
+        d = `M${x1} ${y1} L${x1} ${y2} L${x2} ${y2}`;
+      }
+      const hx0 = fromOff ? x1 : x1;
+      const hx1 = fromOff ? x2 : x2;
+      const mid = { x: (hx0 + hx1) / 2, y: rowY };
+      return { index, from: leg.from, to: leg.to, d, dShow: d, x1, y1, x2, y2, carries: leg.carries, convertsTo: leg.convertsTo, mid, labelAt: { x: hx0 + (hx1 - hx0) * 0.5, y: rowY }, offTrunk: true, id: leg.id, label: leg.label, kind: leg.kind };
+    }
     const y1 = from.cy;
     const y2 = to.cy;
     const straight = y1 === y2;
@@ -727,6 +972,16 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
     // the folded engine's conversion hub sits AT the engine center
     const midX = leg.hubAtEngine ? to.cx : (x1 + x2) / 2;
     const dx = Math.max(64, Math.abs(x2 - x1) * 0.55);
+    // a curve's caption sits towards its off-trunk end (the tributary box),
+    // so it never lands on the rail or a hub
+    let labelAt: { x: number; y: number } | undefined;
+    if (!straight) {
+      const fromOff = !trunkNodeIdx.has(nodeIdx.get(leg.from) ?? -1);
+      const t = fromOff ? 0.3 : 0.7;
+      const u = 1 - t;
+      const bx = (p0: number, p1: number, p2: number, p3: number) => u * u * u * p0 + 3 * u * u * t * p1 + 3 * u * t * t * p2 + t * t * t * p3;
+      labelAt = { x: bx(x1, x1 + dx, x2 - dx, x2), y: bx(y1, y1, y2, y2) };
+    }
     // Curved conduits: the travel path (`d`) anchors at box centers, but the
     // VISIBLE pipe must stop at the box edges (translucent glass — nothing may
     // show inside a housing). Rightward curves only; anything else falls back.
@@ -752,8 +1007,17 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
       convertsTo: leg.convertsTo,
       mid: { x: midX, y: straight ? y1 : (y1 + y2) / 2 },
       offTrunk: !trunkLegIdx.has(index) || undefined,
+      id: leg.id,
+      label: leg.label,
+      kind: leg.kind,
+      labelAt,
     };
   });
+  // the container grows to hold the loop corridor beneath the rows
+  if (loopLane > 0) {
+    const need = rowsBottom + 36 + (loopLane - 1) * 28 + 40 - contYv;
+    if (need > contHv) contHv = need;
+  }
 
   // A branch curve's resting chip sits at the curve's midpoint — when that
   // midpoint lands beside a rail conversion hub, slide the chip back along
@@ -798,6 +1062,7 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
         ? gapMid
         : width / 2;
 
+  const singleLane = !brazilNodes.length || !abroadNodes.length;
   const laneCenter = (ns: NodeLayout[]) => {
     const x0 = Math.min(...ns.map((n) => n.x));
     const x1 = Math.max(...ns.map((n) => n.x + n.w));
@@ -838,7 +1103,7 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
   // When a reorder moved the client box off its headline slot, the logo travels
   // with it — otherwise the primary stays a headline endpoint, as always.
   const reordered = flow.nodes.some((n) => n.srcId && n.srcId !== n.id);
-  const primaryClientMach = suppressClient
+  const primaryClientMach = suppressClient || flow.ownInitiator
     ? undefined
     : aMach.kind === "client"
       ? aMach
@@ -851,8 +1116,8 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
   const headline: HeadlineLayout = {
     a,
     b,
-    aIsClient: !suppressClient && aIsPrimary && aMach.kind === "client",
-    bIsClient: !suppressClient && !aIsPrimary && bMach.kind === "client",
+    aIsClient: !suppressClient && !flow.ownInitiator && aIsPrimary && aMach.kind === "client",
+    bIsClient: !suppressClient && !flow.ownInitiator && !aIsPrimary && bMach.kind === "client",
     aLabel: aMach.label,
     bLabel: bMach.label,
     aId: aMach.srcId ?? aMach.id,
@@ -876,17 +1141,20 @@ export function computeLayout(flow: Flow, config: FlowConfig, opts: { collapsed?
     legs,
     headline,
     projectors,
-    dividerX,
+    dividerX: flow.mechanism || singleLane ? -9999 : dividerX,
     railY: BAND_Y,
     brazilLabelX,
     abroadLabelX,
-    brazilLabel: config.laneLabels?.[flow.id]?.brazil?.trim() || "Brazil",
-    abroadLabel: config.laneLabels?.[flow.id]?.abroad?.trim() || "Abroad",
+    // a supplementary mechanism, or a flow that never crosses the border, is
+    // not a corridor: no lane captions, no divider
+    brazilLabel: flow.mechanism || singleLane ? "" : config.laneLabels?.[flow.id]?.brazil?.trim() || "Brazil",
+    abroadLabel: flow.mechanism || singleLane ? "" : config.laneLabels?.[flow.id]?.abroad?.trim() || "Abroad",
     contY: contYv,
     contH: contHv,
     platformFrame,
+    scopeFrame,
     stageY: stageYv,
-    stageH: stageHv,
+    stageH: (stageHv = Math.max(stageHv, contYv + contHv - stageYv)),
     reverse,
     primaryClientId: primaryClientMach?.id,
     engine: engine ?? undefined,

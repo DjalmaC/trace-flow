@@ -254,6 +254,22 @@ export function FlowExperience({
     </svg>
   );
 
+  // "How it works": the flow's written steps as a numbered list under the
+  // machinery (distinct from Notes, which live in the drawer).
+  const scenarioPanel = !!flow.steps?.length && (
+    <div className="relative z-10 mt-5 w-full max-w-[52rem] px-2" data-flow-steps>
+      <div className="font-jbmono text-[10px] font-medium uppercase tracking-[0.28em] text-[#6f8a7f]">How it works</div>
+      <ol className="mt-2.5 space-y-1.5 text-[13.5px] leading-relaxed text-subtitle">
+        {flow.steps.map((s, i) => (
+          <li key={i} className="flex gap-3">
+            <span className="mt-[2px] w-5 shrink-0 font-jbmono text-[11px] text-mint">{i + 1}</span>
+            <span className="min-w-0">{s}</span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+
   // The pill groups keep their POSITIONS (carries side first, settlement side
   // second); only the CAPTIONS follow the travel. A flow that starts in BRL
   // and settles in USD on Pay-in starts in USD and settles in BRL on Pay-out.
@@ -362,6 +378,7 @@ export function FlowExperience({
         <div className={only === "surface" ? "w-full max-w-[1200px]" : "w-full max-w-[1500px]"}>
           {only === "surface" ? SurfaceSvg : MachinerySvg}
         </div>
+        {only === "depth" && scenarioPanel}
         <Lockup />
       </div>
     );
@@ -408,13 +425,15 @@ export function FlowExperience({
               {config.platform?.caption?.trim() || `Native to the ${config.clientName} platform. Trace operates the rails underneath.`}
             </p>
           </div>
-        ) : flow.archetype === "hub" || flow.archetype === "netting" ? (
-          // Hub/netting diagrams are wide by nature; squeezed to phone width
-          // they turn illegible. Render near design size in a swipeable pan.
-          <MobileWidePan>{MachinerySvg}</MobileWidePan>
+        ) : flow.archetype === "hub" || flow.archetype === "netting" || layout.legs.some((l) => l.back || l.kind === "instruction") ? (
+          // Hub/netting diagrams, and flows with dashed instruction arrows or
+          // return loops, are wide by nature; squeezed to phone width they
+          // turn illegible. Render near design size in a swipeable pan.
+          <MobileWidePan width={Math.max(780, Math.min(1400, layout.width))}>{MachinerySvg}</MobileWidePan>
         ) : (
           <MobileFlow flow={flow} config={config} />
         )}
+        {scenarioPanel}
       </div>
     );
   }
@@ -476,6 +495,7 @@ export function FlowExperience({
                 <div className="mt-4 flex flex-col items-center">
                   {settlementToggle}
                   <div className="w-full">{MachinerySvg}</div>
+                  {scenarioPanel}
                 </div>
               )}
             </div>
@@ -515,6 +535,7 @@ export function FlowExperience({
             <div className="mt-2 flex flex-col items-center">
               {settlementToggle}
               <div className="w-full">{MachinerySvg}</div>
+              {scenarioPanel}
             </div>
             {panelSlots?.closing && <div className="mt-6 border-t border-white/[.12] pt-6">{panelSlots.closing}</div>}
           </div>
@@ -546,6 +567,7 @@ export function FlowExperience({
           {DepthHeading}
           {settlementToggle}
           <div className="w-full max-w-[1500px]">{MachinerySvg}</div>
+          {scenarioPanel}
         </section>
         <Lockup />
       </div>
@@ -553,6 +575,7 @@ export function FlowExperience({
   }
 
   return (
+    <>
     <div ref={sectionRef} data-flow-dive className="relative h-[340vh] w-full" style={{ background: glass ? "transparent" : C.base }}>
       <div className="sticky top-0 h-screen w-full overflow-hidden" style={{ background: glass ? "transparent" : C.base }}>
         {glass ? (
@@ -615,13 +638,20 @@ export function FlowExperience({
         <Lockup />
       </div>
     </div>
+    {/* the written steps follow the dive */}
+    {scenarioPanel && (
+      <section className="relative z-10 flex w-full flex-col items-center px-6 pb-20 pt-4" style={{ background: glass ? "transparent" : C.base }}>
+        {scenarioPanel}
+      </section>
+    )}
+    </>
   );
 }
 
 /** Phone shell for the wide hub/netting stages: the diagram keeps a readable
  *  size and the viewer pans it horizontally. Starts centered on the hub, edge
  *  fades signal the overflow, and a one-line hint invites the swipe. */
-function MobileWidePan({ children }: { children: React.ReactNode }) {
+function MobileWidePan({ children, width = 780 }: { children: React.ReactNode; width?: number }) {
   const panRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = panRef.current;
@@ -630,7 +660,7 @@ function MobileWidePan({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative -mx-4">
       <div ref={panRef} className="tf-noscrollbar overflow-x-auto px-4" style={{ WebkitOverflowScrolling: "touch" }}>
-        <div style={{ width: 780 }}>{children}</div>
+        <div style={{ width }}>{children}</div>
       </div>
       <div
         className="pointer-events-none absolute inset-y-0 left-0 w-7"

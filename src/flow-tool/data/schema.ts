@@ -57,6 +57,12 @@ export interface FlowNode {
    *  build canvas's edit handles key on it so they travel with the box. Never
    *  set in flow data. */
   srcId?: string;
+  /** The authorization layer of a card-connected flow (a card network or
+   *  issuer): not a party the funds pass through. Its instruction arrows are
+   *  drawn as straight lanes that split off the rail and rejoin it, the box
+   *  carries the proposal's card-network / issuer logo when one is uploaded,
+   *  and the hero hub shows that mark once the conversion is authorized. */
+  authorizer?: boolean;
   /** Liquidity-hub archetype only: this node is a participant in the liquidity
    *  pool that sits BELOW the client-journey rail and trades two-way with the
    *  Trace hub (banks, market makers, other SPSAVs, named LPs). Ignored by the
@@ -81,9 +87,18 @@ export interface SettlementOption {
 }
 
 export interface Leg {
+  /** Stable edge id when the flow reproduces an external design contract
+   *  (e.g. "F01-E01"); exported as-is for topology verification. */
+  id?: string;
   from: string;
   to: string;
   carries: Currency;
+  /** Exact arrow caption from the design ("1. USD or USD stablecoin"), drawn
+   *  beside the leg on every surface and export. */
+  label?: string;
+  /** "instruction" = a dashed message arrow (payment request, routing,
+   *  coordination): no funds, no token, no conversion hub. Default funds. */
+  kind?: "funds" | "instruction";
   /** Set => a swap capsule converts mid-leg (usually the border crossing). */
   convertsTo?: Currency;
   /** Additional settlement options this conversion offers (see above). */
@@ -137,6 +152,30 @@ export interface Flow {
   nodes: FlowNode[]; // Stage 2 machinery
   legs: Leg[]; // Stage 2 machinery legs, ordered
   sameActor: SameActor[]; // projector links between stages
+
+  /** The initiating party is the flow's OWN actor (the overseas institution,
+   *  the Brazilian business, the participating issuer), not the proposal's
+   *  client. The client stays the audience ("Built for …", the card mark) and
+   *  never takes over the first station or box; a rep can still brand any box
+   *  with the client logo explicitly. Set on flows presented TO a network. */
+  ownInitiator?: boolean;
+  /** A proposed coordination boundary drawn around some boxes (e.g.
+   *  "Mastercard · proposed orchestration scope", captioned "not ownership or
+   *  custody"): a dashed enclosure with a chip, never a party or a transfer. */
+  scope?: { label: string; caption?: string; nodes: string[] };
+  /** "How it works": the design's written steps, shown as a numbered list
+   *  under the machinery (distinct from Notes) and in the flow slide's band. */
+  steps?: string[];
+  /** Default Notes-drawer content (assumptions, open decisions, provider
+   *  candidates, status). A proposal's own notes replace it. Never drawn
+   *  beneath the diagram. */
+  notes?: string;
+  /** Proposed design, not a confirmed production arrangement (picker chip). */
+  proposed?: boolean;
+  /** A supplementary explanatory mechanism, not a primary payment flow. */
+  mechanism?: boolean;
+  /** External design-contract id ("F01", "M01") for the topology export. */
+  specId?: string;
 
   // ── Tailored flows (rep-built in the flow editor) ──────────────────────────
   /** True for rep-built flows. Internal only — the client deck renders a
@@ -478,6 +517,11 @@ export interface FlowConfig {
    *  draws a dotted "account held at a bank" container AROUND the box). */
   bankLogoUrl?: string;
   bankLogoPlate?: "light" | "none";
+  /** Card network / issuer logo for card-connected flows: fills the
+   *  authorization-layer box (FlowNode.authorizer) and is the mark the hero
+   *  hub swaps to after the conversion spins, showing who authorized it. */
+  authLogoUrl?: string;
+  authLogoPlate?: "light" | "none";
   /** Per-proposal bank-branding (double-click a box → "Show bank logo"),
    *  keyed "<flowId>:<nodeId>" — the box carries bankLogoUrl. */
   nodeBankLogo?: Record<string, boolean>;

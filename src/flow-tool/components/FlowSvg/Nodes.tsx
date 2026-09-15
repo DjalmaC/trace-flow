@@ -51,6 +51,8 @@ export function FlowNodeShape({
   partnerLogoPlate,
   bankLogoUrl,
   bankLogoPlate,
+  authLogoUrl,
+  authLogoPlate,
 }: {
   node: NodeLayout;
   green?: boolean;
@@ -65,6 +67,9 @@ export function FlowNodeShape({
   /** The (in-box) bank logo for nodeBankLogo-flagged boxes. */
   bankLogoUrl?: string;
   bankLogoPlate?: "light" | "none";
+  /** The card network / issuer logo for the authorization-layer box. */
+  authLogoUrl?: string;
+  authLogoPlate?: "light" | "none";
 }) {
   const { x, y, w, h, cx } = node;
   // The quiet glass-card recipe (tokens.GLASS_CARD, shared with the pricing
@@ -89,6 +94,28 @@ export function FlowNodeShape({
         <text x={cx} y={y + h - 7} fontSize={9} fill={C.muted} textAnchor="middle">
           {node.engineCount ? `+${node.engineCount} steps · tap to expand` : "tap to expand"}
         </text>
+      </g>
+    );
+  }
+
+  // The authorization layer of a card flow carries the card network / issuer
+  // logo when the proposal uploaded one; a dashed inner outline marks it as a
+  // layer alongside the funds path, not a party the money passes through.
+  if (node.authorizer) {
+    const lightPlate = authLogoPlate === "light";
+    const pad = lightPlate ? 12 : 8;
+    return (
+      <g>
+        {rect}
+        {node.layerOnly && <rect x={x + 3} y={y + 3} width={w - 6} height={h - 6} rx={10} fill="none" stroke="rgba(255,255,255,.22)" strokeDasharray="4 4" />}
+        {authLogoUrl ? (
+          <>
+            {lightPlate && <rect x={x + 8} y={y + 8} width={w - 16} height={h - 16} rx={7} fill="#ffffff" />}
+            <image href={authLogoUrl} x={x + pad} y={y + pad} width={w - pad * 2} height={h - pad * 2} preserveAspectRatio="xMidYMid meet" />
+          </>
+        ) : (
+          <NodeLines node={node} fill={txt} />
+        )}
       </g>
     );
   }

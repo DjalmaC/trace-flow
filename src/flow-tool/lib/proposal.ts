@@ -102,6 +102,9 @@ export interface ProposalBuildOpts {
   pricing?: ProposalPricing;
   /** Counterparty (merchant/partner) logo + plate (see FlowConfig). */
   partnerLogoUrl?: string;
+  /** Card network / issuer logo for the authorization layer (card flows). */
+  authLogoUrl?: string;
+  authLogoPlate?: "light" | "none";
   partnerLogoPlate?: "light" | "none";
   /** Per-proposal partner-branding flags (see FlowConfig.nodePartner). */
   nodePartner?: Record<string, boolean>;
@@ -597,6 +600,8 @@ export async function buildProposalPdf(opts: ProposalBuildOpts): Promise<Uint8Ar
     stablecoin: opts.stablecoin ?? "both",
     brlt: opts.brlt,
     partnerLogoUrl: opts.partnerLogoUrl,
+    authLogoUrl: opts.authLogoUrl,
+    authLogoPlate: opts.authLogoPlate,
     partnerLogoPlate: opts.partnerLogoPlate,
     nodePartner: opts.nodePartner,
     nodeBank: opts.nodeBank,

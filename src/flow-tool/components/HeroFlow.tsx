@@ -74,6 +74,11 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
   const bRef = useRef<SVGGElement>(null);
   const hubRef = useRef<SVGGElement>(null);
   const pulseRef = useRef<SVGCircleElement>(null);
+  const authRef = useRef<SVGGElement>(null);
+  // card-connected flows: the authorization layer (a card network or issuer)
+  // takes the hub after the conversion spins, showing who authorized it
+  const authorizer = flow.nodes.find((n) => n.authorizer);
+  const authName = authorizer ? flow.scope?.label.split(/\s*[·:]\s*/)[0] ?? config.nodeLabels?.[`${flow.id}:${authorizer.id}`]?.trim() ?? authorizer.label : undefined;
 
   const carries = displayCurrency(flow.headline.carries, config);
   const convertsTo = displayCurrency(flow.headline.convertsTo ?? flow.headline.carries, config);
@@ -101,8 +106,11 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
   const platform = isPlatformFlow(config, flow.id);
   const suppressClient = platformSuppressesClient(config, flow.id);
   const traceProvider = platform && config.platform?.provider === "trace";
-  const heroClientName = suppressClient ? clientSub : config.clientName;
-  const heroClientLogo = suppressClient ? undefined : config.clientLogoUrl;
+  // Flows presented TO a network (Flow.ownInitiator) open on their own party,
+  // not on the proposal's client: the client is the audience, not the payer.
+  const ownParty = suppressClient || !!flow.ownInitiator;
+  const heroClientName = ownParty ? clientSub : config.clientName;
+  const heroClientLogo = ownParty ? undefined : config.clientLogoUrl;
   // The beneficiary box can be branded as a client entity too (a second logo) —
   // e.g. a "Client -> Client" desired transaction with the logo both ends.
   const brandedB = !suppressClient && !!ovb(config.nodeBranded, flow.headline.partyB) && !!config.clientLogoUrl;
@@ -141,12 +149,20 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
       el.style.opacity = on ? "1" : "0";
     }
 
+    const auth = authRef.current;
+    const showAuth = (op: number) => {
+      if (!auth) return;
+      auth.style.opacity = op.toFixed(3);
+      hub.style.opacity = (1 - op).toFixed(3);
+    };
     if (reduced) {
-      // static "arrived" state: converted token resting at the beneficiary
+      // static "arrived" state: converted token resting at the beneficiary,
+      // the authorizer's mark on the hub (the transaction was authorized)
       const end = legs[1];
       place(legs[0].which, legs[0].x1, false);
       place(end.which, end.x1, true);
       hub.setAttribute("transform", "rotate(0) scale(1)");
+      showAuth(auth ? 1 : 0);
       return;
     }
 
@@ -161,6 +177,8 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
         place(legs[0].which, legs[0].x0 + (legs[0].x1 - legs[0].x0) * p, true);
         hub.setAttribute("transform", "rotate(0) scale(1)");
         if (pulse) pulse.style.opacity = "0";
+        // the authorizer's mark fades back to the Trace mark as the next cycle starts
+        showAuth(auth ? Math.max(0, 1 - p / 0.18) : 0);
       } else if (e < LEG + GAP) {
         const gp = (e - LEG) / GAP;
         hub.setAttribute("transform", `rotate(${(360 * gp).toFixed(1)}) scale(${(1 - 0.4 * Math.sin(gp * Math.PI)).toFixed(3)})`);
@@ -168,11 +186,15 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
           pulse.setAttribute("r", (HUB.r + 13 * gp).toFixed(1));
           pulse.style.opacity = (0.4 * (1 - gp)).toFixed(2);
         }
+        // once the FX engine has done its work the authorization lands: the
+        // card network / issuer mark takes the hub
+        showAuth(auth ? Math.max(0, Math.min(1, (gp - 0.62) / 0.3)) : 0);
       } else if (e < 2 * LEG + GAP) {
         const p = (e - LEG - GAP) / LEG;
         place(legs[1].which, legs[1].x0 + (legs[1].x1 - legs[1].x0) * p, true);
         hub.setAttribute("transform", "rotate(0) scale(1)");
         if (pulse) pulse.style.opacity = "0";
+        showAuth(auth ? 1 : 0);
       }
       raf = requestAnimationFrame(tick);
     };
@@ -287,7 +309,7 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
             // light/transparent logo sits straight on the deck, padded to breathe
             <image href={heroClientLogo} x={236} y={429} width={220} height={56} preserveAspectRatio="xMidYMid meet" />
           )
-        ) : suppressClient ? (
+        ) : ownParty ? (
           <text
             x={346}
             y={462}
@@ -376,6 +398,25 @@ export function HeroFlow({ flow, config }: { flow: Flow; config: FlowConfig }) {
         <g ref={hubRef}>
           <image href={ASSETS.traceLogo} x={-hubW / 2} y={-hubH / 2} width={hubW} height={hubH} />
         </g>
+        {authorizer && (
+          // the authorization layer's mark, shown on the hub once the
+          // conversion is authorized (the uploaded card logo, or its name)
+          <g ref={authRef} style={{ opacity: 0 }}>
+            {config.authLogoUrl ? (
+              <>
+                {config.authLogoPlate === "light" && <circle r={HUB.r - 4} fill="#ffffff" />}
+                <image href={config.authLogoUrl} x={-22} y={-22} width={44} height={44} preserveAspectRatio="xMidYMid meet" />
+              </>
+            ) : (
+              <>
+                <path d="M-9 0 l5 5 l10 -11" fill="none" stroke={C.green} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" transform="translate(0,-6)" />
+                <text y={16} textAnchor="middle" fontSize={8.5} fontWeight={700} fill="#bfe8d4" letterSpacing="0.06em">
+                  {(authName ?? "AUTHORIZED").split(" ")[0].toUpperCase().slice(0, 11)}
+                </text>
+              </>
+            )}
+          </g>
+        )}
       </g>
 
       {/* the two relay tokens, clipped to the tubes */}
