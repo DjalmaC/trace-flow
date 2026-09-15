@@ -6,7 +6,7 @@ import { displayCurrency } from "./FlowSvg/Tokens";
 import { TraceArrow } from "./FlowSvg/TraceArrow";
 import { ASSETS, C, TRACE_LOGO_AR, accentFor } from "./tokens";
 import type { Currency, Flow, FlowConfig } from "../data/schema";
-import { isPlatformFlow, platformSuppressesClient } from "../data/schema";
+import { bankFor, bankKey, isPlatformFlow, platformSuppressesClient } from "../data/schema";
 
 // Phone-native VERTICAL flow: the chain reads top -> bottom as full-width cards
 // with the currency on each connector and the conversion / border crossing as a
@@ -72,6 +72,24 @@ export function MobileFlow({ flow, config }: { flow: Flow; config: FlowConfig })
     if (next && legBetween(g, next)) connOrder.push(gi);
   });
   const segCount = connOrder.length;
+
+  // Consecutive single-card columns held at the SAME bank (bankKey) are two
+  // accounts within one bank: they render inside one dotted enclosure that
+  // runs down the stack (the connector between them stays inside it), so the
+  // bank reads as the overarching container — the mobile counterpart of the
+  // canvas's merged perimeter.
+  const colBankKey = (g: NodeLayout[]) => {
+    if (g.length !== 1) return undefined;
+    const bank = bankFor(cardConfig, g[0]);
+    return bank ? bankKey(bank) : undefined;
+  };
+  const bankPos = cols.map((g, gi): BankPos | undefined => {
+    const k = colBankKey(g);
+    if (!k) return undefined;
+    const prev = gi > 0 && colBankKey(cols[gi - 1]) === k;
+    const next = gi + 1 < cols.length && colBankKey(cols[gi + 1]) === k;
+    return prev && next ? "middle" : prev ? "last" : next ? "first" : "solo";
+  });
 
   // The coin carries the foreign currency above the FX hub and BRL below it
   // (geometry is fixed; only the travel direction flips with the toggle).
@@ -232,6 +250,24 @@ export function MobileFlow({ flow, config }: { flow: Flow; config: FlowConfig })
         const isConv = !!leg?.convertsTo;
         const fromLane = (leg && nodes.find((n) => n.id === leg.from)?.lane) ?? g[0].lane;
         const toLane = (leg && nodes.find((n) => n.id === leg.to)?.lane) ?? next?.[0]?.lane ?? g[0].lane;
+        // the bank enclosure continues to the next card: its connector renders
+        // INSIDE the enclosure so the dotted frame runs unbroken down the stack
+        const continues = bankPos[gi] === "first" || bankPos[gi] === "middle";
+        const connector = leg && next && (
+          <Connector
+            ref={(el) => { connRefs.current[ord] = el; }}
+            leg={leg}
+            topLane={fromLane}
+            botLane={toLane}
+            config={config}
+            accent={accent}
+            reduced={!!reduced}
+            semanticDown={semanticDown}
+            laneOverrides={laneOverrides}
+            hubRef={isConv ? hubRef : undefined}
+            hubRotation={isConv ? hubRotation : undefined}
+          />
+        );
         return (
           <motion.div
             key={g[0].id}
@@ -241,7 +277,16 @@ export function MobileFlow({ flow, config }: { flow: Flow; config: FlowConfig })
             transition={{ duration: 0.5, delay: gi * 0.08, ease: [0.4, 0, 0.2, 1] }}
           >
             {g.length === 1 ? (
-              <BankedCard node={g[0]} primary={g[0].id === layout.primaryClientId} config={cardConfig} laneOverrides={laneOverrides} partnerDefault={(g[0].srcId ?? g[0].id) === partnerDefaultId} partnerForce={partnerForceIds.has(g[0].srcId ?? g[0].id)} />
+              <BankedCard
+                node={g[0]}
+                primary={g[0].id === layout.primaryClientId}
+                config={cardConfig}
+                laneOverrides={laneOverrides}
+                partnerDefault={(g[0].srcId ?? g[0].id) === partnerDefaultId}
+                partnerForce={partnerForceIds.has(g[0].srcId ?? g[0].id)}
+                pos={bankPos[gi]}
+                inside={continues ? connector : undefined}
+              />
             ) : (
               // parallel origins: side-by-side, both feeding the row below
               <div className="grid grid-cols-2 gap-2">
@@ -250,21 +295,7 @@ export function MobileFlow({ flow, config }: { flow: Flow; config: FlowConfig })
                 ))}
               </div>
             )}
-            {leg && next && (
-              <Connector
-                ref={(el) => { connRefs.current[ord] = el; }}
-                leg={leg}
-                topLane={fromLane}
-                botLane={toLane}
-                config={config}
-                accent={accent}
-                reduced={!!reduced}
-                semanticDown={semanticDown}
-                laneOverrides={laneOverrides}
-                hubRef={isConv ? hubRef : undefined}
-                hubRotation={isConv ? hubRotation : undefined}
-              />
-            )}
+            {!continues && connector}
           </motion.div>
         );
       })}
@@ -276,14 +307,33 @@ export function MobileFlow({ flow, config }: { flow: Flow; config: FlowConfig })
 // counterpart of the canvas's dotted perimeter. The card keeps its own label
 // (the account holder) while the enclosure carries the bank's name and
 // optional logo above it, reading top-down as "[Bank] ( account holder )".
-function BankedCard({ node, primary, config, laneOverrides, partnerDefault, partnerForce }: { node: NodeLayout; primary: boolean; config: FlowConfig; laneOverrides?: Record<string, string | undefined>; partnerDefault?: boolean; partnerForce?: boolean }) {
+// Where a card sits in a run of same-bank cards (see bankPos): "solo" is its
+// own enclosure; "first" / "middle" / "last" share one that runs down the
+// stack — the title stack sits on the first card, the frame closes on the last.
+type BankPos = "solo" | "first" | "middle" | "last";
+function BankedCard({ node, primary, config, laneOverrides, partnerDefault, partnerForce, pos = "solo", inside }: { node: NodeLayout; primary: boolean; config: FlowConfig; laneOverrides?: Record<string, string | undefined>; partnerDefault?: boolean; partnerForce?: boolean; pos?: BankPos; inside?: React.ReactNode }) {
   const card = <NodeCard node={node} primary={primary} config={config} laneOverrides={laneOverrides} partnerDefault={partnerDefault} partnerForce={partnerForce} />;
-  const bank = node.kind === "engine" ? undefined : config.nodeBank?.[`${config.flowId}:${node.srcId ?? node.id}`];
-  if (!bank || (!bank.label?.trim() && !bank.logoUrl)) return card;
+  const bank = bankFor(config, node);
+  if (!bank) return card;
   const label = bank.label?.trim() ?? "";
   const bold = bank.labelBold !== false; // default bold; false = quiet skim text
+  const dotted = "2px dotted rgba(255,255,255,0.34)";
+  const opens = pos === "solo" || pos === "first";
+  const closes = pos === "solo" || pos === "last";
   return (
-    <div className="rounded-[22px] p-2" style={{ border: "2px dotted rgba(255,255,255,0.34)" }}>
+    <div
+      className="px-2"
+      style={{
+        borderLeft: dotted,
+        borderRight: dotted,
+        borderTop: opens ? dotted : undefined,
+        borderBottom: closes ? dotted : undefined,
+        borderRadius: `${opens ? 22 : 0}px ${opens ? 22 : 0}px ${closes ? 22 : 0}px ${closes ? 22 : 0}px`,
+        paddingTop: opens ? 8 : 0,
+        paddingBottom: closes ? 8 : 0,
+      }}
+    >
+      {opens && (
       <div className="mb-2 flex flex-col items-center gap-1.5 px-2 pt-1">
         {label && (
           <div
@@ -305,7 +355,9 @@ function BankedCard({ node, primary, config, laneOverrides, partnerDefault, part
           />
         )}
       </div>
+      )}
       {card}
+      {inside}
     </div>
   );
 }

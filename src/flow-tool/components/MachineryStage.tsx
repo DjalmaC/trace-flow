@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useMemo, useRef } from "react";
 import { useReducedMotion } from "framer-motion";
-import type { Currency, FlowConfig } from "../data/schema";
-import { platformSuppressesClient } from "../data/schema";
+import type { BankEnclosureCfg, Currency, FlowConfig } from "../data/schema";
+import { bankFor, bankKey, platformSuppressesClient } from "../data/schema";
 import { ASSETS, C, TRACE_LOGO_AR, accentFor, tubeTint, GLASS_CARD } from "./tokens";
 import { RAIL_IN, type FlowLayout, type NodeLayout } from "./layout";
 import {
@@ -463,12 +463,9 @@ export function MachineryStage({
           cleanly over the dotted border (it reads as the bank perimeter the
           value crosses into). Its border is padded outside the box, so it never
           shows through the translucent box. Opt-in per box via config.nodeBank. */}
-      {nodes.map((node) => {
-        if (node.kind === "engine") return null;
-        const bank = config.nodeBank?.[`${config.flowId}:${node.srcId ?? node.id}`];
-        if (!bank || (!bank.label?.trim() && !bank.logoUrl)) return null;
-        return <BankEnclosure key={`bank-${node.id}`} node={node} bank={bank} />;
-      })}
+      {bankClusters(nodes, config).map((cl) => (
+        <BankEnclosure key={`bank-${cl.id}`} id={cl.id} box={cl.box} bank={cl.bank} />
+      ))}
 
       {/* tributary conduits — a second origin merging into the rail. The same
           recessed-channel material as the rail, drawn as a curve: a soft wide
@@ -560,7 +557,7 @@ export function MachineryStage({
           node.kind === "engine" ? undefined : config.nodeEntities?.[`${config.flowId}:${node.srcId ?? node.id}`]?.trim();
         // A bank enclosure adds generous padding below the box; drop the entity
         // line below the whole enclosure so the two don't collide.
-        const bank = node.kind === "engine" ? undefined : config.nodeBank?.[`${config.flowId}:${node.srcId ?? node.id}`];
+        const bank = bankFor(config, node);
         const entityY = node.y + node.h + (bank ? BANK_PAD_BOTTOM + 15 : 14);
         return (
           <g key={node.id} data-flow-node={node.kind === "engine" ? undefined : node.srcId ?? node.id}>
@@ -652,24 +649,73 @@ export function MachineryStage({
 // client link and — via animate={false} — the downloaded PDF, where an
 // uploaded logo is already a data URI and rasterises straight through. The
 // logo's background is cut at upload time, so it usually needs no backing plate.
+/** Banked boxes grouped into enclosures. Two boxes held at the SAME bank
+ *  (bankKey) that sit next to each other — side by side on a row with no
+ *  other box between them, or stacked as parallel origins — are two accounts
+ *  within one bank, so they share ONE overarching enclosure whose frame is the
+ *  union of their boxes (the rail simply runs on inside the bank). Boxes held
+ *  at different banks, or separated by another box, keep their own. */
+function bankClusters(nodes: NodeLayout[], config: FlowConfig): { id: string; bank: BankEnclosureCfg; box: { x: number; y: number; w: number; h: number } }[] {
+  const banked = nodes.flatMap((n) => {
+    const bank = bankFor(config, n);
+    return bank ? [{ n, bank, key: bankKey(bank) }] : [];
+  });
+  if (!banked.length) return [];
+  const sameRow = (a: NodeLayout, b: NodeLayout) => Math.abs(a.y + a.h / 2 - (b.y + b.h / 2)) < Math.min(a.h, b.h) / 2;
+  const xOverlap = (a: NodeLayout, b: NodeLayout) => a.x < b.x + b.w && b.x < a.x + a.w;
+  const adjacent = (a: NodeLayout, b: NodeLayout) => {
+    if (xOverlap(a, b)) return true; // stacked (parallel origins)
+    if (!sameRow(a, b)) return false;
+    const [l, r] = a.x < b.x ? [a, b] : [b, a];
+    // another box sitting between them on the row breaks the bank apart
+    return !nodes.some((o) => o !== a && o !== b && sameRow(o, a) && o.x + o.w / 2 > l.x + l.w && o.x + o.w / 2 < r.x);
+  };
+  // union-find over "same bank + adjacent"
+  const parent = banked.map((_, i) => i);
+  const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i])));
+  banked.forEach((a, i) =>
+    banked.forEach((b, j) => {
+      if (j > i && a.key === b.key && adjacent(a.n, b.n)) parent[find(i)] = find(j);
+    }),
+  );
+  const groups = new Map<number, typeof banked>();
+  banked.forEach((x, i) => {
+    const r = find(i);
+    (groups.get(r) ?? groups.set(r, []).get(r)!).push(x);
+  });
+  return [...groups.values()].map((g) => {
+    const x = Math.min(...g.map((m) => m.n.x));
+    const y = Math.min(...g.map((m) => m.n.y));
+    const x2 = Math.max(...g.map((m) => m.n.x + m.n.w));
+    const y2 = Math.max(...g.map((m) => m.n.y + m.n.h));
+    // one title stack for the bank: the members share a name; take the logo
+    // (and its plate / weight) from whichever member carries one
+    const withLogo = g.find((m) => m.bank.logoUrl);
+    const bank: BankEnclosureCfg = { ...g[0].bank, logoUrl: withLogo?.bank.logoUrl, logoPlate: withLogo?.bank.logoPlate ?? g[0].bank.logoPlate };
+    return { id: g.map((m) => m.n.id).join("+"), bank, box: { x, y, w: x2 - x, h: y2 - y } };
+  });
+}
+
 function BankEnclosure({
-  node,
+  id,
+  box,
   bank,
 }: {
-  node: NodeLayout;
-  bank: { label?: string; logoUrl?: string; logoPlate?: "light" | "none"; labelBold?: boolean };
+  id: string;
+  box: { x: number; y: number; w: number; h: number };
+  bank: BankEnclosureCfg;
 }) {
   const label = bank.label?.trim() ?? "";
   const hasLogo = !!bank.logoUrl;
   const light = bank.logoPlate === "light";
   const bold = bank.labelBold !== false; // default bold; false = quiet skim text
-  const cx = node.x + node.w / 2;
+  const cx = box.x + box.w / 2;
 
   const padTop = bankPadTop(bank);
-  const encX = node.x - BANK_PAD_X;
-  const encY = node.y - padTop;
-  const encW = node.w + BANK_PAD_X * 2;
-  const encH = node.h + padTop + BANK_PAD_BOTTOM;
+  const encX = box.x - BANK_PAD_X;
+  const encY = box.y - padTop;
+  const encW = box.w + BANK_PAD_X * 2;
+  const encH = box.h + padTop + BANK_PAD_BOTTOM;
 
   // Title stack, top-down from the top margin: label, then the logo.
   const labelBaseline = encY + BANK_TOP_MARGIN + BANK_LABEL_H - 4;
@@ -710,7 +756,7 @@ function BankEnclosure({
           // plate we paint the mark white (keeping its alpha) — a clean white
           // silhouette on the deck, no box behind it.
           <>
-            <filter id={`tf-bankwhite-${node.id}`} x="-5%" y="-5%" width="110%" height="110%">
+            <filter id={`tf-bankwhite-${id}`} x="-5%" y="-5%" width="110%" height="110%">
               <feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1 0" />
             </filter>
             <image
@@ -720,7 +766,7 @@ function BankEnclosure({
               width={logoW}
               height={BANK_LOGO_H}
               preserveAspectRatio="xMidYMid meet"
-              filter={`url(#tf-bankwhite-${node.id})`}
+              filter={`url(#tf-bankwhite-${id})`}
             />
           </>
         ) : (

@@ -563,6 +563,24 @@ export interface PlatformFraming {
   except?: string[];
 }
 
+/** One box's "held in a bank" enclosure (FlowConfig.nodeBank), keyed on the
+ *  content id so it travels with a reordered box. Undefined when the box
+ *  isn't banked or the enclosure carries nothing (no name, no logo). */
+export type BankEnclosureCfg = NonNullable<FlowConfig["nodeBank"]>[string];
+export function bankFor(config: FlowConfig, node: { id: string; srcId?: string; kind: string }): BankEnclosureCfg | undefined {
+  if (node.kind === "engine") return undefined;
+  const bank = config.nodeBank?.[`${config.flowId}:${node.srcId ?? node.id}`];
+  return bank && (bank.label?.trim() || bank.logoUrl) ? bank : undefined;
+}
+
+/** Which bank an enclosure names: the name (case/space-insensitive), else the
+ *  logo. Adjacent boxes with the SAME key are two accounts within one bank and
+ *  render inside a single overarching enclosure (desktop, PDF and mobile). */
+export function bankKey(bank: BankEnclosureCfg): string {
+  const label = bank.label?.trim().toLowerCase().replace(/\s+/g, " ");
+  return label ? `name:${label}` : `logo:${bank.logoUrl ?? ""}`;
+}
+
 /** Does this flow render inside a technology-provider frame? */
 export function isPlatformFlow(config: FlowConfig, flowId: string): boolean {
   return !!config.platform?.enabled && !config.platform.except?.includes(flowId);
